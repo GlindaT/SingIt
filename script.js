@@ -33,6 +33,9 @@ let tapSyncMode = false;
 let tapSyncLines = [];
 let tapSyncTimestamps = [];
 let tapSyncCurrentIndex = 0;
+let studioSelectedTrackBlob = null;
+let studioSelectedTrackId = null;
+let studioSelectedTrackName = "Pista";
 
 function $(id) {
   return document.getElementById(id);
@@ -398,14 +401,15 @@ let selectedVoiceId = null;
 // ESTUDIO
 // ==========================================
 function cargarAudioEstudio(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  studioTrackFileName = file.name;
-
-  const url = URL.createObjectURL(file);
-  $("player").src = url;
-  $("studioStatus").textContent = `Estado: pista cargada (${file.name})`;
+    const file = e.target.files[0];
+    if (!file) return;
+    studioSelectedTrackBlob = file;
+    studioSelectedTrackId = null;
+    studioSelectedTrackName = file.name;
+    studioTrackFileName = file.name;
+    const url = URL.createObjectURL(file);
+    $("player").src = url;
+    $("studioStatus").textContent = `Estado: pista cargada (${file.name})`;
 }
 
 function playTrack() {
@@ -853,10 +857,12 @@ async function loadSelectedTrackFromLibraryStudio() {
       alert("⚠️ No se encontró la pista");
       return;
     }
-
-    studioTrackFileName = item.name;
-    player.src = URL.createObjectURL(item.audioBlob);
-    status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+      studioSelectedTrackBlob = item.audioBlob;
+      studioSelectedTrackId = item.id;
+      studioSelectedTrackName = item.name;
+      studioTrackFileName = item.name;
+      player.src = URL.createObjectURL(item.audioBlob);
+      status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
   } catch (error) {
     console.error(error);
     alert("❌ No se pudo cargar la pista seleccionada");
@@ -864,34 +870,28 @@ async function loadSelectedTrackFromLibraryStudio() {
 }
 
 async function loadVoiceOptionsInStudio() {
-  const select = $("voiceLibrarySelect");
-  if (!select) return;
-
-  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
-
-  try {
-    const voces = await getLibraryItemsByType("voz");
-    const grabaciones = await getLibraryItemsByType("grabacion");
-
-    const merged = [...voces, ...grabaciones];
-
-    if (!merged.length) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No hay voces guardadas";
-      select.appendChild(option);
-      return;
+    const select = $("voiceLibrarySelect");
+    if (!select) return;
+    select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+    try {
+        const grabaciones = await getLibraryItemsByType("grabacion");
+        const merged = [...voces, ...grabaciones];
+        if (!merged.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No hay voces guardadas";
+            select.appendChild(option);
+            return;
+        }
+        merged.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error(error);
     }
-
-    merged.forEach((item) => {
-      const option = document.createElement("option");
-      option.value = item.id;
-      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
-      select.appendChild(option);
-    });
-  } catch (error) {
-    console.error(error);
-  }
 }
 
 async function loadSelectedVoiceFromLibrary() {
@@ -2648,26 +2648,42 @@ async function applyTapSync() {
   
   baseTranscriptionSegments = analyzedSegments;
   transcriptionSegments = analyzedSegments;
-  
-  renderKaraokeLyrics(transcriptionSegments);
-  cargarLetrasEnMonitor();
-  
-  if (selectedVoiceId) {
-    updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
-      .then(() => console.log("✅ Guardado en Biblioteca"))
-      .catch(err => console.error("Error:", err));
-  }
-  
-  $("startTapSyncBtn").style.display = "inline-block";
-  $("tapSyncResult").style.display = "none";
-  
-  tapSyncLines = [];
-  tapSyncTimestamps = [];
-  tapSyncCurrentIndex = 0;
-  
-  if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
-  
-  alert("✅ ¡Tiempos y notas aplicados! Reproduce para verificar.");
+    
+    if (studioSelectedTrackBlob) {
+        try {
+            await addLibraryItem({
+                name: `Karaoke - ${studioSelectedTrackName || "Sin título"}`,
+                type: "karaoke",
+                audioBlob: studioSelectedTrackBlob,
+                date: new Date().toLocaleString("es-ES"),
+                transcription: analyzedSegments,
+                metadata: {
+                    title: studioSelectedTrackName || "Sin título",
+                    sourceVoiceId: selectedVoiceId || null,
+                    sourceTrackId: studioSelectedTrackId || null
+                }
+            });
+            console.log("✅ Canción karaoke creada");
+        } catch (err) {
+            console.error("❌ Error creando karaoke:", err);
+        }
+    } else {
+        console.warn("⚠️ No hay pista instrumental seleccionada para crear karaoke");
+    }
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
+    if (selectedVoiceId) {
+        updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
+            .then(() => console.log("✅ Guardado en Biblioteca"))
+            .catch(err => console.error("Error:", err));
+    }
+    $("startTapSyncBtn").style.display = "inline-block";
+    $("tapSyncResult").style.display = "none";
+    tapSyncLines = [];
+    tapSyncTimestamps = [];
+    tapSyncCurrentIndex = 0;
+    if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
+    alert("✅ ¡Tiempos y notas aplicados! Reproduce para verificar.");
 }
 
 
@@ -3465,21 +3481,16 @@ async function loadCatalogSong(folder, title, artist) {
 }
 
 async function loadMyKaraokeSongs() {
-  const container = $("myKaraokeList");
-  if (!container) return;
-  
-  try {
-    // Obtener canciones tipo "karaoke" de la biblioteca
-    const karaokeSongs = await getLibraryItemsByType("karaoke");
+    const container = $("myKaraokeList");
+    if (!container) return;
     
-    // También obtener voces que tengan transcripción
-    const voces = await getLibraryItemsByType("voz");
-    const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
-    
-    const allSongs = [...karaokeSongs, ...vocesConSync];
-    
-    if (allSongs.length === 0) {
-      container.innerHTML = `
+    try {
+        // Obtener canciones tipo "karaoke" de la biblioteca
+        const karaokeSongs = await getLibraryItemsByType("karaoke");
+        const allSongs = [...karaokeSongs];
+        
+        if (allSongs.length === 0) {
+            container.innerHTML = `
         <div style="text-align: center; padding: 20px; color: var(--text-muted);">
           <p>No tienes canciones listas aún.</p>
           <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
@@ -3532,37 +3543,36 @@ async function loadMyKaraokeSongs() {
 }
 
 async function loadKaraokeSong(id) {
-  try {
-    const song = await getLibraryItemById(id);
-    if (!song) {
-      alert("⚠️ Canción no encontrada");
-      return;
+    try {
+        const song = await getLibraryItemById(id);
+        if (song.type !== "karaoke") {
+            alert("⚠️ Este elemento no es una canción karaoke final.");
+            return;
+        }
+        if (!song) {
+            alert("⚠️ Canción no encontrada");
+            return;
+        }
+        // Cargar pista
+        const track = $("karaokeTrack");
+        if (track && song.audioBlob) {
+            track.src = URL.createObjectURL(song.audioBlob);
+            track.volume = 0.4;
+            karaokeSelectedTrackBlob = song.audioBlob;
+            karaokeSelectedTrackName = song.name;
+        }
+        // Cargar transcripción
+        if (song.transcription && song.transcription.length > 0) {
+            transcriptionSegments = song.transcription;
+            baseTranscriptionSegments = song.transcription;
+            cargarLetrasEnMonitor();
+        }
+        const title = song.metadata?.title || song.name;
+        $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
+        // Scroll al monitor
+        $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
+    } catch (error) {
+        console.error("Error cargando canción:", error);
+        alert("❌ Error al cargar la canción");
     }
-    
-    // Cargar pista
-    const track = $("karaokeTrack");
-    if (track && song.audioBlob) {
-      track.src = URL.createObjectURL(song.audioBlob);
-      track.volume = 0.4;
-      karaokeSelectedTrackBlob = song.audioBlob;
-      karaokeSelectedTrackName = song.name;
-    }
-    
-    // Cargar transcripción
-    if (song.transcription && song.transcription.length > 0) {
-      transcriptionSegments = song.transcription;
-      baseTranscriptionSegments = song.transcription;
-      cargarLetrasEnMonitor();
-    }
-    
-    const title = song.metadata?.title || song.name;
-    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
-    
-    // Scroll al monitor
-    $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
-    
-  } catch (error) {
-    console.error("Error cargando canción:", error);
-    alert("❌ Error al cargar la canción");
-  }
 }
