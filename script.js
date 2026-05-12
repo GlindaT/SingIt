@@ -211,24 +211,6 @@ function showTab(tabId) {
 // ==========================================
 let audioContext, analyser, stream;
 
-async function toggleRecording() {
-    const btn = $("recordBtn");
-    
-    if (!state.isRecording) {
-        state.isRecording = true;
-        btn.textContent = "Detener";
-        btn.classList.add("recording");
-        await startAfinador();
-    } else {
-        state.isRecording = false;
-        btn.textContent = "Iniciar";
-        btn.classList.remove("recording");
-        stopAfinador();
-        if ($("noteDisplay")) $("noteDisplay").textContent = "--";
-        if ($("guideText")) $("guideText").textContent = "";
-    }
-}
-
 async function startAfinador() {
     audioContext = new AudioContext();
     stream = await navigator.mediaDevices.getUserMedia({
@@ -249,9 +231,23 @@ async function startAfinador() {
     }, 300);
 }
 
-function stopAfinador() {
-    if (stream) stream.getTracks().forEach(t => t.stop());
-    if (audioContext) audioContext.close();
+
+async function toggleRecording() {
+    const btn = $("recordBtn");
+    
+    if (!state.isRecording) {
+        state.isRecording = true;
+        btn.textContent = "Detener";
+        btn.classList.add("recording");
+        await startAfinador();
+    } else {
+        state.isRecording = false;
+        btn.textContent = "Iniciar";
+        btn.classList.remove("recording");
+        stopAfinador();
+        if ($("noteDisplay")) $("noteDisplay").textContent = "--";
+        if ($("guideText")) $("guideText").textContent = "";
+    }
 }
 
 function detectPitch() {
@@ -362,6 +358,11 @@ function autoCorrelate(buf, sampleRate) {
     // Ignorar frecuencias absurdas para voz humana cantada
     if (frequency < 60 || frequency > 1200) return -1;
     return frequency;
+}
+
+function stopAfinador() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (audioContext) audioContext.close();
 }
 
 // ==========================================
@@ -635,398 +636,326 @@ function saveStudioRecording() {
 // ==========================================
 // BIBLIOTECA
 // ==========================================
-async function saveToLibrary(blob, options = {}) {
-  try {
-    await addLibraryItem({
-      name: options.name || "Audio",
-      type: options.type || "audio",
-      audioBlob: blob,
-      date: new Date().toLocaleString("es-ES"),
-      transcription: options.transcription || [] // Añadir campo para evitar errores
-    });
 
-    await renderLibrary(); // Antes decía loadLibrary (error)
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo guardar en Biblioteca");
-  }
+async function saveToLibrary(blob, options = {}) {
+    try {
+        await addLibraryItem({
+            name: options.name || "Audio",
+            type: options.type || "audio",
+            audioBlob: blob,
+            date: new Date().toLocaleString("es-ES"),
+            transcription: options.transcription || [] 
+        });
+        await renderLibrary(); // Antes decía loadLibrary (error)
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo guardar en Biblioteca");
+    }
 }
 
 async function renderLibrary(filter = 'todos') {
-  const container = $("libraryList");
-  if (!container) return;
-
-  container.innerHTML = "<p>Cargando archivos...</p>";
-
-  try {
-    let library = await getAllLibraryItems();
-
-    // Filtramos según la carpeta seleccionada
-    let filteredItems = library;
-    if (filter !== 'todos') {
-      filteredItems = library.filter(item => item.type === filter);
+    const container = $("libraryList");
+    if (!container) return;
+    container.innerHTML = "<p>Cargando archivos...</p>";
+    try {
+        let library = await getAllLibraryItems();
+        // Filtramos según la carpeta seleccionada
+        let filteredItems = library;
+        if (filter !== 'todos') {
+            filteredItems = library.filter(item => item.type === filter);
+        }
+        container.innerHTML = "";
+        if (filteredItems.length === 0) {
+            container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
+        } else {
+            filteredItems.forEach((item) => {
+                const div = document.createElement("div");
+                div.className = "library-item card"; // Usamos la clase card para que se vea bien
+                div.style.marginBottom = "10px";
+                const audioURL = URL.createObjectURL(item.audioBlob);
+                div.innerHTML = `
+                <p><strong>${item.name}</strong></p>
+                <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
+                <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
+                <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        // Reactivar botones de borrar
+        document.querySelectorAll(".delete-library-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const id = Number(btn.dataset.id);
+                await deleteLibraryItem(id);
+                renderLibrary(filter); // Recargamos la misma vista
+            });
+        });
+        // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
+        await loadVoiceOptionsInStudio();
+        await loadTrackOptionsInStudio();
+        await loadTrackOptionsInKaraoke();
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
     }
-
-    container.innerHTML = "";
-
-    if (filteredItems.length === 0) {
-      container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
-    } else {
-      filteredItems.forEach((item) => {
-        const div = document.createElement("div");
-        div.className = "library-item card"; // Usamos la clase card para que se vea bien
-        div.style.marginBottom = "10px";
-
-        const audioURL = URL.createObjectURL(item.audioBlob);
-
-        div.innerHTML = `
-          <p><strong>${item.name}</strong></p>
-          <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
-          <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
-          <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    // Reactivar botones de borrar
-    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = Number(btn.dataset.id);
-        await deleteLibraryItem(id);
-        renderLibrary(filter); // Recargamos la misma vista
-      });
-    });
-
-    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
-    await loadVoiceOptionsInStudio();
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
-
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
-  }
 }
 
 async function deleteLibraryItem(id) {
-  try {
-    await deleteLibraryItemFromDB(id);
-    await loadLibrary();
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo eliminar el archivo");
-  }
+    try {
+        await deleteLibraryItemFromDB(id);
+        await loadLibrary();
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo eliminar el archivo");
+    }
 }
 
 async function saveManualFileToLibrary() {
-  const fileInput = $("libraryFileInput");
-  const typeSelect = $("libraryFileType");
-  const nameInput = $("libraryFileName");
-
-  const file = fileInput ? fileInput.files[0] : null;
-  const type = typeSelect ? typeSelect.value : "audio";
-  const customName = nameInput ? nameInput.value.trim() : "";
-
-  if (!file) {
-    alert("⚠️ Selecciona un archivo de audio");
-    return;
-  }
-
-  const finalName = customName || file.name;
-
-  try {
-    await addLibraryItem({
-      name: finalName,
-      type: type,
-      audioBlob: file,
-      date: new Date().toLocaleString("es-ES")
-    });
-
-    await loadLibrary();
-
-    if (fileInput) fileInput.value = "";
-    if (nameInput) nameInput.value = "";
-    if (typeSelect) typeSelect.value = "pista";
-
-    alert("✅ Archivo guardado en Biblioteca");
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo guardar el archivo");
-  }
+    const fileInput = $("libraryFileInput");
+    const typeSelect = $("libraryFileType");
+    const nameInput = $("libraryFileName");
+    const file = fileInput ? fileInput.files[0] : null;
+    const type = typeSelect ? typeSelect.value : "audio";
+    const customName = nameInput ? nameInput.value.trim() : "";
+    if (!file) {
+        alert("⚠️ Selecciona un archivo de audio");
+        return;
+    }
+    const finalName = customName || file.name;
+    try {
+        await addLibraryItem({
+            name: finalName,
+            type: type,
+            audioBlob: file,
+            date: new Date().toLocaleString("es-ES")
+        });
+        await loadLibrary();
+        if (fileInput) fileInput.value = "";
+        if (nameInput) nameInput.value = "";
+        if (typeSelect) typeSelect.value = "pista";
+        alert("✅ Archivo guardado en Biblioteca");
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo guardar el archivo");
+    }
 }
 
 async function loadTrackOptionsInStudio() {
-  const select = $("studioTrackSelect");
-  if (!select) return;
-
-  select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
-
-  try {
-    const tracks = await getLibraryItemsByType("pista");
-
-    if (!tracks.length) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No hay pistas guardadas";
-      select.appendChild(option);
-      return;
+    const select = $("studioTrackSelect");
+    if (!select) return;
+    select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
+    try {
+        const tracks = await getLibraryItemsByType("pista");
+        if (!tracks.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No hay pistas guardadas";
+            select.appendChild(option);
+            return;
+        }
+        tracks.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error(error);
     }
-
-    tracks.forEach((item) => {
-      const option = document.createElement("option");
-      option.value = item.id;
-      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
-      select.appendChild(option);
-    });
-  } catch (error) {
-    console.error(error);
-  }
 }
 
 async function loadSelectedTrackFromLibraryStudio() {
-  const select = $("studioTrackSelect");
-  const player = $("player");
-  const status = $("studioStatus");
-
-  if (!select || !player || !status) return;
-
-  const selectedId = Number(select.value);
-
-  if (!selectedId) {
-    alert("⚠️ Selecciona una pista");
-    return;
-  }
-
-  try {
-    const item = await getLibraryItemById(selectedId);
-
-    if (!item) {
-      alert("⚠️ No se encontró la pista");
-      return;
+    const select = $("studioTrackSelect");
+    const player = $("player");
+    const status = $("studioStatus");
+    if (!select || !player || !status) return;
+    const selectedId = Number(select.value);
+    if (!selectedId) {
+        alert("⚠️ Selecciona una pista");
+        return;
     }
-
-    studioTrackFileName = item.name;
-    player.src = URL.createObjectURL(item.audioBlob);
-    status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la pista seleccionada");
-  }
+    try {
+        const item = await getLibraryItemById(selectedId);
+        if (!item) {
+            alert("⚠️ No se encontró la pista");
+            return;
+        }
+        studioTrackFileName = item.name;
+        player.src = URL.createObjectURL(item.audioBlob);
+        status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo cargar la pista seleccionada");
+    }
 }
 
 async function loadVoiceOptionsInStudio() {
-  const select = $("voiceLibrarySelect");
-  if (!select) return;
-
-  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
-
-  try {
-    const voces = await getLibraryItemsByType("voz");
-    const grabaciones = await getLibraryItemsByType("grabacion");
-
-    const merged = [...voces, ...grabaciones];
-
-    if (!merged.length) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No hay voces guardadas";
-      select.appendChild(option);
-      return;
+    const select = $("voiceLibrarySelect");
+    if (!select) return;
+    select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+    try {
+        const voces = await getLibraryItemsByType("voz");
+        const grabaciones = await getLibraryItemsByType("grabacion");
+        const merged = [...voces, ...grabaciones];
+        if (!merged.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No hay voces guardadas";
+            select.appendChild(option);
+            return;
+        }
+        merged.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item.id;
+            option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error(error);
     }
-
-    merged.forEach((item) => {
-      const option = document.createElement("option");
-      option.value = item.id;
-      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
-      select.appendChild(option);
-    });
-  } catch (error) {
-    console.error(error);
-  }
 }
 
 async function loadSelectedVoiceFromLibrary() {
-  const select = $("voiceLibrarySelect");
-  const player = $("selectedVoicePlayer");
-  const status = $("selectedVoiceStatus");
-  const lyricsText = $("lyricsText");
-
-  if (!select || !player || !status) return;
-
-  const selectedId = Number(select.value);
-
-  if (!selectedId) {
-    alert("⚠️ Selecciona una voz");
-    return;
-  }
-
-  try {
-    const item = await getLibraryItemById(selectedId);
-
-    if (!item) {
-      alert("⚠️ No se encontró el archivo");
-      return;
+    const select = $("voiceLibrarySelect");
+    const player = $("selectedVoicePlayer");
+    const status = $("selectedVoiceStatus");
+    const lyricsText = $("lyricsText");
+    if (!select || !player || !status) return;
+    const selectedId = Number(select.value);
+    if (!selectedId) {
+        alert("⚠️ Selecciona una voz");
+        return;
     }
-
-    selectedVoiceBlob = item.audioBlob;
-    selectedVoiceId = item.id;
-
-    const audioURL = URL.createObjectURL(item.audioBlob);
-    player.src = audioURL;
-    status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-
-    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-      baseTranscriptionSegments = item.transcription.map(seg =>
-        buildWordTimingFromSegment(seg)
-      );
-
-      // IMPORTANTE:
-      // aquí respetamos exactamente las líneas guardadas
-      transcriptionSegments = baseTranscriptionSegments;
-
-      renderKaraokeLyrics(transcriptionSegments);
-      cargarLetrasEnMonitor();
-
-      if (lyricsText) {
-        lyricsText.value = transcriptionSegments
-          .map(seg => seg.text || "")
-          .join("\n")
-          .trim();
-      }
-
-      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
-    } else {
-      baseTranscriptionSegments = [];
-      transcriptionSegments = [];
-
-      renderKaraokeLyrics([]);
-      cargarLetrasEnMonitor();
-
-      if (lyricsText) lyricsText.value = "";
-      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+    try {
+        const item = await getLibraryItemById(selectedId);
+        if (!item) {
+            alert("⚠️ No se encontró el archivo");
+            return;
+        }
+        selectedVoiceBlob = item.audioBlob;
+        selectedVoiceId = item.id;
+        const audioURL = URL.createObjectURL(item.audioBlob);
+        player.src = audioURL;
+        status.textContent = `Estado: voz seleccionada -> ${item.name}`;
+        if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+            baseTranscriptionSegments = item.transcription.map(seg =>
+                buildWordTimingFromSegment(seg)
+                );
+            transcriptionSegments = baseTranscriptionSegments;
+            renderKaraokeLyrics(transcriptionSegments);
+            cargarLetrasEnMonitor();
+            if (lyricsText) {
+                lyricsText.value = transcriptionSegments
+                    .map(seg => seg.text || "")
+                    .join("\n")
+                    .trim();
+            }
+            status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+        } else {
+            baseTranscriptionSegments = [];
+            transcriptionSegments = [];
+            renderKaraokeLyrics([]);
+            cargarLetrasEnMonitor();
+            if (lyricsText) lyricsText.value = "";
+            status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+        }
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo cargar la voz seleccionada");
     }
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la voz seleccionada");
-  }
 }
 
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
 // ==========================================
 async function transcribeSelectedVoice() {
-  if (!selectedVoiceBlob) {
-    alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
-    return;
-  }
-
-  const status = $("selectedVoiceStatus");
-  const lyricsText = $("lyricsText");
-
-  try {
-    if (status) {
-      status.textContent = "Estado: Preparando audio (cortando en porciones)...";
+    if (!selectedVoiceBlob) {
+        alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
+        return;
     }
-
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-
-    const CHUNK_SECONDS = 25;
-    const sampleRate = audioBuffer.sampleRate;
-    const totalSamples = audioBuffer.length;
-    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
-
-    let fullSegments = [];
-
-    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
-      const end = Math.min(start + samplesPerChunk, totalSamples);
-      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
-      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
-
-      if (status) {
-        status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
-      }
-
-      const wavBlob = audioBufferToWav(audioBuffer, start, end);
-      const base64Audio = await blobToBase64(wavBlob);
-
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audioBase64: base64Audio })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error ${response.status}: ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      const palabrasProhibidas = [
-        "Amara",
-        "Subtítulos",
-        "subtítulos",
-        "Almorzo",
-        "Suscribete",
-        "comunidad"
-      ];
-
-      const timeOffset = start / sampleRate;
-
-      (result.segments || []).forEach((seg) => {
-        const segText = (seg?.text || "").trim();
-
-        if (!segText) return;
-
-        const esFantasma = palabrasProhibidas.some((palabra) =>
-          segText.toLowerCase().includes(palabra.toLowerCase())
-        );
-
-        if (esFantasma) return;
-
-        const segmentWithOffset = {
-          start: Number(seg.start || 0) + timeOffset,
-          end: Number(seg.end || 0) + timeOffset,
-          text: segText
-        };
-
-        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
-      });
+    const status = $("selectedVoiceStatus");
+    const lyricsText = $("lyricsText");
+    try {
+        if (status) {
+            status.textContent = "Estado: Preparando audio (cortando en porciones)...";
+        }
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const CHUNK_SECONDS = 25;
+        const sampleRate = audioBuffer.sampleRate;
+        const totalSamples = audioBuffer.length;
+        const samplesPerChunk = CHUNK_SECONDS * sampleRate;
+        let fullSegments = [];
+        for (let start = 0; start < totalSamples; start += samplesPerChunk) {
+            const end = Math.min(start + samplesPerChunk, totalSamples);
+            const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
+            const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
+            if (status) {
+                status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+            }
+            const wavBlob = audioBufferToWav(audioBuffer, start, end);
+            const base64Audio = await blobToBase64(wavBlob);
+            const response = await fetch("/api/transcribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ audioBase64: base64Audio })
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Error ${response.status}: ${errorText}`);
+            }
+            const result = await response.json();
+            const palabrasProhibidas = [
+                "Amara",
+                "Subtítulos",
+                "subtítulos",
+                "Almorzo",
+                "Suscribete",
+                "comunidad"
+            ];
+            const timeOffset = start / sampleRate;
+            (result.segments || []).forEach((seg) => {
+                const segText = (seg?.text || "").trim();
+                if (!segText) return;
+                const esFantasma = palabrasProhibidas.some((palabra) =>
+                    segText.toLowerCase().includes(palabra.toLowerCase())
+                    );
+                if (esFantasma) return;
+                const segmentWithOffset = {
+                    start: Number(seg.start || 0) + timeOffset,
+                    end: Number(seg.end || 0) + timeOffset,
+                    text: segText
+                };
+                fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+            });
+        }
+        baseTranscriptionSegments = fullSegments;
+        transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+        renderKaraokeLyrics(transcriptionSegments);
+        cargarLetrasEnMonitor();
+        if (lyricsText) {
+            lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+        }
+        // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
+        if (selectedVoiceId) {
+            try {
+                await updateLibraryItem(selectedVoiceId, {
+                    transcription: baseTranscriptionSegments
+                });
+                console.log("✅ Transcripción guardada en Biblioteca");
+            } catch (err) {
+                console.error("❌ Error guardando transcripción en BD:", err);
+            }
+        }
+        if (status) {
+            status.textContent = "Estado: Transcripción completada y guardada ✅";
+        }
+    } catch (error) {
+        console.error(error);
+        alert("❌ Error al transcribir el audio.");
+        if (status) status.textContent = "Estado: Error en la transcripción";
     }
-
-    baseTranscriptionSegments = fullSegments;
-    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
-
-    if (lyricsText) {
-      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
-    }
-
-     // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
-    if (selectedVoiceId) {
-      try {
-        await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments // Guardamos los tiempos y textos
-        });
-        console.log("✅ Transcripción guardada en Biblioteca");
-      } catch (err) {
-        console.error("❌ Error guardando transcripción en BD:", err);
-      }
-    }
-
-    if (status) {
-      status.textContent = "Estado: Transcripción completada y guardada ✅";
-    }
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al transcribir el audio.");
-    if (status) status.textContent = "Estado: Error en la transcripción";
-  }
 }
 
 // ==========================================
