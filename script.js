@@ -15,6 +15,34 @@ window.addEventListener('DOMContentLoaded', async () => {
 const pitchBuffer = new Float32Array(2048);
 
 // ==========================================
+// NAVEGACIÓN
+// ==========================================
+function showTab(tabId) {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.classList.remove("active");
+  });
+
+  const target = $(tabId);
+  if (target) target.classList.add("active");
+
+  document.querySelectorAll(".sidebar button").forEach(btn => {
+    btn.classList.remove("active");
+  });
+
+  const btnMap = {
+    afinador: "btnAfinador",
+    estudio: "btnEstudio",
+    biblioteca: "btnBiblioteca",
+    karaoke: "btnKaraoke",
+    splitter: "btnSplitter",
+    config: "btnConfig"
+  };
+
+  const activeBtn = $(btnMap[tabId]);
+  if (activeBtn) activeBtn.classList.add("active");
+}
+
+// ==========================================
 // CONFIG GLOBAL
 // ==========================================
 
@@ -177,34 +205,6 @@ function getLibraryItemById(id) {
       reject("❌ Error al obtener archivo");
     };
   });
-}
-
-// ==========================================
-// NAVEGACIÓN
-// ==========================================
-function showTab(tabId) {
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.classList.remove("active");
-  });
-
-  const target = $(tabId);
-  if (target) target.classList.add("active");
-
-  document.querySelectorAll(".sidebar button").forEach(btn => {
-    btn.classList.remove("active");
-  });
-
-  const btnMap = {
-    afinador: "btnAfinador",
-    estudio: "btnEstudio",
-    biblioteca: "btnBiblioteca",
-    karaoke: "btnKaraoke",
-    splitter: "btnSplitter",
-    config: "btnConfig"
-  };
-
-  const activeBtn = $(btnMap[tabId]);
-  if (activeBtn) activeBtn.classList.add("active");
 }
 
 // ==========================================
