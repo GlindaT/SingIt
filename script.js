@@ -2652,6 +2652,15 @@ function applyKaraokeTheme() {
         syncKaraokeMonitor(kTrack.currentTime);
       });
     }
+    const player = $("player");
+    if (player) {
+        player.addEventListener("timeupdate", () => {
+            updateKaraokeHighlight(player.currentTime);
+        });
+        player.addEventListener("ended", () => {
+            updateKaraokeHighlight(player.currentTime);
+        });
+    }
     
     // splitter
     safeAdd("splitBtn", "click", splitAudio);
@@ -2667,27 +2676,7 @@ function applyKaraokeTheme() {
     // Cargar micrófonos al iniciar
     loadAvailableMics();
     toggleMic2Visibility();
-    
-    // init
-    await renderLibrary('todos');
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
-
-    const player = $("player");
-    if (player) {
-      player.addEventListener("timeupdate", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
-
-      player.addEventListener("ended", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
-    }
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error inicializando la app");
-  }
-});
+}
 
 // ==========================================
 // MONITOR DE KARAOKE (CANVAS)
