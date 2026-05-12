@@ -2,6 +2,7 @@
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         await initDB();
+        initSettings();
         console.log("Database Ready");
         // Cargar vistas iniciales
         renderLibrary();
@@ -962,16 +963,15 @@ async function transcribeSelectedVoice() {
 // FUNCIONES AUXILIARES AUDIO
 // ==========================================
 function audioBufferToWav(buffer, startSample, endSample) {
-  const length = endSample - startSample;
-  const wavBuffer = new ArrayBuffer(44 + length * 2);
-  const view = new DataView(wavBuffer);
-  const sampleRate = buffer.sampleRate;
-
-  const writeString = (viewObj, offset, string) => {
-    for (let i = 0; i < string.length; i++) {
-      viewObj.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
+    const length = endSample - startSample;
+    const wavBuffer = new ArrayBuffer(44 + length * 2);
+    const view = new DataView(wavBuffer);
+    const sampleRate = buffer.sampleRate;
+    const writeString = (viewObj, offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+            viewObj.setUint8(offset + i, string.charCodeAt(i));
+        }
+    };
 
   writeString(view, 0, "RIFF");
   view.setUint32(4, 36 + length * 2, true);
@@ -2558,24 +2558,15 @@ function redoTapSync() {
 // ==========================================
 // INIT
 // ==========================================
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    await initDB();
-    initSettings();
-
-    function applyKaraokeTheme() {
-      const theme = localStorage.getItem("singIt_stage") || "clasico";
-      const monitor = $("karaokeLiveLyrics");
-      if (monitor) {
+function applyKaraokeTheme() {
+    const theme = localStorage.getItem("singIt_stage") || "clasico";
+    const monitor = $("karaokeLiveLyrics");
+    if (monitor) {
         monitor.className = "karaoke-lyrics theme-" + theme;
-      }
     }
-
-    applyKaraokeTheme();
-
     safeAdd("karaokeStage", "change", (e) => {
-      saveSetting("singIt_stage", e.target);
-      applyKaraokeTheme();
+    saveSetting("singIt_stage", e.target);
+        applyKaraokeTheme();
     });
 
     // navegación
