@@ -212,177 +212,158 @@ function showTab(tabId) {
 let audioContext, analyser, stream;
 
 async function toggleRecording() {
-  const btn = $("recordBtn");
-
-  if (!state.isRecording) {
-    state.isRecording = true;
-    btn.textContent = "Detener";
-    btn.classList.add("recording");
-    await startAfinador();
-  } else {
-    state.isRecording = false;
-    btn.textContent = "Iniciar";
-    btn.classList.remove("recording");
-    stopAfinador();
-
-    if ($("noteDisplay")) $("noteDisplay").textContent = "--";
-    if ($("guideText")) $("guideText").textContent = "";
-  }
+    const btn = $("recordBtn");
+    
+    if (!state.isRecording) {
+        state.isRecording = true;
+        btn.textContent = "Detener";
+        btn.classList.add("recording");
+        await startAfinador();
+    } else {
+        state.isRecording = false;
+        btn.textContent = "Iniciar";
+        btn.classList.remove("recording");
+        stopAfinador();
+        if ($("noteDisplay")) $("noteDisplay").textContent = "--";
+        if ($("guideText")) $("guideText").textContent = "";
+    }
 }
 
 async function startAfinador() {
-  audioContext = new AudioContext();
-
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false
-    }
-  });
-
-  const mic = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
-  mic.connect(analyser);
-
-  setTimeout(() => {
-    detectPitch();
-  }, 300);
+    audioContext = new AudioContext();
+    stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+        }
+    });
+    
+    const mic = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    mic.connect(analyser);
+    
+    setTimeout(() => {
+        detectPitch();
+    }, 300);
 }
 
 function stopAfinador() {
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  if (audioContext) audioContext.close();
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (audioContext) audioContext.close();
 }
 
 function detectPitch() {
-  if (!state.isRecording || !analyser) return;
-
-  // Usamos el buffer global en lugar de crear uno nuevo cada 16ms
-  analyser.getFloatTimeDomainData(pitchBuffer);
-  const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
-  
-  if (document.getElementById("karaokeCanvas")) {
-    // Asegúrate de que esta función esté definida o comentada para evitar errores
-    if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(0, pitch); 
-  }
-
-  const display = $("noteDisplay");
-  const guide = $("guideText");
-  const targetNoteEl = $("targetNote");
-  const targetNote = targetNoteEl ? targetNoteEl.value : "E2";
-
-  if (display && guide) {
-    if (pitch !== -1) {
-      const noteFull = getNoteFromFrequency(pitch);
-      const targetFreq = getNoteFrequency(targetNote);
-      // Evitar logaritmo de 0 o infinito
-      const cents = 1200 * Math.log2(pitch / targetFreq);
-
-      display.textContent = noteFull;
-
-      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
-      let maxDesviation = 30;
-        if (dificultad === "facil") maxDesviation = 50;
-        else if (dificultad === "dificil") maxDesviation = 15;
-        else if (dificultad === "experto") maxDesviation = 5;
-        
-        // Asegúrate de que las llaves envuelven correctamente cada bloque
-        if (Math.abs(cents) <= maxDesviation) {
-            display.style.color = "#22c55e"; 
-            guide.textContent = `🎯 ¡En la nota! (${targetNote})`;
-            guide.style.color = "#22c55e";
-        } else if (cents < 0) {
-            display.style.color = "#f59e0b";
-            guide.textContent = `⬆️ Estás grave. Sube a ${targetNote}`;
-            guide.style.color = "#f59e0b";
-        } else {
-            display.style.color = "#f59e0b";
-            guide.textContent = `⬇️ Estás agudo. Baja a ${targetNote}`;
-            guide.style.color = "#f59e0b";
-        }
-    } else {
-      display.textContent = "--";
-      display.style.color = "white";
-      guide.textContent = "🎤 Esperando voz...";
+    if (!state.isRecording || !analyser) return;
+    // Usamos el buffer global en lugar de crear uno nuevo cada 16ms
+    analyser.getFloatTimeDomainData(pitchBuffer);
+    const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
+    
+    if (document.getElementById("karaokeCanvas")) {
+        // Asegúrate de que esta función esté definida o comentada para evitar errores
+        if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(0, pitch); 
     }
-  }
-  requestAnimationFrame(detectPitch);
+    const display = $("noteDisplay");
+    const guide = $("guideText");
+    const targetNoteEl = $("targetNote");
+    const targetNote = targetNoteEl ? targetNoteEl.value : "E2";
+    
+    if (display && guide) {
+        if (pitch !== -1) {
+            const noteFull = getNoteFromFrequency(pitch);
+            const targetFreq = getNoteFrequency(targetNote);
+            // Evitar logaritmo de 0 o infinito
+            const cents = 1200 * Math.log2(pitch / targetFreq);
+            display.textContent = noteFull;
+            const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
+            let maxDesviation = 30;
+            if (dificultad === "facil") maxDesviation = 50;
+            else if (dificultad === "dificil") maxDesviation = 15;
+            else if (dificultad === "experto") maxDesviation = 5;
+            // Asegúrate de que las llaves envuelven correctamente cada bloque
+            if (Math.abs(cents) <= maxDesviation) {
+                display.style.color = "#22c55e"; 
+                guide.textContent = `🎯 ¡En la nota! (${targetNote})`;
+                guide.style.color = "#22c55e";
+            } else if (cents < 0) {
+                display.style.color = "#f59e0b";
+                guide.textContent = `⬆️ Estás grave. Sube a ${targetNote}`;
+                guide.style.color = "#f59e0b";
+            } else {
+                display.style.color = "#f59e0b";
+                guide.textContent = `⬇️ Estás agudo. Baja a ${targetNote}`;
+                guide.style.color = "#f59e0b";
+            }
+        } else {
+            display.textContent = "--";
+            display.style.color = "white";
+            guide.textContent = "🎤 Esperando voz...";
+        }
+    }
+    requestAnimationFrame(detectPitch);
 }
 
 function getNoteFromFrequency(freq) {
-  const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const A4 = 440;
-  const n = Math.round(12 * Math.log2(freq / A4));
-  const index = (n + 9) % 12;
-  const octave = 4 + Math.floor((n + 9) / 12);
-  return notes[(index + 12) % 12] + octave;
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const A4 = 440;
+    const n = Math.round(12 * Math.log2(freq / A4));
+    const index = (n + 9) % 12;
+    const octave = 4 + Math.floor((n + 9) / 12);
+    return notes[(index + 12) % 12] + octave;
 }
 
 function getNoteFrequency(note) {
-  const notes = {
-    "C": -9,
-    "C#": -8,
-    "D": -7,
-    "D#": -6,
-    "E": -5,
-    "F": -4,
-    "F#": -3,
-    "G": -2,
-    "G#": -1,
-    "A": 0,
-    "A#": 1,
-    "B": 2
-  };
-
-  const match = note.match(/^([A-G]#?)(\d)$/);
-  if (!match) return 440;
-
-  const [, noteName, octaveStr] = match;
-  const octave = parseInt(octaveStr, 10);
-
-  const semitoneOffset = notes[noteName] + (octave - 4) * 12;
-  return 440 * Math.pow(2, semitoneOffset / 12);
+    const notes = {
+        "C": -9,
+        "C#": -8,
+        "D": -7,
+        "D#": -6,
+        "E": -5,
+        "F": -4,
+        "F#": -3,
+        "G": -2,
+        "G#": -1,
+        "A": 0,
+        "A#": 1,
+        "B": 2
+    };
+    const match = note.match(/^([A-G]#?)(\d)$/);
+    if (!match) return 440;
+    const [, noteName, octaveStr] = match;
+    const octave = parseInt(octaveStr, 10);
+    const semitoneOffset = notes[noteName] + (octave - 4) * 12;
+    return 440 * Math.pow(2, semitoneOffset / 12);
 }
 
 function autoCorrelate(buf, sampleRate) {
-  let rms = 0;
-  for (let i = 0; i < buf.length; i++) {
-    rms += buf[i] * buf[i];
-  }
-  rms = Math.sqrt(rms / buf.length);
-
-  // Si el volumen es muy bajo, ignoramos la detección
-  if (rms < 0.01) return -1;
-
-  let bestOffset = -1;
-  let bestCorrelation = 0;
-
-  for (let offset = 8; offset < 1000; offset++) {
-    let correlation = 0;
-
-    for (let i = 0; i < buf.length - offset; i++) {
-      correlation += Math.abs(buf[i] - buf[i + offset]);
+    let rms = 0;
+    for (let i = 0; i < buf.length; i++) {
+        rms += buf[i] * buf[i];
     }
-
-    correlation = 1 - (correlation / (buf.length - offset));
-
-    if (correlation > bestCorrelation) {
-      bestCorrelation = correlation;
-      bestOffset = offset;
+    rms = Math.sqrt(rms / buf.length);
+    // Si el volumen es muy bajo, ignoramos la detección
+    if (rms < 0.01) return -1;
+    let bestOffset = -1;
+    let bestCorrelation = 0;
+    for (let offset = 8; offset < 1000; offset++) {
+        let correlation = 0;
+        for (let i = 0; i < buf.length - offset; i++) {
+            correlation += Math.abs(buf[i] - buf[i + offset]);
+        }
+        correlation = 1 - (correlation / (buf.length - offset));
+        if (correlation > bestCorrelation) {
+            bestCorrelation = correlation;
+            bestOffset = offset;
+        }
     }
-  }
-
-  if (bestCorrelation < 0.85 || bestOffset === -1) return -1;
-
-  const frequency = sampleRate / bestOffset;
-
-  // Ignorar frecuencias absurdas para voz humana cantada
-  if (frequency < 60 || frequency > 1200) return -1;
-
-  return frequency;
+    if (bestCorrelation < 0.85 || bestOffset === -1) return -1;
+    const frequency = sampleRate / bestOffset;
+    // Ignorar frecuencias absurdas para voz humana cantada
+    if (frequency < 60 || frequency > 1200) return -1;
+    return frequency;
 }
+
 // ==========================================
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
@@ -399,39 +380,35 @@ let selectedVoiceId = null;
 // ESTUDIO
 // ==========================================
 function cargarAudioEstudio(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  studioTrackFileName = file.name;
-
-  const url = URL.createObjectURL(file);
-  $("player").src = url;
-  $("studioStatus").textContent = `Estado: pista cargada (${file.name})`;
+    const file = e.target.files[0];
+    if (!file) return;
+    studioTrackFileName = file.name;
+    
+    const url = URL.createObjectURL(file);
+    $("player").src = url;
+    $("studioStatus").textContent = `Estado: pista cargada (${file.name})`;
 }
 
 function playTrack() {
-  const player = $("player");
-
-  if (!player || !player.src) {
-    alert("⚠️ Primero sube una pista");
-    return;
-  }
-
-  player.play();
+    const player = $("player");
+    if (!player || !player.src) {
+        alert("⚠️ Primero sube una pista");
+        return;
+    }
+    player.play();
 }
 
 function pauseTrack() {
-  const player = $("player");
-  if (player) player.pause();
+    const player = $("player");
+    if (player) player.pause();
 }
 
 function stopTrack() {
-  const player = $("player");
-  if (!player) return;
-
-  player.pause();
-  player.currentTime = 0;
-  updateKaraokeHighlight(0);
+    const player = $("player");
+    if (!player) return;
+    player.pause();
+    player.currentTime = 0;
+    updateKaraokeHighlight(0);
 }
 
 // Variables para grabación dúo
@@ -442,166 +419,140 @@ let duoAnalyser2 = null;
 let duoAnimationId = null;
 
 async function startStudioRecording() {
-  try {
-    const player = $("player");
-    const micCount = $("micCount");
-    const isDuo = micCount && micCount.value === "2";
-
-    studioChunks = [];
-    studioRecordedBlob = null;
-    $("voicePlayer").src = "";
-    $("studioStatus").textContent = "Estado: preparando grabación...";
-
-    // Obtener micrófonos seleccionados
-    const mic1Id = getSelectedMicId(1);
-    const mic2Id = getSelectedMicId(2);
-
-    const audioConstraints1 = {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-      channelCount: 1,
-      sampleRate: 48000
-    };
-
-    if (mic1Id) {
-      audioConstraints1.deviceId = { exact: mic1Id };
+    try {
+        const player = $("player");
+        const micCount = $("micCount");
+        const isDuo = micCount && micCount.value === "2";
+        studioChunks = [];
+        studioRecordedBlob = null;
+        $("voicePlayer").src = "";
+        $("studioStatus").textContent = "Estado: preparando grabación...";
+        
+        // Obtener micrófonos seleccionados
+        const mic1Id = getSelectedMicId(1);
+        const mic2Id = getSelectedMicId(2);
+        const audioConstraints1 = {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            channelCount: 1,
+            sampleRate: 48000
+        };
+        if (mic1Id) {
+            audioConstraints1.deviceId = { exact: mic1Id };
+        }
+        
+        // Obtener stream del Mic 1
+        studioStream = await navigator.mediaDevices.getUserMedia({
+            audio: audioConstraints1
+        });
+        let finalStream = studioStream;
+        // Si es DÚO, obtener y mezclar Mic 2
+        if (isDuo && mic2Id) {
+            const audioConstraints2 = {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false,
+                channelCount: 1,
+                sampleRate: 48000,
+                deviceId: { exact: mic2Id }
+            };
+            studioStream2 = await navigator.mediaDevices.getUserMedia({
+                audio: audioConstraints2
+            });
+            
+            // Crear contexto de audio para mezclar
+            duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source1 = duoAudioContext.createMediaStreamSource(studioStream);
+            const source2 = duoAudioContext.createMediaStreamSource(studioStream2);
+            // Crear analizadores para visualización
+            duoAnalyser1 = duoAudioContext.createAnalyser();
+            duoAnalyser2 = duoAudioContext.createAnalyser();
+            duoAnalyser1.fftSize = 256;
+            duoAnalyser2.fftSize = 256;
+            // Crear mezclador
+            const merger = duoAudioContext.createChannelMerger(2);
+            const destination = duoAudioContext.createMediaStreamDestination();
+            // Conectar: fuentes -> analizadores -> mezclador -> destino
+            source1.connect(duoAnalyser1);
+            source2.connect(duoAnalyser2);
+            duoAnalyser1.connect(merger, 0, 0);
+            duoAnalyser2.connect(merger, 0, 1);
+            merger.connect(destination);
+            finalStream = destination.stream;
+            // Mostrar indicador de dúo
+            const duoIndicator = $("duoIndicator");
+            if (duoIndicator) {
+                duoIndicator.style.display = "block";
+            }
+            // Iniciar visualización de niveles
+            startDuoLevelMonitor();
+        }
+        const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? { mimeType: "audio/webm;codecs=opus" }
+            : {};
+        studioMediaRecorder = new MediaRecorder(finalStream, options);
+        studioMediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                studioChunks.push(event.data);
+            }
+        };
+        studioMediaRecorder.onstop = () => {
+            studioRecordedBlob = new Blob(studioChunks, { type: "audio/webm" });
+            const audioURL = URL.createObjectURL(studioRecordedBlob);
+            $("voicePlayer").src = audioURL;
+            $("studioStatus").textContent = "Estado: grabación lista para escuchar o guardar";
+            // Ocultar indicador dúo
+            const duoIndicator = $("duoIndicator");
+            if (duoIndicator) {
+                duoIndicator.style.display = "none";
+            }
+            stopDuoLevelMonitor();
+        };
+        studioMediaRecorder.start();
+        // Mostrar estado
+        const mic1Select = $("mic1Select");
+        const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
+        if (isDuo && mic2Id) {
+            const mic2Select = $("mic2Select");
+            const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
+            $("studioStatus").textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
+        } else {
+            $("studioStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
+        }
+        if (player && player.src) {
+            player.currentTime = 0;
+            player.play();
+        }
+    } catch (error) {
+        console.error(error);
+        $("studioStatus").textContent = "Estado: error al acceder al micrófono";
+        alert("❌ No se pudo acceder al micrófono. Verifica en Configuración.");
     }
-
-    // Obtener stream del Mic 1
-    studioStream = await navigator.mediaDevices.getUserMedia({
-      audio: audioConstraints1
-    });
-
-    let finalStream = studioStream;
-
-    // Si es DÚO, obtener y mezclar Mic 2
-    if (isDuo && mic2Id) {
-      const audioConstraints2 = {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-        channelCount: 1,
-        sampleRate: 48000,
-        deviceId: { exact: mic2Id }
-      };
-
-      studioStream2 = await navigator.mediaDevices.getUserMedia({
-        audio: audioConstraints2
-      });
-
-      // Crear contexto de audio para mezclar
-      duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
-      const source1 = duoAudioContext.createMediaStreamSource(studioStream);
-      const source2 = duoAudioContext.createMediaStreamSource(studioStream2);
-      
-      // Crear analizadores para visualización
-      duoAnalyser1 = duoAudioContext.createAnalyser();
-      duoAnalyser2 = duoAudioContext.createAnalyser();
-      duoAnalyser1.fftSize = 256;
-      duoAnalyser2.fftSize = 256;
-      
-      // Crear mezclador
-      const merger = duoAudioContext.createChannelMerger(2);
-      const destination = duoAudioContext.createMediaStreamDestination();
-      
-      // Conectar: fuentes -> analizadores -> mezclador -> destino
-      source1.connect(duoAnalyser1);
-      source2.connect(duoAnalyser2);
-      duoAnalyser1.connect(merger, 0, 0);
-      duoAnalyser2.connect(merger, 0, 1);
-      merger.connect(destination);
-      
-      finalStream = destination.stream;
-
-      // Mostrar indicador de dúo
-      const duoIndicator = $("duoIndicator");
-      if (duoIndicator) {
-        duoIndicator.style.display = "block";
-      }
-
-      // Iniciar visualización de niveles
-      startDuoLevelMonitor();
-    }
-
-    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      ? { mimeType: "audio/webm;codecs=opus" }
-      : {};
-    
-    studioMediaRecorder = new MediaRecorder(finalStream, options);
-
-    studioMediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        studioChunks.push(event.data);
-      }
-    };
-
-    studioMediaRecorder.onstop = () => {
-      studioRecordedBlob = new Blob(studioChunks, { type: "audio/webm" });
-      const audioURL = URL.createObjectURL(studioRecordedBlob);
-      $("voicePlayer").src = audioURL;
-      $("studioStatus").textContent = "Estado: grabación lista para escuchar o guardar";
-      
-      // Ocultar indicador dúo
-      const duoIndicator = $("duoIndicator");
-      if (duoIndicator) {
-        duoIndicator.style.display = "none";
-      }
-      
-      stopDuoLevelMonitor();
-    };
-
-    studioMediaRecorder.start();
-    
-    // Mostrar estado
-    const mic1Select = $("mic1Select");
-    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
-    
-    if (isDuo && mic2Id) {
-      const mic2Select = $("mic2Select");
-      const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
-      $("studioStatus").textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
-    } else {
-      $("studioStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
-    }
-
-    if (player && player.src) {
-      player.currentTime = 0;
-      player.play();
-    }
-  } catch (error) {
-    console.error(error);
-    $("studioStatus").textContent = "Estado: error al acceder al micrófono";
-    alert("❌ No se pudo acceder al micrófono. Verifica en Configuración.");
-  }
 }
 
 function startDuoLevelMonitor() {
-  const level1 = $("duoMic1Level");
-  const level2 = $("duoMic2Level");
-
-  function updateLevels() {
-    if (duoAnalyser1 && level1) {
-      const data1 = new Uint8Array(duoAnalyser1.frequencyBinCount);
-      duoAnalyser1.getByteFrequencyData(data1);
-      const avg1 = data1.reduce((a, b) => a + b, 0) / data1.length;
-      level1.style.width = Math.min(100, (avg1 / 128) * 100) + "%";
+    const level1 = $("duoMic1Level");
+    const level2 = $("duoMic2Level");
+    
+    function updateLevels() {
+        if (duoAnalyser1 && level1) {
+            const data1 = new Uint8Array(duoAnalyser1.frequencyBinCount);
+            duoAnalyser1.getByteFrequencyData(data1);
+            const avg1 = data1.reduce((a, b) => a + b, 0) / data1.length;
+            level1.style.width = Math.min(100, (avg1 / 128) * 100) + "%";
+        }
+        if (duoAnalyser2 && level2) {
+            const data2 = new Uint8Array(duoAnalyser2.frequencyBinCount);
+            duoAnalyser2.getByteFrequencyData(data2);
+            const avg2 = data2.reduce((a, b) => a + b, 0) / data2.length;
+            level2.style.width = Math.min(100, (avg2 / 128) * 100) + "%";
+        }
+        if (studioMediaRecorder && studioMediaRecorder.state === "recording") {
+            duoAnimationId = requestAnimationFrame(updateLevels);
+        }
     }
-
-    if (duoAnalyser2 && level2) {
-      const data2 = new Uint8Array(duoAnalyser2.frequencyBinCount);
-      duoAnalyser2.getByteFrequencyData(data2);
-      const avg2 = data2.reduce((a, b) => a + b, 0) / data2.length;
-      level2.style.width = Math.min(100, (avg2 / 128) * 100) + "%";
-    }
-
-    if (studioMediaRecorder && studioMediaRecorder.state === "recording") {
-      duoAnimationId = requestAnimationFrame(updateLevels);
-    }
-  }
-
-  updateLevels();
+    updateLevels();
 }
 
 function stopDuoLevelMonitor() {
