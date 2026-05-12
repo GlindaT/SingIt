@@ -872,10 +872,14 @@ async function loadSelectedTrackFromLibraryStudio() {
 async function loadVoiceOptionsInStudio() {
     const select = $("voiceLibrarySelect");
     if (!select) return;
+
     select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+
     try {
+        const voces = await getLibraryItemsByType("voz");
         const grabaciones = await getLibraryItemsByType("grabacion");
         const merged = [...voces, ...grabaciones];
+
         if (!merged.length) {
             const option = document.createElement("option");
             option.value = "";
@@ -883,6 +887,7 @@ async function loadVoiceOptionsInStudio() {
             select.appendChild(option);
             return;
         }
+
         merged.forEach((item) => {
             const option = document.createElement("option");
             option.value = item.id;
@@ -895,69 +900,55 @@ async function loadVoiceOptionsInStudio() {
 }
 
 async function loadSelectedVoiceFromLibrary() {
-  const select = $("voiceLibrarySelect");
-  const player = $("selectedVoicePlayer");
-  const status = $("selectedVoiceStatus");
-  const lyricsText = $("lyricsText");
-
-  if (!select || !player || !status) return;
-
-  const selectedId = Number(select.value);
-
-  if (!selectedId) {
-    alert("⚠️ Selecciona una voz");
-    return;
-  }
-
-  try {
-    const item = await getLibraryItemById(selectedId);
-
-    if (!item) {
-      alert("⚠️ No se encontró el archivo");
-      return;
+    const select = $("voiceLibrarySelect");
+    const player = $("selectedVoicePlayer");
+    const status = $("selectedVoiceStatus");
+    const lyricsText = $("lyricsText");
+    if (!select || !player || !status) return;
+    const selectedId = Number(select.value);
+    if (!selectedId) {
+        alert("⚠️ Selecciona una voz");
+        return;
     }
-
-    selectedVoiceBlob = item.audioBlob;
-    selectedVoiceId = item.id;
-
-    const audioURL = URL.createObjectURL(item.audioBlob);
-    player.src = audioURL;
-    status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-
-    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-      baseTranscriptionSegments = item.transcription.map(seg =>
-        buildWordTimingFromSegment(seg)
-      );
-
-      // IMPORTANTE:
-      // aquí respetamos exactamente las líneas guardadas
-      transcriptionSegments = baseTranscriptionSegments;
-
-      renderKaraokeLyrics(transcriptionSegments);
-      cargarLetrasEnMonitor();
-
-      if (lyricsText) {
-        lyricsText.value = transcriptionSegments
-          .map(seg => seg.text || "")
-          .join("\n")
-          .trim();
-      }
-
-      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
-    } else {
-      baseTranscriptionSegments = [];
-      transcriptionSegments = [];
-
-      renderKaraokeLyrics([]);
-      cargarLetrasEnMonitor();
-
-      if (lyricsText) lyricsText.value = "";
-      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+    try {
+        const item = await getLibraryItemById(selectedId);
+        if (!item) {
+            alert("⚠️ No se encontró el archivo");
+            return;
+        }
+        selectedVoiceBlob = item.audioBlob;
+        selectedVoiceId = item.id;
+        const audioURL = URL.createObjectURL(item.audioBlob);
+        player.src = audioURL;
+        status.textContent = `Estado: voz seleccionada -> ${item.name}`;
+        if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+            baseTranscriptionSegments = item.transcription.map(seg =>
+                buildWordTimingFromSegment(seg)
+                );
+                // IMPORTANTE
+                // aquí respetamos exactamente las líneas guardadas
+            transcriptionSegments = baseTranscriptionSegments;
+            renderKaraokeLyrics(transcriptionSegments);
+            cargarLetrasEnMonitor();
+            if (lyricsText) {
+                lyricsText.value = transcriptionSegments
+                    .map(seg => seg.text || "")
+                    .join("\n")
+                    .trim();
+            }
+            status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+        } else {
+            baseTranscriptionSegments = [];
+            transcriptionSegments = [];
+            renderKaraokeLyrics([]);
+            cargarLetrasEnMonitor();
+            if (lyricsText) lyricsText.value = "";
+            status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+        }
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo cargar la voz seleccionada");
     }
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la voz seleccionada");
-  }
 }
 
 // ==========================================
@@ -2163,10 +2154,10 @@ function saveSetting(key, element) {
 
 function initSettings() {
   const settings = {
-    micCount: "vocalApp_micCount",
-    karaokeStage: "vocalApp_stage",
-    difficultyLevel: "vocalApp_difficulty",
-    userVoiceType: "vocalApp_voiceType",
+    micCount: "singIt_micCount",
+    karaokeStage: "singIt_stage",
+    difficultyLevel: "singIt_difficulty",
+    userVoiceType: "singIt_voiceType",
     appTheme: "vocalApp_theme"
   };
 
