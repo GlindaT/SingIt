@@ -89,11 +89,6 @@
           <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
           <input type="file" id="audioFile" accept="audio/*">
           <audio id="player" controls></audio>
-          <div class="studio-controls">
-            <button id="playTrackBtn" type="button">▶️ Reproducir</button>
-            <button id="pauseTrackBtn" type="button">⏸️ Pausar</button>
-            <button id="stopTrackBtn" type="button">⏹️ Detener</button>
-          </div>
         </div>
         <div class="card">
           <h3>👄 Voz sin pista</h3>
@@ -109,30 +104,6 @@
           </div>
           <audio id="selectedVoicePlayer" controls></audio>
           <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
-        </div>
-        <div class="card">
-          <h3>🎙️ Grabación de voz</h3>
-          <div class="studio-controls">
-            <button id="startStudioRecBtn" type="button">🎙️ Grabar voz</button>
-            <button id="stopStudioRecBtn" type="button">🛑 Detener grabación</button>
-            <button id="redoStudioRecBtn" type="button">🔁 Volver a grabar</button>
-            <button id="saveStudioRecBtn" type="button">💾 Guardar grabación</button>
-          </div>
-          <p id="studioStatus">Estado: sin grabación</p>
-          <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
-            <div style="display: flex; gap: 20px;">
-              <div style="flex: 1;">
-                <small>🎤 Micrófono 1:</small>
-                <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill"></div></div>
-              </div>
-              <div style="flex: 1;">
-                <small>🎤 Micrófono 2:</small>
-                <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill"></div></div>
-              </div>
-            </div>
-          </div>
-          <audio id="voicePlayer" controls></audio>
         </div>
         <div class="card">
           <h3>📝 Letra</h3>
@@ -184,8 +155,29 @@
               </div>
             </div>
           </div>
-          <div id="karaokeLyrics" class="karaoke-lyrics">
-            <p class="karaoke-placeholder">📝⌛✒️🎯 Aquí se mostrará la letra sincronizada.</p>
+          <div class="card">
+          <h3>🎙️ Grabación de voz</h3>
+          <div class="studio-controls">
+            <button id="startStudioRecBtn" type="button">🎙️ Grabar voz</button>
+            <button id="stopStudioRecBtn" type="button">🛑 Detener grabación</button>
+            <button id="redoStudioRecBtn" type="button">🔁 Volver a grabar</button>
+            <button id="saveStudioRecBtn" type="button">💾 Guardar grabación</button>
+          </div>
+            <p id="studioStatus">Estado: sin grabación</p>
+            <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+              <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+              <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                  <small>🎤 Micrófono 1:</small>
+                  <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill"></div></div>
+                </div>
+                <div style="flex: 1;">
+                  <small>🎤 Micrófono 2:</small>
+                  <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill"></div></div>
+                </div>
+              </div>
+            </div>
+            <audio id="voicePlayer" controls></audio>
           </div>
         </div>
       </section>
@@ -231,7 +223,7 @@
           
           <!-- Mis canciones importadas/creadas -->
           <div id="myKaraokeSongs" style="margin-top: 20px;">
-            h4 style="color: #f59e0b; margin-bottom: 10px;">💽📁 Mis Canciones</h4>
+            <h4 style="color: #f59e0b; margin-bottom: 10px;">💽📁 Mis Canciones</h4>
             <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
               <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
             </div>
@@ -290,7 +282,7 @@
         
         <!-- Paso 1: Pista -->
         <div class="card">
-          <h3>1. 📥🎵 Cargar Pista (Instrumental)</h3>
+          <h3>📥🎵 Cargar Pista (Instrumental)</h3>
           
           <!-- Opción A: Desde la Biblioteca -->
           <div class="studio-controls">
@@ -309,17 +301,9 @@
           <audio id="karaokeTrack" controls style="margin-top: 15px;"></audio>
         </div>
         
-        <!-- MONITOR ESTILO ULTRASTAR -->
-        <div class="card" style="background: black; border: 2px solid var(--border);">
-          <h3 style="color: var(--accent); text-align: center; margin-top: 0;">📝 Monitor de Letras</h3>
-          <div id="karaokeLiveLyrics" class="karaoke-lyrics" style="display: none; height: 250px; overflow-y: auto; padding: 20px; background: transparent; border: none; scroll-behavior: smooth;">
-            <p class="karaoke-placeholder" style="font-size: 20px; text-align: center;">Las letras sincronizadas aparecerán aquí...</p>
-          </div>
-        </div>
-        
         <!-- Paso 2: Grabación -->
         <div class="card">
-          <h3>2. 🗣️🎤 Grabación Sincronizada</h3>
+          <h3>🗣️🎤 Grabación Sincronizada</h3>
           <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
           <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
             <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🗣️🎤🗣️🎤 Modo Dúo Activo</p>
@@ -345,7 +329,7 @@
         
         <!-- Paso 3: Mezcla -->
         <div class="card">
-          <h3>3. 👨‍🎤💽👩‍🎤💣Mezcla Final</h3>
+          <h3>👨‍🎤💽👩‍🎤💣Mezcla Final</h3>
           <p style="color: var(--text-muted); margin-bottom: 15px;">Une la pista instrumental con tu voz en un solo archivo de audio.</p>
           <div class="studio-controls">
             <button id="karaokeMixBtn" type="button" style="background: #a855f7; color: white;">🎛️🎚️🎧 Mezclar Pista + Voz</button>
