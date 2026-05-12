@@ -1,0 +1,817 @@
+/* ==========================================
+   VARIABLES (ESCALABLE)
+========================================== */
+:root {
+  --bg-main: #0f172a;
+  --bg-sidebar: #1e293b;
+  --bg-card: #1e293b;
+
+  --text-main: #ffffff;
+  --text-muted: #94a3b8;
+
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+
+  --danger: #ef4444;
+  --border: #334155;
+}
+
+/* ==========================================
+   RESET BÁSICO
+========================================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ==========================================
+   LAYOUT
+========================================== */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: var(--bg-sidebar);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  margin-bottom: 20px;
+}
+
+/* ==========================================
+   BOTONES SIDEBAR
+========================================== */
+.sidebar button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.sidebar button:hover {
+  background: var(--border);
+  color: var(--text-main);
+}
+
+.sidebar button.active {
+  background: var(--border);
+  color: var(--text-main);
+}
+
+/* ==========================================
+   CONTENIDO
+========================================== */
+.content {
+  flex: 1;
+  padding: clamp(16px, 4vw, 40px);
+  overflow-y: auto;
+}
+
+.tab {
+  display: none;
+}
+
+.tab.active {
+  display: block;
+}
+
+/* ==========================================
+   TARJETAS
+========================================== */
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* ==========================================
+   BOTONES GENERALES
+========================================== */
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+/* Botón principal */
+button {
+  background: var(--accent);
+  color: black;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+.sidebar button {
+  background: none;
+  color: var(--text-muted);
+}
+
+.sidebar button:hover {
+  background: var(--border);
+  color: var(--text-main);
+}
+
+/* Botón peligro */
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* ==========================================
+   INPUTS
+========================================== */
+input[type="file"],
+input[type="password"] {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ==========================================
+   AUDIO PLAYER
+========================================== */
+audio {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* ==========================================
+   AFINADOR
+========================================== */
+
+#noteDisplay {
+  font-size: 120px; /* Mucho más grande */
+  font-weight: 900;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+#guideText {
+  font-size: 32px;
+  margin: 20px 0;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Botón de grabar "Inactivo" (Verde) */
+#recordBtn {
+  background-color: #22c55e !important;
+  color: white !important;
+  padding: 10px 40px;
+  font-size: 18px;
+}
+
+/* Botón de grabar "Activo" (Rojo) */
+#recordBtn.recording {
+  background-color: #ef4444 !important;
+}
+
+/* ==========================================
+   BIBLIOTECA
+========================================== */
+#libraryList div {
+  background: var(--bg-card);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+/* ==========================================
+   SCROLL PERSONALIZADO (OPCIONAL)
+========================================== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+.afinador-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  height: 60vh;
+  text-align: center; /* Esto ayuda a que el texto no se rompa */
+}
+
+.success {
+  color: #22c55e !important; /* Verde */
+  transform: scale(1.2);
+}
+
+/* ==========================================
+   ESTUDIO
+========================================== */
+.studio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+#studioStatus {
+  margin-top: 15px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+textarea {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  resize: vertical;
+  margin-top: 10px;
+  font-family: Arial, sans-serif;
+}
+
+.library-item {
+  background: var(--bg-card);
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
+select,
+input[type="text"] {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+#selectedVoiceStatus {
+  margin-top: 15px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+.karaoke-lyrics {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.karaoke-placeholder {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.karaoke-line {
+  font-size: 22px;
+  line-height: 1.6;
+  margin: 14px 0;
+  text-align: center;
+  color: var(--text-muted);
+  transition: all 0.25s ease;
+}
+
+.karaoke-line.past {
+  color: #64748b;
+}
+
+.karaoke-line.upcoming {
+  color: var(--text-muted);
+}
+
+/* ==========================================
+   CONFIGURACIÓN
+========================================== */
+.settings-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-group label {
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: var(--text-main);
+  font-size: 16px;
+}
+
+.save-notification {
+  color: var(--accent);
+  font-weight: bold;
+  opacity: 0; /* Oculto por defecto */
+  transition: opacity 0.3s ease;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.save-notification.show {
+  opacity: 1; /* Se hace visible cuando JS le pone esta clase */
+}
+.karaoke-line.active {
+  color: #22c55e;
+  font-weight: bold;
+  transform: scale(1.05);
+}
+
+/* ==========================================
+   RESALTADO POR PALABRA
+========================================== */
+.karaoke-word,
+.karaoke-live-word {
+  display: inline-block;
+  color: inherit;
+  transition: color 0.12s ease, transform 0.12s ease, text-shadow 0.12s ease;
+  white-space: pre-wrap;
+}
+
+.karaoke-word.active-word,
+.karaoke-live-word.active-word {
+  color: #facc15;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+  transform: scale(1.08);
+}
+
+.karaoke-word.past-word,
+.karaoke-live-word.past-word {
+  color: #22c55e;
+}
+
+/* ==========================================
+   MONITOR KARAOKE ULTRASTAR
+========================================== */
+.karaoke-live-line {
+  font-size: 26px;
+  color: #475569; /* Gris oscuro para las que no han sonado */
+  margin: 10px 0;
+  text-align: center;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.karaoke-live-line.active {
+  color: #22c55e; /* Verde neón brillante */
+  font-size: 34px;
+  font-weight: 900;
+  opacity: 1;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6); /* Brillo neón */
+  transform: scale(1.1);
+}
+
+.karaoke-live-line.past {
+  color: #ffffff; /* Blanco para las que ya pasaron */
+  opacity: 0.8;
+  font-size: 26px;
+}
+
+/* ==========================================
+   ESCENARIOS DE KARAOKE (TEMAS)
+========================================== */
+/* Clásico (El que ya teníamos) */
+.theme-clasico { background: transparent; }
+
+/* Moderno (Neón Azul) */
+.theme-moderno { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
+.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
+
+/* Disco (Fondo vibrante rosa/morado) */
+.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
+.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
+
+/* Acústico (Madera/Café relajante) */
+.theme-acustico { background: #451a03 !important; border: 2px solid #78350f !important; }
+.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
+
+/* Fiesta (Animación loca de luces) */
+.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
+.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
+
+@keyframes luces-fiesta {
+  0% { box-shadow: inset 0 0 40px #ff007f; }
+  50% { box-shadow: inset 0 0 40px #00f0ff; }
+  100% { box-shadow: inset 0 0 40px #b700ff; }
+}
+
+/* ==========================================
+   MODO CELULAR (RESPONSIVE DESIGN)
+========================================== */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column-reverse; /* Pone el menú abajo y el contenido arriba */
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: 70px;
+    padding: 5px 10px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    overflow-x: auto; /* Permite deslizar si los botones no caben */
+    white-space: nowrap;
+  }
+
+  .sidebar h2 {
+    display: none; /* Ocultamos el título grande en el celular para ganar espacio */
+  }
+
+  .sidebar button {
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+    flex: 1;
+    margin: 0 2px;
+  }
+
+  .content {
+    height: calc(100vh - 70px); /* El contenido toma el resto de la pantalla */
+    padding: 15px;
+  }
+
+  /* Ajustar textos muy grandes en el celular */
+  #noteDisplay {
+    font-size: 80px; 
+  }
+}
+
+/* --- ESTILOS DE BIBLIOTECA (CARPETAS) --- */
+.folder-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: var(--bg-main);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.folder-btn {
+    padding: 10px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.folder-btn:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.library-item {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: box-shadow 0.3s ease;
+}
+
+.library-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Ajuste para que los botones de eliminar no destaquen tanto */
+.delete-library-btn {
+    background: #444;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.delete-library-btn:hover {
+    background: #ef4444;
+}
+
+#karaokeCanvas {
+    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+    display: block;
+    width: 100%;
+    height: 300px;
+    border-radius: 8px;
+    border: 2px solid #3b82f6;
+}
+/* ==========================================
+   SISTEMA DE TEMAS GLOBALES
+========================================== */
+
+/* TEMA CLARO */
+[data-theme="claro"] {
+  --bg-main: #f1f5f9;
+  --bg-sidebar: #e2e8f0;
+  --bg-card: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+  --danger: #ef4444;
+  --border: #cbd5e1;
+}
+
+[data-theme="claro"] .sidebar button {
+  color: #475569;
+}
+
+[data-theme="claro"] .sidebar button:hover,
+[data-theme="claro"] .sidebar button.active {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+
+[data-theme="claro"] audio {
+  filter: invert(0);
+}
+
+/* TEMA ROCK */
+[data-theme="rock"] {
+  --bg-main: #1c1917;
+  --bg-sidebar: #292524;
+  --bg-card: #292524;
+  --text-main: #fafaf9;
+  --text-muted: #a8a29e;
+  --accent: #dc2626;
+  --accent-hover: #b91c1c;
+  --danger: #f97316;
+  --border: #44403c;
+}
+
+[data-theme="rock"] .sidebar h2 {
+  color: #dc2626;
+}
+
+[data-theme="rock"] button {
+  background: #dc2626;
+  color: white;
+}
+
+[data-theme="rock"] button:hover {
+  background: #b91c1c;
+}
+
+/* TEMA POP */
+[data-theme="pop"] {
+  --bg-main: #fdf2f8;
+  --bg-sidebar: #fbcfe8;
+  --bg-card: #fce7f3;
+  --text-main: #831843;
+  --text-muted: #9d174d;
+  --accent: #ec4899;
+  --accent-hover: #db2777;
+  --danger: #f43f5e;
+  --border: #f9a8d4;
+}
+
+[data-theme="pop"] .sidebar h2 {
+  color: #be185d;
+}
+
+[data-theme="pop"] .sidebar button {
+  color: #9d174d;
+}
+
+[data-theme="pop"] .sidebar button:hover,
+[data-theme="pop"] .sidebar button.active {
+  background: #f9a8d4;
+  color: #831843;
+}
+
+[data-theme="pop"] button {
+  background: #ec4899;
+  color: white;
+}
+
+[data-theme="pop"] button:hover {
+  background: #db2777;
+}
+
+/* TEMA NEÓN */
+[data-theme="neon"] {
+  --bg-main: #0a0a0a;
+  --bg-sidebar: #18181b;
+  --bg-card: #18181b;
+  --text-main: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --accent: #a855f7;
+  --accent-hover: #9333ea;
+  --danger: #f43f5e;
+  --border: #3f3f46;
+}
+
+[data-theme="neon"] .sidebar h2 {
+  color: #a855f7;
+  text-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7;
+}
+
+[data-theme="neon"] button {
+  background: #a855f7;
+  color: white;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
+[data-theme="neon"] button:hover {
+  background: #9333ea;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+}
+
+[data-theme="neon"] .card {
+  border: 1px solid #a855f7;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+/* TEMA NATURALEZA */
+[data-theme="naturaleza"] {
+  --bg-main: #14532d;
+  --bg-sidebar: #166534;
+  --bg-card: #15803d;
+  --text-main: #f0fdf4;
+  --text-muted: #bbf7d0;
+  --accent: #84cc16;
+  --accent-hover: #65a30d;
+  --danger: #f97316;
+  --border: #22c55e;
+}
+
+[data-theme="naturaleza"] .sidebar h2 {
+  color: #84cc16;
+}
+
+[data-theme="naturaleza"] button {
+  background: #84cc16;
+  color: #14532d;
+}
+
+[data-theme="naturaleza"] button:hover {
+  background: #65a30d;
+}
+
+[data-theme="naturaleza"] .sidebar button {
+  color: #bbf7d0;
+}
+
+[data-theme="naturaleza"] .sidebar button:hover,
+[data-theme="naturaleza"] .sidebar button.active {
+  background: #22c55e;
+  color: #14532d;
+}
+
+/* ==========================================
+   SELECTOR DE MICRÓFONOS
+========================================== */
+.mic-level-bar {
+  width: 100%;
+  height: 12px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.mic-level-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #22c55e, #84cc16, #facc15, #f97316, #ef4444);
+  border-radius: 6px;
+  transition: width 0.05s ease-out;
+}
+
+.mic-level-fill.active {
+  animation: pulse-mic 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-mic {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
+}
+
+#mic2Group {
+  border-top: 1px dashed var(--border);
+  padding-top: 20px;
+  margin-top: 10px;
+}
+
+/* ==========================================
+   CATÁLOGO DE KARAOKE
+========================================== */
+.catalog-item, .my-karaoke-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.catalog-item:hover, .my-karaoke-item:hover {
+  border-color: var(--accent);
+  transform: translateX(5px);
+}
+
+.catalog-item-info, .my-karaoke-item-info {
+  flex: 1;
+}
+
+.catalog-item-title, .my-karaoke-item-title {
+  font-weight: bold;
+  color: var(--text-main);
+  margin: 0 0 4px 0;
+}
+
+.catalog-item-artist, .my-karaoke-item-artist {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.catalog-item-actions, .my-karaoke-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.catalog-item-actions button, .my-karaoke-item-actions button {
+  padding: 8px 15px;
+  font-size: 13px;
+}
+
+/* Modal */
+#ultrastarModal .settings-group {
+  margin-bottom: 15px;
+}
+
+#ultrastarModal input[type="file"] {
+  margin-top: 8px;
+}
+
+
+
+<!-- Monitor de Letras Mini (Muteado por defecto) -->
+  <div id="karaokeLiveLyricsContainer" style="display: none; background: rgba(0,0,0,0.4); border-radius: 8px; margin-bottom: 15px; border: 1px solid var(--border);">
+    <div id="karaokeLiveLyrics" style="height: 120px; overflow-y: auto; padding: 10px; font-size: 18px; text-align: center; color: var(--accent);">
+      <!-- Aquí caen las letras sin tapar el canvas superior -->
+    </div>
+  </div>
+
+ <!-- Monitor Letras -->
+      <div class="card" style="background: black; border: 2px solid var(--border);">
+        <h3 style="color: var(--accent); text-align: center;">Monitor de Letras</h3>
+        <div id="karaokeLiveLyrics" class="karaoke-lyrics" style="height: 250px; overflow-y: auto;">
+          <p class="karaoke-placeholder">Las letras aparecerán aquí...</p>
+        </div>
+      </div>
