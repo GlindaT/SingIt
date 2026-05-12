@@ -6,12 +6,6 @@
       "title": "When We Were Young",
       "artist": "Adele",
       "folder": "adele-when-we-were-young"
-    },
-    {
-      "id": "kilombo-rozalen-sinmigo",
-      "title": "Invencibles",
-      "artist": "Mr Kilombo Y Rozalen",
-      "folder": "kilombo-rozalen-sinmigo"
     }
-    ]
+  ]
 }
