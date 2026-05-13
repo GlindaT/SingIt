@@ -799,6 +799,28 @@ input[type="text"] {
   margin-top: 8px;
 }
 
+/* Quita la flecha fea por defecto en navegadores como Chrome, Safari y Firefox */
+details.card summary {
+  list-style: none;
+}
+details.card summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Agrega una flecha personalizada a la derecha del título */
+details.card summary::after {
+  content: "▼";
+  float: right;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+/* Hace que la flecha gire hacia arriba cuando el contenedor esté abierto */
+details[open].card summary::after {
+  transform: rotate(180deg);
+  color: var(--accent); /* Cambia al color de acento de tu app */
+}
 
 
 <!-- Monitor de Letras Mini (Muteado por defecto) -->
