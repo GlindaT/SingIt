@@ -105,11 +105,9 @@
             <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
             <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
           </div>
-          <div class="upload-section">
-            <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
-            <input type="file" id="voiceFileInput" accept="audio/*">
-            <audio id="player" controls></audio>
-          </div>
+          <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+          <input type="file" id="audioFile" accept="audio/*">
+          <audio id="player" controls></audio>
           <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
         </div>
         
