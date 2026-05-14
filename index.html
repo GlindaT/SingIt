@@ -23,6 +23,7 @@
     
     <!-- CONTENIDO -->
     <main class="content">
+      
       <!-- AFINADOR -->
       <section id="afinador" class="tab active">
         <h1>👄🎯✅ Afinador</h1>
@@ -99,6 +100,11 @@
             <option value="">📂 Selecciona una voz guardada</option>
           </select>
           <div class="studio-controls">
+            <!-- Debajo de la etiqueta "Voz desde Biblioteca" o donde prefieras -->
+            <div class="upload-section" style="margin-top: 15px; margin-bottom: 15px;">
+              <p>O sube una voz nueva:</p>
+              <input type="file" id="voiceFileInput" accept="audio/*">
+            </div>
             <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
             <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
           </div>
