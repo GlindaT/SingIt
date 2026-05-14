@@ -75,7 +75,8 @@
       
       <!-- ESTUDIO -->
       <section id="estudio" class="tab">
-        <h1>🎧🎙️🔁 Estudio</h1>
+        <h1>🎧🎙️🔁 Estudio</h1
+                         
         <div class="card">
           <h3>🎵 Pista musical</h3>
           <div class="studio-controls">
@@ -91,6 +92,7 @@
           <input type="file" id="audioFile" accept="audio/*">
           <audio id="player" controls></audio>
         </div>
+        
         <div class="card">
           <h3>👄 Voz sin pista</h3>
           <div class="studio-controls">
@@ -100,14 +102,17 @@
             <option value="">📂 Selecciona una voz guardada</option>
           </select>
           <div class="studio-controls">
+            <select id="studioTrackSelect">
             <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
             <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
           </div>
-          <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
-          <input type="file" id="voiceFile" accept="voice/*">
-          <audio id="player" controls></audio>
+          <div class="upload-section" style="margin-top: 15px; margin-bottom: 15px;">
+            <p>O sube una voz nueva:</p>
+            <input type="file" id="voiceFileInput" accept="voice/*">
+          </div>
           <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
         </div>
+        
         <div class="card">
           <h3>📝 Letra</h3>
           <textarea
