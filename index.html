@@ -95,6 +95,10 @@
         
         <div class="card">
           <h3>👄 Voz sin pista</h3>
+          <div class="upload-section" style="margin-top: 15px; margin-bottom: 15px;">
+            <p>O sube una voz nueva:</p>
+            <input type="file" id="voiceFileInput" accept="audio/*">
+          </div>
           <div class="studio-controls">
             <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
           </div>
@@ -105,10 +109,6 @@
             <select id="studioTrackSelect">
             <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
             <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
-          </div>
-          <div class="upload-section" style="margin-top: 15px; margin-bottom: 15px;">
-            <p>O sube una voz nueva:</p>
-            <input type="file" id="voiceFileInput" accept="voice/*">
           </div>
           <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
         </div>
