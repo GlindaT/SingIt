@@ -769,37 +769,45 @@ async function saveManualFileToLibrary() {
   const fileInput = $("libraryFileInput");
   const typeSelect = $("libraryFileType");
   const nameInput = $("libraryFileName");
+  const progress = $("uploadProgress");
+  const btn = $("saveLibraryFileBtn");
 
   const file = fileInput.files[0];
-  if (!file) {
-    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
-    return;
-  }
+  if (!file) return alert("⚠️ Selecciona un archivo.");
 
-  const name = nameInput.value.trim() || file.name;
-  const type = typeSelect.value;
+  // Mostrar barra de progreso
+  progress.style.display = "block";
+  progress.value = 10;
+  btn.disabled = true;
 
   try {
-    // Usamos la función addLibraryItem que ya tienes definida
+    progress.value = 30; // Simulamos lectura
+    
+    // Aquí ocurre el proceso real
     await addLibraryItem({
-      name: name,
-      type: type,
-      audioBlob: file, // Guardamos el archivo directamente como Blob
+      name: nameInput.value.trim() || file.name,
+      type: typeSelect.value,
+      audioBlob: file,
       date: new Date().toLocaleString("es-ES"),
-      transcription: [] // Iniciamos vacío, se llenará con Whisper luego
+      transcription: []
     });
 
-    // Limpiamos los campos
-    fileInput.value = "";
-    nameInput.value = "";
-    
-    // Recargamos la biblioteca para ver el nuevo archivo
+    progress.value = 80;
     await renderLibrary('todos');
     
-    alert("✅ ¡Archivo subido exitosamente!");
+    progress.value = 100;
+    alert("✅ ¡Archivo guardado exitosamente!");
+    
   } catch (error) {
     console.error(error);
-    alert("❌ Error al guardar el archivo en la base de datos.");
+    alert("❌ Error al guardar.");
+  } finally {
+    // Resetear UI
+    progress.style.display = "none";
+    progress.value = 0;
+    btn.disabled = false;
+    fileInput.value = "";
+    nameInput.value = "";
   }
 }
 
