@@ -1,160 +1,513 @@
-// ==========================================
-// BLOQUE 1: VARIABLES GLOBALES Y ESTADO
-// ==========================================
-const state = {
-    isRecording: false,
-    transcriptionSegments: [],
-    studioChunks: [],
-    studioRecordedBlob: null
-};
+htlm:
 
-// Variables para flujos de audio y reconocimiento de voz
-let studioStream = null;
-let studioMediaRecorder = null;
-let recognition = null;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" href="data:,">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎤 VocalApp</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-// Funciones de ayuda (Selectors y Eventos seguros)
-function $(id) { return document.getElementById(id); }
+<div class="app">
 
-function safeAdd(id, event, handler) {
-    const el = $(id);
-    if (el) el.addEventListener(event, handler);
-}
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <h2>🎤 VocalApp</h2>
 
-// ==========================================
-// BLOQUE 2: ARRANQUE AL CARGAR LA PÁGINA
-// ==========================================
-window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Conectar botones de Grabación
-    safeAdd("startStudioRecBtn", "click", startStudioRecording);
-    safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
-    safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
-    safeAdd("redoStudioRecBtn", "click", () => {
-        if(confirm("¿Borrar grabación actual y repetir?")) location.reload();
-    });
+    <button id="btnAfinador" type="button">Afinador</button>
+    <button id="btnEstudio" type="button">Estudio</button>
+    <button id="btnBiblioteca" type="button">Biblioteca</button>
+    <button id="btnKaraoke" type="button">Karaoke</button>
+    <button id="btnSplitter" type="button">Splitter</button>
+    <button id="btnConfig" type="button">Configuración</button>
+  </nav>
 
-    // 2. Conectar botones de Sincronización (TapSync)
-    safeAdd("applyTapSyncBtn", "click", () => alert("Tiempos aplicados"));
-    safeAdd("redoTapSyncBtn", "click", () => location.reload());
+  <!-- CONTENIDO -->
+  <main class="content">
 
-    console.log("🚀 App SingIt lista y conectada al HTML");
-});
+    <!-- AFINADOR -->
+<section id="afinador" class="tab active">
+  <h1>🎵 Afinador</h1>
+  
+  <div class="afinador-container">
+    <label for="targetNote">Nota objetivo:</label>
+<select id="targetNote">
+  <option value="C2">Do 2 (C2)</option>
+  <option value="C#2">Do# 2 (C#2)</option>
+  <option value="D2">Re 2 (D2)</option>
+  <option value="D#2">Re# 2 (D#2)</option>
+  <option value="E2" selected>Mi 2 (E2)</option>
+  <option value="F2">Fa 2 (F2)</option>
+  <option value="F#2">Fa# 2 (F#2)</option>
+  <option value="G2">Sol 2 (G2)</option>
+  <option value="G#2">Sol# 2 (G#2)</option>
+  <option value="A2">La 2 (A2)</option>
+  <option value="A#2">La# 2 (A#2)</option>
+  <option value="B2">Si 2 (B2)</option>
 
-// ==========================================
-// BLOQUE 3: MÓDULO DE GRABACIÓN DE VOZ
-// ==========================================
-async function startStudioRecording() {
-    try {
-        state.studioChunks = [];
-        state.transcriptionSegments = [];
+  <option value="C3">Do 3 (C3)</option>
+  <option value="C#3">Do# 3 (C#3)</option>
+  <option value="D3">Re 3 (D3)</option>
+  <option value="D#3">Re# 3 (D#3)</option>
+  <option value="E3">Mi 3 (E3)</option>
+  <option value="F3">Fa 3 (F3)</option>
+  <option value="F#3">Fa# 3 (F#3)</option>
+  <option value="G3">Sol 3 (G3)</option>
+  <option value="G#3">Sol# 3 (G#3)</option>
+  <option value="A3">La 3 (A3)</option>
+  <option value="A#3">La# 3 (A#3)</option>
+  <option value="B3">Si 3 (B3)</option>
+
+  <option value="C4">Do 4 (C4)</option>
+  <option value="C#4">Do# 4 (C#4)</option>
+  <option value="D4">Re 4 (D4)</option>
+  <option value="D#4">Re# 4 (D#4)</option>
+  <option value="E4">Mi 4 (E4)</option>
+  <option value="F4">Fa 4 (F4)</option>
+  <option value="F#4">Fa# 4 (F#4)</option>
+  <option value="G4">Sol 4 (G4)</option>
+  <option value="G#4">Sol# 4 (G#4)</option>
+  <option value="A4">La 4 (A4)</option>
+  <option value="A#4">La# 4 (A#4)</option>
+  <option value="B4">Si 4 (B4)</option>
+</select>
+    <button id="recordBtn">Iniciar</button>
+    <h2 id="noteDisplay">--</h2>
+    <div id="guideText" style="font-size: 24px; font-weight: bold; margin-top: 10px;"></div>
+  </div>
+</section>
+    
+    <!-- ESTUDIO -->
+<section id="estudio" class="tab">
+  <h1>🎧 Estudio</h1>
+
+  <div class="card">
+  <h3>Pista musical</h3>
+
+  <div class="studio-controls">
+    <button id="refreshStudioTrackListBtn" type="button">🔄 Actualizar lista</button>
+  </div>
+
+  <select id="studioTrackSelect">
+    <option value="">Selecciona una pista desde Biblioteca</option>
+  </select>
+
+  <div class="studio-controls" style="margin-bottom: 15px;">
+    <button id="loadStudioTrackBtn" type="button">📥 Cargar pista seleccionada</button>
+  </div>
+
+  <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+  <input type="file" id="audioFile" accept="audio/*">
+
+  <audio id="player" controls></audio>
+  </div>
+
+  <div class="card">
+  <h3>Voz desde Biblioteca</h3>
+
+  <div class="studio-controls">
+    <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
+  </div>
+
+  <select id="voiceLibrarySelect">
+    <option value="">Selecciona una voz guardada</option>
+  </select>
+
+  <div class="studio-controls">
+    <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
+    <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
+  </div>
+
+  <audio id="selectedVoicePlayer" controls></audio>
+
+  <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
+  </div>
+
+  <div class="card">
+    
+    <h3>Grabación de voz</h3>
+
+    <div class="studio-controls">
+      <button id="startStudioRecBtn" type="button">🎙️ Grabar voz</button>
+      <button id="stopStudioRecBtn" type="button">🛑 Detener grabación</button>
+      <button id="redoStudioRecBtn" type="button">🔁 Volver a grabar</button>
+      <button id="saveStudioRecBtn" type="button">💾 Guardar grabación</button>
+    </div>
+
+    <p id="studioStatus">Estado: sin grabación</p>
+    
+    <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+      <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+      <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+          <small>Mic 1:</small>
+          <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill"></div></div>
+        </div>
+        <div style="flex: 1;">
+          <small>Mic 2:</small>
+          <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <audio id="voicePlayer" controls></audio>
+  </div>
+
+ <div class="card">
+  <h3>Letra</h3>
+
+  <textarea
+    id="lyricsText"
+    rows="6"
+    placeholder="Aquí vamos a mostrar o pegar la letra de la canción..."
+  ></textarea>
+
+  <div class="studio-controls">
+    <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar letra corregida</button>
+  </div>
+
+  <!-- SINCRONIZACIÓN MANUAL CON TAPS -->
+<div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <h4 style="margin: 0; color: #60a5fa;">🎯 Sincronización Manual</h4>
+    <button id="toggleAutoScrollBtn" type="button" style="background: #f59e0b; font-size: 12px; padding: 5px 10px;">🔒 Auto-scroll: ON</button>
+  </div>
+  
+  <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+    Escucha el audio y presiona TAP (o ESPACIO) cada vez que empiece una nueva línea.
+  </p>
+  
+  <div class="studio-controls" style="margin-bottom: 15px;">
+    <button id="startTapSyncBtn" type="button" style="background: #3b82f6; color: white;">▶️ Iniciar Sincronización</button>
+    <button id="cancelTapSyncBtn" type="button" style="background: #6b7280; display: none;">❌ Cancelar</button>
+  </div>
+  
+  <!-- Modo de sincronización activo -->
+  <div id="tapSyncActive" style="display: none;">
+    <div style="text-align: center; padding: 20px; background: var(--bg-main); border-radius: 8px; margin-bottom: 15px;">
+      <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0;">Línea actual:</p>
+      <p id="tapCurrentLine" style="font-size: 20px; font-weight: bold; color: #facc15; margin: 0 0 15px 0;">---</p>
+      <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 5px 0;">Progreso:</p>
+      <p id="tapProgress" style="font-size: 16px; color: #22c55e; margin: 0;">0 / 0 líneas</p>
+    </div>
+    
+    <button id="tapBeatBtn" type="button" style="width: 100%; padding: 30px; font-size: 24px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border-radius: 12px;">
+      🎵 TAP (o presiona ESPACIO)
+    </button>
+    
+    <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+      ⌨️ También puedes usar la barra espaciadora
+    </p>
+  </div>
+  
+  <!-- Resultado -->
+  <div id="tapSyncResult" style="display: none; margin-top: 15px; padding: 15px; background: #14532d; border-radius: 8px; border: 1px solid #22c55e;">
+    <p style="color: #22c55e; font-weight: bold; margin: 0 0 10px 0;">✅ ¡Sincronización completada!</p>
+    <div class="studio-controls">
+      <button id="applyTapSyncBtn" type="button" style="background: #22c55e;">✅ Aplicar tiempos</button>
+      <button id="redoTapSyncBtn" type="button" style="background: #f59e0b;">🔄 Repetir</button>
+    </div>
+  </div>
+</div>
+
+
+  <div id="karaokeLyrics" class="karaoke-lyrics">
+    <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
+  </div>
+</div>
+
+</section>
+
+<!-- BIBLIOTECA -->
+<section id="biblioteca" class="tab">
+  <h1>📁 Biblioteca</h1>
+
+  <!-- NUEVOS BOTONES DE CARPETA -->
+  <div class="folder-controls">
+    <button class="folder-btn" onclick="renderLibrary('todos')">📂 Todos</button>
+    <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
+    <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
+    <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
+    <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+  </div>
+
+  <div class="card">
+    <h3>Archivos guardados</h3>
+    <div id="libraryList"></div>
+  </div>
+</section>
+
+    <!-- KARAOKE -->
+    <section id="karaoke" class="tab">
+      <h1>🎤 Karaoke</h1>
+      <!-- MONITOR DE PENTAGRAMA -->
+      <div class="card" style="background: #1a1a1a; padding: 0;">
+        <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
+      </div>
+
+      <!-- CATÁLOGO DE CANCIONES LISTAS -->
+      <div class="card">
+        <h3>🎤 Canciones Listas para Cantar</h3>
         
-        // 1. Pedir permiso para el micrófono
-        studioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        <!-- Catálogo pre-cargado -->
+        <div id="catalogSection">
+          <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
+          <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
+            <p style="color: var(--text-muted);">Cargando catálogo...</p>
+          </div>
+        </div>
         
-        // 2. Configurar el grabador de Audio
-        studioMediaRecorder = new MediaRecorder(studioStream);
-        studioMediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) state.studioChunks.push(e.data);
-        };
+        <!-- Mis canciones importadas/creadas -->
+        <div id="myKaraokeSongs" style="margin-top: 20px;">
+          <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
+          <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
+            <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
+          </div>
+        </div>
+        
+        <!-- Botones de acción -->
+        <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+          <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar UltraStar</button>
+          <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
+        </div>
+      </div>
+      
+      <!-- MODAL IMPORTAR ULTRASTAR -->
+      <div id="ultrastarModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+          <h3 style="margin-top: 0; color: var(--accent);">📥 Importar Canción UltraStar</h3>
+          
+          <div style="background: var(--bg-main); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-muted);">
+              <strong>¿Dónde conseguir canciones?</strong>
+            </p>
+            <a href="https://usdb.animux.de/" target="_blank" style="color: #3b82f6; text-decoration: none;">
+              
+              🔗 USDB (UltraStar Database) - Miles de canciones gratis
+            </a>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: var(--text-muted);">
+              Descarga el archivo .txt y consigue el audio (MP3) de la canción.
+            </p>
+          </div>
+          
+          <div class="settings-group">
+            <label>📄 Archivo UltraStar (.txt)</label>
+            <input type="file" id="ultrastarTxtFile" accept=".txt">
+          </div>
+          
+          <div class="settings-group">
+            <label>🎵 Audio de la canción (.mp3, .wav, .ogg)</label>
+            <input type="file" id="ultrastarAudioFile" accept="audio/*">
+          </div>
+          
+          <div class="settings-group">
+            <label>🎤 Voz separada (opcional)</label>
+            <input type="file" id="ultrastarVocalsFile" accept="audio/*">
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
+              Si no tienes la voz separada, puedes usar el Splitter después.
+            </p>
+          </div>
+          
+          <div id="ultrastarPreview" style="display: none; background: var(--bg-main); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 10px 0; color: #22c55e;">Vista previa:</h4>
+            <p id="ultrastarTitle" style="margin: 5px 0;"><strong>Título:</strong> ---</p>
+            <p id="ultrastarArtist" style="margin: 5px 0;"><strong>Artista:</strong> ---</p>
+            <p id="ultrastarBpm" style="margin: 5px 0;"><strong>BPM:</strong> ---</p>
+            <p id="ultrastarNotes" style="margin: 5px 0;"><strong>Notas:</strong> ---</p>
+          </div>
+          
+          <div class="studio-controls">
+            <button id="confirmImportBtn" type="button" style="background: #22c55e;">✅ Importar a Mi Biblioteca</button>
+            <button id="cancelImportBtn" type="button" style="background: #ef4444;">❌ Cancelar</button>
+          </div>
+        </div>
+      </div>
 
-        // 3. Configurar el motor de Voz a Texto (Transcripción)
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
-            recognition.continuous = true;
-            recognition.interimResults = true;
+      <!-- Paso 1: Pista -->
+      <div class="card">
+        <h3>1. Cargar Pista (Instrumental)</h3>
+        
+        <!-- Opción A: Desde la Biblioteca -->
+        <div class="studio-controls">
+          <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
+        </div>
+        <select id="karaokeTrackSelect">
+          <option value="">Selecciona una pista desde tu Biblioteca</option>
+        </select>
+        <div class="studio-controls" style="margin-bottom: 15px;">
+          <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
+        </div>
 
-            recognition.onresult = (event) => {
-                let textoIntermedio = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        state.transcriptionSegments.push({
-                            text: transcript,
-                            time: Date.now()
-                        });
-                    } else {
-                        textoIntermedio += transcript;
-                    }
-                }
-                // Actualizar el estado en el HTML que me pasaste
-                if ($("studioStatus")) {
-                    $("studioStatus").innerHTML = `🎤 <span style="color: #22c55e;">${textoIntermedio}</span>`;
-                }
-            };
-            recognition.start();
-        }
+        <!-- Opción B: Desde la PC -->
+        <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+        <input type="file" id="karaokeTrackFile" accept="audio/*">
+        
+        <audio id="karaokeTrack" controls style="margin-top: 15px;"></audio>
+      </div>
 
-        // 4. Iniciar todo
-        studioMediaRecorder.start();
-        $("startStudioRecBtn").disabled = true;
-        $("stopStudioRecBtn").disabled = false;
-        $("studioStatus").textContent = "🎙️ Grabando voz y transcribiendo...";
+      <!-- MONITOR ESTILO ULTRASTAR -->
+      <div class="card" style="background: black; border: 2px solid var(--border);">
+        <h3 style="color: var(--accent); text-align: center; margin-top: 0;">Monitor de Letras</h3>
+        <div id="karaokeLiveLyrics" class="karaoke-lyrics" style="display: none; height: 250px; overflow-y: auto; padding: 20px; background: transparent; border: none; scroll-behavior: smooth;">
+          <p class="karaoke-placeholder" style="font-size: 20px; text-align: center;">Las letras sincronizadas aparecerán aquí...</p>
+        </div>
+      </div>
 
-    } catch (err) {
-        console.error("Error al grabar:", err);
-        alert("No se pudo acceder al micrófono.");
-    }
-}
+      <!-- Paso 2: Grabación -->
+      <div class="card">
+        <h3>2. Grabación Sincronizada</h3>
+        <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
+        
+        <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+          <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+              <small>Mic 1:</small>
+              <div class="mic-level-bar"><div id="karaokeDuoMic1Level" class="mic-level-fill"></div></div>
+            </div>
+            <div style="flex: 1;">
+              <small>Mic 2:</small>
+              <div class="mic-level-bar"><div id="karaokeDuoMic2Level" class="mic-level-fill"></div></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="studio-controls">
+          <button id="karaokeStartBtn" class="btn-danger" type="button">🎙️ Iniciar Grabación</button>
+          <button id="karaokeStopBtn" type="button">⏹️ Detener</button>
+          <button id="karaokeRestartBtn" type="button">🔄 Volver a intentar</button>
+        </div>
 
-function stopStudioRecording() {
-    if (studioMediaRecorder) studioMediaRecorder.stop();
-    if (recognition) recognition.stop();
-    if (studioStream) studioStream.getTracks().forEach(t => t.stop());
+        <h4 style="margin-top: 20px;">Tu voz grabada:</h4>
+        <audio id="karaokeVoicePlayer" controls></audio>
+      </div>
 
-    studioMediaRecorder.onstop = () => {
-        state.studioRecordedBlob = new Blob(state.studioChunks, { type: 'audio/webm' });
-        // Poner el audio en el reproductor que tienes en el HTML
-        if ($("voicePlayer")) {
-            $("voicePlayer").src = URL.createObjectURL(state.studioRecordedBlob);
-        }
-        $("studioStatus").textContent = "✅ Grabación finalizada. Escúchala abajo.";
-    };
+      <!-- Paso 3: Mezcla -->
+      <div class="card">
+        <h3>3. Mezcla Final</h3>
+        <p style="color: var(--text-muted); margin-bottom: 15px;">Une la pista instrumental con tu voz en un solo archivo de audio.</p>
+        
+        <div class="studio-controls">
+          <button id="karaokeMixBtn" type="button" style="background: #a855f7; color: white;">🎧 Mezclar Pista + Voz</button>
+        </div>
+        
+        <div id="karaokeMixResult" style="margin-top: 15px;"></div>
+      </div>
 
-    $("startStudioRecBtn").disabled = false;
-    $("stopStudioRecBtn").disabled = true;
-}
+    </section>
 
-// ==========================================
-// BLOQUE 4: GUARDADO EN SUPABASE
-// ==========================================
-async function saveStudioRecording() {
-    if (!state.studioRecordedBlob) return alert("Primero debes grabar algo.");
+    <!-- SPLITTER -->
+    <section id="splitter" class="tab">
+      <h1>✂️ Splitter IA</h1>
 
-    const nombre = prompt("Dale un nombre a tu grabación:", "Mi voz");
-    if (!nombre) return;
+      <div class="card">
+        <h3>Separar Voz e Instrumental</h3>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+          Sube una canción (MP3 de máximo 3.5 MB). La Inteligencia Artificial la separará y la guardará en tu Biblioteca.
+        </p>
 
-    try {
-        $("studioStatus").textContent = "⏳ Subiendo a la nube...";
-        const fileName = `voice_${Date.now()}.webm`;
+        <input type="file" id="splitterFile" accept="audio/*">
+        
+        <div class="studio-controls">
+          <button id="splitBtn" type="button" style="background: #3b82f6; color: white;">✨ Separar Audio con IA</button>
+        </div>
 
-        // 1. Subir el archivo de audio al Storage
-        const { data: storageData, error: sErr } = await supabaseClient.storage
-            .from("library")
-            .upload(fileName, state.studioRecordedBlob);
+        <div id="splitterStatusBox" style="margin-top: 20px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border); display: none;">
+          <h4 id="splitterStatusText" style="color: var(--accent); margin: 0;">Iniciando IA...</h4>
+          <p id="splitterDetailText" style="color: var(--text-muted); font-size: 14px;">Esto puede tardar un poco.</p>
+        </div>
+      </div>
+    </section>
 
-        if (sErr) throw sErr;
-
-        // 2. Obtener URL pública
-        const { data: urlData } = supabaseClient.storage.from("library").getPublicUrl(fileName);
-
-        // 3. Guardar en la tabla de la base de datos (con transcripción)
-        const { error: dbErr } = await supabaseClient.from("library_items").insert([{
-            name: nombre,
-            type: 'vocal',
-            file_url: urlData.publicUrl,
-            file_path: fileName,
-            transcription: state.transcriptionSegments // El texto que se generó
-        }]);
-
-        if (dbErr) throw dbErr;
-
-        alert("¡Grabación guardada con éxito!");
-        $("studioStatus").textContent = "✅ Guardado en biblioteca.";
-
-    } catch (err) {
-        console.error("Error al guardar:", err);
-        alert("Hubo un error al subir a Supabase.");
-    }
-}
+    <!-- CONFIG -->
+    <section id="config" class="tab">
+      <h1>⚙️ Configuración</h1>
+      
+      <div class="card">
+        <h3>Preferencias de la App</h3>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">Los cambios se guardan automáticamente.</p>
+        
+        <div class="settings-group">
+          <label for="userVoiceType">👤 Tipo de voz</label>
+          <select id="userVoiceType">
+            <option value="grave">Grave</option>
+            <option value="media">Media</option>
+            <option value="aguda">Aguda</option>
+            <option value="todas">Todas</option>
+          </select>
+        </div>
+        
+        <div class="settings-group">
+          <label for="micCount">🔊 Cantidad de micrófonos</label>
+          <select id="micCount">
+            <option value="1">1 Micrófono (Solo)</option>
+            <option value="2">2 Micrófonos (Dúo)</option>
+          </select>
+        </div>
+        
+        <div class="settings-group">
+          <label>🎙️ Micrófono Principal</label>
+          <select id="mic1Select">
+            <option value="">Cargando dispositivos...</option>
+          </select>
+          <button type="button" id="testMic1Btn" style="margin-top: 10px; background: #3b82f6;">🔊 Probar Mic 1</button>
+          <div id="mic1Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
+        </div>
+        
+        <div class="settings-group" id="mic2Group" style="display: none;">
+          <label>🎙️ Micrófono Secundario (Dúo)</label>
+          <select id="mic2Select">
+            <option value="">Cargando dispositivos...</option>
+          </select>
+          <button type="button" id="testMic2Btn" style="margin-top: 10px; background: #3b82f6;">🔊 Probar Mic 2</button>
+          <div id="mic2Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
+        </div>
+        
+        <div class="settings-group">
+          <button type="button" id="refreshMicsBtn" style="background: #6b7280;">🔄 Actualizar lista de micrófonos</button>
+        </div>
+        
+        <div class="settings-group">
+          <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
+          <select id="difficultyLevel">
+            <option value="facil">Fácil</option>
+            <option value="medio">Medio</option>
+            <option value="dificil">Difícil</option>
+            <option value="experto">Experto</option>
+          </select>
+        </div>
+        
+        <div class="settings-group">
+          <label for="difficultyLevel">📊 Dificultad para el Pentagrama</label>
+          <select id="difficultyLevel">
+            <option value="facil">Fácil</option>
+            <option value="medio">Medio</option>
+            <option value="dificil">Difícil</option>
+          </select>
+        </div>
+        <div class="settings-group">
+          <label for="appTheme">🎨 Tema de la App</label>
+          <select id="appTheme">
+            <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
+            <option value="claro">☀️ Claro</option>
+            <option value="rock">🎸 Rock</option>
+            <option value="pop">🎤 Pop</option>
+            <option value="neon">💜 Neón</option>
+            <option value="naturaleza">🌿 Naturaleza</option>
+          </select>
+        </div>
+        <p id="saveNotification" class="save-notification" style="opacity:0; transition: opacity 0.5s;">✅ Configuración guardada</p>
+      </div>
+    </section>
+  </main>
+</div>
+    <!-- Cargar el SDK de Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Luego tus archivos -->
+    <script src="supabase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
