@@ -3484,8 +3484,9 @@ async function loadMyKaraokeSongs() {
             </div>
             `;
             return;
-            
+        }
             container.innerHTML = "";
+            
             allSongs.forEach(song => {
                 const div = document.createElement("div");
                 div.className = "my-karaoke-item";
