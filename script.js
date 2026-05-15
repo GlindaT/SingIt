@@ -766,31 +766,41 @@ async function deleteLibraryItem(id) {
 }
 
 async function saveManualFileToLibrary() {
-    const fileInput = $("libraryFileInput");
-    const typeSelect = $("libraryFileType");
-    const nameInput = $("libraryFileName");
-    const file = fileInput?.files[0];
+  const fileInput = $("libraryFileInput");
+  const typeSelect = $("libraryFileType");
+  const nameInput = $("libraryFileName");
 
-    if (!file) return alert("⚠️ Selecciona un archivo.");
-    try {
-        const progress = $("uploadProgress");
-        if (progress) progress.style.display = "block";
-        await saveLibraryItemToSupabase({
-            name: nameInput.value.trim() || file.name,
-            type: typeSelect.value,
-            blob: file, // Nombre de propiedad corregido para que coincida con la definición
-            transcription: []
-        });
-        alert("✅ ¡Archivo guardado en la nube!");
-        await renderLibrary('todos');
-    } catch (error) {
-        console.error(error);
-        alert("❌ Error al guardar: " + error.message);
-    } finally {
-        const progress = $("uploadProgress");
-        if (progress) progress.style.display = "none";
-        fileInput.value = "";
-    }
+  const file = fileInput.files[0];
+  if (!file) {
+    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
+    return;
+  }
+
+  const name = nameInput.value.trim() || file.name;
+  const type = typeSelect.value;
+
+  try {
+    // Usamos la función addLibraryItem que ya tienes definida
+    await addLibraryItem({
+      name: name,
+      type: type,
+      audioBlob: file, // Guardamos el archivo directamente como Blob
+      date: new Date().toLocaleString("es-ES"),
+      transcription: [] // Iniciamos vacío, se llenará con Whisper luego
+    });
+
+    // Limpiamos los campos
+    fileInput.value = "";
+    nameInput.value = "";
+    
+    // Recargamos la biblioteca para ver el nuevo archivo
+    await renderLibrary('todos');
+    
+    alert("✅ ¡Archivo subido exitosamente!");
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al guardar el archivo en la base de datos.");
+  }
 }
 
 async function loadTrackOptionsInStudio() {
