@@ -678,77 +678,68 @@ function saveStudioRecording() {
 // BIBLIOTECA
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
-  try {
-    await saveLibraryItemToSupabase({
-      name: options.name || "Audio",
-      type: options.type || "audio",
-      audioBlob: blob,
-      date: new Date().toLocaleString("es-ES"),
-      transcription: options.transcription || [] // Añadir campo para evitar errores
-    });
-
-    await renderLibrary(); // Antes decía loadLibrary (error)
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo guardar en Biblioteca");
-  }
+    try {
+        await saveLibraryItemToSupabase({
+            name: options.name || "Audio",
+            type: options.type || "audio",
+            audioBlob: blob,
+            date: new Date().toLocaleString("es-ES"),
+            transcription: options.transcription || []
+        });
+        await renderLibrary(); // Antes decía loadLibrary (error)
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo guardar en Biblioteca");
+    }
 }
 
 async function renderLibrary(filter = 'todos') {
-  const container = $("libraryList");
-  if (!container) return;
-
-  container.innerHTML = "<p>Cargando archivos...</p>";
-
-  try {
-    let library = await getAllLibraryItemsFromSupabase();
-
-    // Filtramos según la carpeta seleccionada
-    let filteredItems = library;
-    if (filter !== 'todos') {
-      filteredItems = library.filter(item => item.type === filter);
+    const container = $("libraryList");
+    if (!container) return;
+    
+    container.innerHTML = "<p>Cargando archivos...</p>";
+    try {
+        let library = await getAllLibraryItemsFromSupabase();
+        
+        // Filtramos según la carpeta seleccionada
+        let filteredItems = library;
+        if (filter !== 'todos') {
+            filteredItems = library.filter(item => item.type === filter);
+        }
+        container.innerHTML = "";
+        if (filteredItems.length === 0) {
+            container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
+        } else {
+            filteredItems.forEach((item) => {
+                const div = document.createElement("div");
+                div.className = "library-item card"; // Usamos la clase card para que se vea bien
+                div.style.marginBottom = "10px";
+                const audioURL = URL.createObjectURL(item.audioBlob);
+                div.innerHTML = `
+                <p><strong>${item.name}</strong></p>
+                <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
+                <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
+                <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        // Reactivar botones de borrar
+        document.querySelectorAll(".delete-library-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const id = Number(btn.dataset.id);
+                await deleteLibraryItem(id);
+                renderLibrary(filter); // Recargamos la misma vista
+            });
+        });
+        // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
+        await loadVoiceOptionsInStudio();
+        await loadTrackOptionsInStudio();
+        await loadTrackOptionsInKaraoke();
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
     }
-
-    container.innerHTML = "";
-
-    if (filteredItems.length === 0) {
-      container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
-    } else {
-      filteredItems.forEach((item) => {
-        const div = document.createElement("div");
-        div.className = "library-item card"; // Usamos la clase card para que se vea bien
-        div.style.marginBottom = "10px";
-
-        const audioURL = URL.createObjectURL(item.audioBlob);
-
-        div.innerHTML = `
-          <p><strong>${item.name}</strong></p>
-          <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
-          <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
-          <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    // Reactivar botones de borrar
-    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = Number(btn.dataset.id);
-        await deleteLibraryItem(id);
-        renderLibrary(filter); // Recargamos la misma vista
-      });
-    });
-
-    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
-    await loadVoiceOptionsInStudio();
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
-
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
-  }
 }
 
 async function deleteLibraryItem(id) {
