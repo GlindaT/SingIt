@@ -223,24 +223,36 @@ async function toggleRecording() {
 }
 
 async function startAfinador() {
-  audioContext = new AudioContext();
-
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false
+    audioContext = new AudioContext();
+    stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+        }
+    });
+    const mic = audioContext.createMediaStreamSource(stream);
+    function aplicarFiltrosLimpieza(audioCtx, source) {
+        // Filtro de paso alto (Corta graves innecesarios)
+        const highPass = audioCtx.createBiquadFilter();
+        highPass.type = "highpass";
+        highPass.frequency.value = 80;
+        
+        // Filtro de paso bajo (Corta siseos de alta frecuencia)
+        const lowPass = audioCtx.createBiquadFilter();
+        lowPass.type = "lowpass";
+        lowPass.frequency.value = 1000; // Ajusta según qué tan brillante quieras la voz
+        source.connect(highPass);
+        highPass.connect(lowPass);
+        return lowPass; // Regresamos el final de la cadena
     }
-  });
-
-  const mic = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
-  mic.connect(analyser);
-
-  setTimeout(() => {
-    detectPitch();
-  }, 300);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    mic.connect(analyser);
+    
+    setTimeout(() => {
+        detectPitch();
+    }, 300);
 }
 
 function stopAfinador() {
