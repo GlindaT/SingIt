@@ -38,7 +38,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     safeAdd("redoTapSyncBtn", "click", () => location.reload());
 
     console.log("🚀 App SingIt lista y conectada al HTML");
+
+    // AGREGAR ESTO AL FINAL DEL BLOQUE 2:
+    await loadTrackOptionsInStudio();
+    await loadTrackOptionsInKaraoke();
+    renderLibrary();
 });
+
 
 // ==========================================
 // BLOQUE 3: MÓDULO DE GRABACIÓN DE VOZ
@@ -156,5 +162,44 @@ async function saveStudioRecording() {
     } catch (err) {
         console.error("Error al guardar:", err);
         alert("Hubo un error al subir a Supabase.");
+    }
+}
+
+// ==========================================
+// BLOQUE 5: CARGA DE DATOS PARA SELECCIÓN
+// ==========================================
+
+// 1. Cargar pistas en el Estudio
+async function loadTrackOptionsInStudio() {
+    const tracks = await getLibraryItems(); // Trae todo de Supabase
+    const select = $("studioTrackSelect"); // Asegúrate de que este ID exista en tu HTML
+    
+    if (select) {
+        select.innerHTML = '<option value="">-- Selecciona una pista --</option>';
+        tracks.forEach(track => {
+            const opt = document.createElement("option");
+            opt.value = track.file_url;
+            opt.textContent = track.name;
+            select.appendChild(opt);
+        });
+        console.log("✅ Pistas cargadas en Estudio");
+    }
+}
+
+// 2. Cargar pistas en el Karaoke
+async function loadTrackOptionsInKaraoke() {
+    const tracks = await getLibraryItems();
+    const select = $("karaokeTrackSelect");
+    
+    if (select) {
+        select.innerHTML = '<option value="">-- Selecciona canción para cantar --</option>';
+        tracks.forEach(track => {
+            const opt = document.createElement("option");
+            // Guardamos todo el objeto como texto para recuperar la letra luego
+            opt.value = JSON.stringify(track); 
+            opt.textContent = track.name;
+            select.appendChild(opt);
+        });
+        console.log("✅ Pistas cargadas en Karaoke");
     }
 }
