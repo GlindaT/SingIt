@@ -51,7 +51,7 @@ function safeAdd(id, event, handler) {
 // ==========================================
 function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("VocalAppDB", 1);
+    const request = indexedDB.open("SingItDB", 1);
 
     request.onupgradeneeded = function (event) {
       const database = event.target.result;
@@ -284,7 +284,7 @@ function detectPitch() {
 
       display.textContent = noteFull;
 
-      const dificultad = localStorage.getItem("vocalApp_difficulty") || "medio";
+      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
       let maxDesviation = 30;
         if (dificultad === "facil") maxDesviation = 50;
         else if (dificultad === "dificil") maxDesviation = 15;
@@ -2146,43 +2146,52 @@ function showResult(url) {
 // ==========================================
 // CONFIGURACIÓN
 // ==========================================
-function saveSetting(key, element) {
-  if (!element) return;
-  localStorage.setItem(key, element.value);
-  showSaveNotification();
+function initSettings() {
+    const settings = {
+        micCount: "singIt_micCount",
+        karaokeStage: "singIt_stage",
+        difficultyLevel: "singIt_difficulty",
+        userVoiceType: "singIt_voiceType",
+        appTheme: "singIt_theme"
+    };
+    // Función interna para guardar (Cerrada correctamente)
+    const saveSetting = (key, element) => {
+        if (!element) return;
+        localStorage.setItem(key, element.value);
+        showSaveNotification();
+    };
+    Object.entries(settings).forEach(([id, storageKey]) => {
+        const el = $(id);
+        if (el) {
+            // Cargar valor guardado
+            const saved = localStorage.getItem(storageKey);
+            if (saved) el.value = saved;
+
+             // Escuchar cambios
+            el.addEventListener("change", (e) => {
+                localStorage.setItem(storageKey, e.target.value);
+                showSaveNotification();
+                
+                // Si es el tema aplicarlo inmediatamente
+                if (id === "appTheme") {
+                    applyAppTheme(e.target.value);
+                }
+            });
+        }
+    });
+    // Aplicar tema guardado al iniciar
+    applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
 }
 
-function initSettings() {
-  const settings = {
-    micCount: "singIt_micCount",
-    karaokeStage: "singIt_stage",
-    difficultyLevel: "singIt_difficulty",
-    userVoiceType: "singIt_voiceType",
-    appTheme: "vocalApp_theme"
-  };
+function showSaveNotification() {
+  const notif = $("saveNotification");
+  if (!notif) return;
 
-  Object.entries(settings).forEach(([id, storageKey]) => {
-    const el = $(id);
-    if (el) {
-      // Cargar valor guardado
-      const saved = localStorage.getItem(storageKey);
-      if (saved) el.value = saved;
-      
-      // Escuchar cambios
-      el.addEventListener("change", (e) => {
-        localStorage.setItem(storageKey, e.target.value);
-        showSaveNotification();
-        
-        // Si es el tema, aplicarlo inmediatamente
-        if (id === "appTheme") {
-          applyAppTheme(e.target.value);
-        }
-      });
-    }
-  });
+  notif.classList.add("show");
 
-  // Aplicar tema guardado al iniciar
-  applyAppTheme(localStorage.getItem("vocalApp_theme") || "oscuro");
+  setTimeout(() => {
+    notif.classList.remove("show");
+  }, 2000);
 }
 
 function applyAppTheme(theme) {
@@ -2228,7 +2237,7 @@ async function loadAvailableMics() {
       }
 
       // Cargar selección guardada
-      const savedMic1 = localStorage.getItem("vocalApp_mic1");
+      const savedMic1 = localStorage.getItem("singIt_mic1");
       if (savedMic1) mic1Select.value = savedMic1;
     }
 
@@ -2246,7 +2255,7 @@ async function loadAvailableMics() {
       }
 
       // Cargar selección guardada
-      const savedMic2 = localStorage.getItem("vocalApp_mic2");
+      const savedMic2 = localStorage.getItem("singIt_mic2");
       if (savedMic2) mic2Select.value = savedMic2;
     }
 
@@ -2373,7 +2382,7 @@ function stopMicTest() {
 
 function saveMicSelection(micNumber) {
   const selectId = micNumber === 1 ? "mic1Select" : "mic2Select";
-  const storageKey = micNumber === 1 ? "vocalApp_mic1" : "vocalApp_mic2";
+  const storageKey = micNumber === 1 ? "singIt_mic1" : "singIt_mic2";
 
   const select = $(selectId);
   if (select) {
@@ -2387,17 +2396,6 @@ function getSelectedMicId(micNumber) {
   const selectId = micNumber === 1 ? "mic1Select" : "mic2Select";
   const select = $(selectId);
   return select ? select.value : null;
-}
-
-function showSaveNotification() {
-  const notif = $("saveNotification");
-  if (!notif) return;
-
-  notif.classList.add("show");
-
-  setTimeout(() => {
-    notif.classList.remove("show");
-  }, 2000);
 }
 
 async function applyCorrectedLyrics() {
@@ -2692,7 +2690,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     initSettings();
 
     function applyKaraokeTheme() {
-      const theme = localStorage.getItem("vocalApp_stage") || "clasico";
+      const theme = localStorage.getItem("singIt_stage") || "clasico";
       const monitor = $("karaokeLiveLyrics");
       if (monitor) {
         monitor.className = "karaoke-lyrics theme-" + theme;
@@ -2702,7 +2700,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyKaraokeTheme();
 
     safeAdd("karaokeStage", "change", (e) => {
-      saveSetting("vocalApp_stage", e.target);
+      saveSetting("singIt_stage", e.target);
       applyKaraokeTheme();
     });
 
