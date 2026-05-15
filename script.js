@@ -690,69 +690,74 @@ function saveStudioRecording() {
 // BIBLIOTECA
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
-    try {
-        await saveLibraryItemToSupabase({
-            name: options.name || "Audio",
-            type: options.type || "audio",
-            audioBlob: blob,
-            date: new Date().toLocaleString("es-ES"),
-            transcription: options.transcription || []
-        });
-        await renderLibrary(); // Antes decía loadLibrary (error)
-    } catch (error) {
-        console.error(error);
-        alert("❌ No se pudo guardar en Biblioteca");
-    }
+  try {
+    await saveLibraryItemToSupabase({
+      name: options.name || "Audio",
+      type: options.type || "audio",
+      blob,
+      transcription: options.transcription || [],
+      metadata: options.metadata || {}
+    });
+
+    await renderLibrary();
+  } catch (error) {
+    console.error(error);
+    alert("❌ No se pudo guardar en la nube");
+  }
 }
 
-async function renderLibrary(filter = 'todos') {
-    const container = $("libraryList");
-    if (!container) return;
-    
-    container.innerHTML = "<p>Cargando archivos...</p>";
-    try {
-        let library = await getAllLibraryItemsFromSupabase();
-        
-        // Filtramos según la carpeta seleccionada
-        let filteredItems = library;
-        if (filter !== 'todos') {
-            filteredItems = library.filter(item => item.type === filter);
-        }
-        container.innerHTML = "";
-        if (filteredItems.length === 0) {
-            container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
-        } else {
-            filteredItems.forEach((item) => {
-                const div = document.createElement("div");
-                div.className = "library-item card"; // Usamos la clase card para que se vea bien
-                div.style.marginBottom = "10px";
-                const audioURL = URL.createObjectURL(item.audioBlob);
-                div.innerHTML = `
-                <p><strong>${item.name}</strong></p>
-                <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
-                <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
-                <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
-                `;
-                container.appendChild(div);
-            });
-        }
-        // Reactivar botones de borrar
-        document.querySelectorAll(".delete-library-btn").forEach((btn) => {
-            btn.addEventListener("click", async () => {
-                const id = Number(btn.dataset.id);
-                await deleteLibraryItem(id);
-                renderLibrary(filter); // Recargamos la misma vista
-            });
-        });
-        // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
-        await loadVoiceOptionsInStudio();
-        await loadTrackOptionsInStudio();
-        await loadTrackOptionsInKaraoke();
-    } catch (error) {
-        console.error(error);
-        container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
+async function renderLibrary(filter = "todos") {
+  const container = $("libraryList");
+  if (!container) return;
+
+  container.innerHTML = "<p>Cargando archivos...</p>";
+
+  try {
+    let library = await getAllLibraryItemsFromSupabase();
+
+    let filteredItems = library;
+    if (filter !== "todos") {
+      filteredItems = library.filter(item => item.type === filter);
     }
+
+    container.innerHTML = "";
+
+    if (filteredItems.length === 0) {
+      container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
+    } else {
+      filteredItems.forEach((item) => {
+        const div = document.createElement("div");
+        div.className = "library-item card";
+        div.style.marginBottom = "10px";
+
+        div.innerHTML = `
+          <p><strong>${item.name}</strong></p>
+          <small>Tipo: ${item.type.toUpperCase()} | ${new Date(item.created_at).toLocaleString("es-ES")}</small>
+          <audio controls src="${item.file_url}" style="width:100%; margin: 10px 0;"></audio>
+          <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        await deleteLibraryItem(id);
+        renderLibrary(filter);
+      });
+    });
+
+    await loadVoiceOptionsInStudio();
+    await loadTrackOptionsInStudio();
+    await loadTrackOptionsInKaraoke();
+
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
+  }
 }
+
 
 async function deleteLibraryItem(id) {
   try {
@@ -769,55 +774,52 @@ async function saveManualFileToLibrary() {
   const fileInput = $("libraryFileInput");
   const typeSelect = $("libraryFileType");
   const nameInput = $("libraryFileName");
-  const progress = $("uploadProgress");
-  const btn = $("saveLibraryFileBtn");
 
   const file = fileInput.files[0];
-  if (!file) return alert("⚠️ Selecciona un archivo.");
+  if (!file) {
+    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
+    return;
+  }
 
-  // Mostrar barra de progreso
-  progress.style.display = "block";
-  progress.value = 10;
-  btn.disabled = true;
+  if (file.size > 20 * 1024 * 1024) {
+    alert("⚠️ El archivo es muy grande (máx 20MB).");
+    return;
+  }
+
+  const name = nameInput.value.trim() || file.name;
+  const type = typeSelect.value;
 
   try {
-    progress.value = 30; // Simulamos lectura
-    
-    // Aquí ocurre el proceso real
-    await addLibraryItem({
-      name: nameInput.value.trim() || file.name,
-      type: typeSelect.value,
-      audioBlob: file,
-      date: new Date().toLocaleString("es-ES"),
-      transcription: []
+    await saveLibraryItemToSupabase({
+      name,
+      type,
+      blob: file,
+      transcription: [],
+      metadata: {}
     });
 
-    progress.value = 80;
-    await renderLibrary('todos');
-    
-    progress.value = 100;
-    alert("✅ ¡Archivo guardado exitosamente!");
-    
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al guardar.");
-  } finally {
-    // Resetear UI
-    progress.style.display = "none";
-    progress.value = 0;
-    btn.disabled = false;
     fileInput.value = "";
     nameInput.value = "";
+
+    await renderLibrary("todos");
+
+    alert("✅ ¡Archivo subido y guardado en la nube!");
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al guardar el archivo en Supabase.");
   }
 }
+
 
 async function loadTrackOptionsInStudio() {
   const select = $("studioTrackSelect");
   if (!select) return;
-  
+
   select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
+
   try {
     const tracks = await getLibraryItemsByTypeFromSupabase("pista");
+
     if (!tracks.length) {
       const option = document.createElement("option");
       option.value = "";
@@ -825,6 +827,7 @@ async function loadTrackOptionsInStudio() {
       select.appendChild(option);
       return;
     }
+
     tracks.forEach((item) => {
       const option = document.createElement("option");
       option.value = item.id;
@@ -840,22 +843,24 @@ async function loadSelectedTrackFromLibraryStudio() {
   const select = $("studioTrackSelect");
   const player = $("player");
   const status = $("studioStatus");
-  
+
   if (!select || !player || !status) return;
-  
+
   const selectedId = select.value;
-  
+
   if (!selectedId) {
     alert("⚠️ Selecciona una pista");
     return;
   }
-  
+
   try {
     const item = await getLibraryItemByIdFromSupabase(selectedId);
+
     if (!item) {
       alert("⚠️ No se encontró la pista");
       return;
     }
+
     studioTrackFileName = item.name;
     player.src = item.file_url;
     status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
@@ -949,18 +954,22 @@ async function loadSelectedVoiceFromLibrary() {
 async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
   const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
   const filePath = safeName;
+
   const { error: uploadError } = await supabaseClient.storage
     .from("library")
     .upload(filePath, fileOrBlob, {
       contentType: mimeType,
       upsert: false
     });
+
   if (uploadError) {
     throw uploadError;
   }
+
   const { data } = supabaseClient.storage
     .from("library")
     .getPublicUrl(filePath);
+
   return {
     filePath,
     fileUrl: data.publicUrl
@@ -977,9 +986,12 @@ async function saveLibraryItemToSupabase({ name, type, blob, transcription = [],
     ? "webm"
     : mimeType.includes("ogg")
     ? "ogg"
-    : "bin"
+    : "bin";
+
   const fileName = `${name}.${extension}`;
+
   const { filePath, fileUrl } = await uploadFileToSupabase(blob, fileName, mimeType);
+
   const { error } = await supabaseClient
     .from("library_items")
     .insert([
@@ -993,6 +1005,7 @@ async function saveLibraryItemToSupabase({ name, type, blob, transcription = [],
         metadata
       }
     ]);
+
   if (error) {
     throw error;
   }
@@ -1003,9 +1016,11 @@ async function getAllLibraryItemsFromSupabase() {
     .from("library_items")
     .select("*")
     .order("created_at", { ascending: false });
+
   if (error) {
     throw error;
   }
+
   return data || [];
 }
 
@@ -1015,9 +1030,11 @@ async function getLibraryItemsByTypeFromSupabase(type) {
     .select("*")
     .eq("type", type)
     .order("created_at", { ascending: false });
+
   if (error) {
     throw error;
   }
+
   return data || [];
 }
 
@@ -1027,27 +1044,33 @@ async function getLibraryItemByIdFromSupabase(id) {
     .select("*")
     .eq("id", id)
     .single();
+
   if (error) {
     throw error;
   }
+
   return data;
 }
 
 async function deleteLibraryItemFromSupabase(id) {
   // primero buscamos el item para saber qué archivo borrar
   const item = await getLibraryItemByIdFromSupabase(id);
+
   if (item?.file_path) {
     const { error: storageError } = await supabaseClient.storage
       .from("library")
       .remove([item.file_path]);
+
     if (storageError) {
       console.warn("No se pudo borrar el archivo del storage:", storageError.message);
     }
   }
+
   const { error } = await supabaseClient
     .from("library_items")
     .delete()
     .eq("id", id);
+
   if (error) {
     throw error;
   }
@@ -1634,18 +1657,17 @@ async function loadSelectedTrackFromLibraryKaraoke() {
     karaokeSelectedTrackName = item.name;
 
     const track = $("karaokeTrack");
-    const urlConCacheBuster = new URL(item.file_url);
-      urlConCacheBuster.searchParams.append('v', Date.now());
-      track.src = urlConCacheBuster.toString();
-      track.volume = 0.4;
-      
-      $("karaokeStatus").textContent = `Estado: Pista cargada (${item.name}). ¡Inicia grabación!`;
-      cargarLetrasEnMonitor();
+    track.src = item.file_url;
+    track.volume = 0.4;
+
+    $("karaokeStatus").textContent = `Estado: Pista cargada (${item.name}). ¡Inicia grabación!`;
+    cargarLetrasEnMonitor();
   } catch (error) {
-      console.error(error);
-      alert("❌ Error al cargar la pista.");
+    console.error(error);
+    alert("❌ Error al cargar la pista.");
   }
 }
+
 
 function cargarLetrasEnMonitor() {
   const container = $("karaokeLiveLyrics");
