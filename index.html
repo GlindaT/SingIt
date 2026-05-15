@@ -202,6 +202,16 @@
           <h3>💾Archivos guardados</h3>
           <div id="libraryList"></div>
         </div>
+        <div class="card">
+          <h3>Subir nuevo archivo</h3>
+          <input type="file" id="libraryFileInput" accept="audio/*">
+          <input type="text" id="libraryFileName" placeholder="Nombre de la canción o voz...">
+          <select id="libraryFileType">
+            <option value="pista">🎵 Pista (Instrumental)</option>
+            <option value="voz">🎙️ Voz</option>
+          </select>
+          <button id="saveLibraryFileBtn" style="margin-top: 15px; width: 100%;">💾 Guardar en Biblioteca</button>
+        </div>
       </section>
       
       <!-- KARAOKE -->
