@@ -211,6 +211,22 @@ audio {
   margin-bottom: 10px;
 }
 
+progress {
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  border: none;
+}
+
+progress::-webkit-progress-bar {
+  background-color: var(--bg-main);
+}
+
+progress::-webkit-progress-value {
+  background-color: var(--accent);
+  transition: width 0.3s ease;
+}
+
 /* ==========================================
    SCROLL PERSONALIZADO (OPCIONAL)
 ========================================== */
