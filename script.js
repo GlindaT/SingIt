@@ -837,36 +837,37 @@ async function loadTrackOptionsInStudio() {
 }
 
 async function loadSelectedTrackFromLibraryStudio() {
-  const select = $("studioTrackSelect");
-  const player = $("player");
-  const status = $("studioStatus");
-
-  if (!select || !player || !status) return;
-
-  const selectedId = Number(select.value);
-
-  if (!selectedId) {
-    alert("⚠️ Selecciona una pista");
-    return;
-  }
-
-  try {
-    const item = await getLibraryItemById(selectedId);
-
-    if (!item) {
-      alert("⚠️ No se encontró la pista");
-      return;
+    const select = $("studioTrackSelect");
+    const player = $("player");
+    const status = $("studioStatus");
+    
+    if (!select || !player || !status) return;
+    const selectedId = Number(select.value);
+    
+    if (!selectedId) {
+        alert("⚠️ Selecciona una pista");
+        return;
     }
-      studioSelectedTrackBlob = item.audioBlob;
-      studioSelectedTrackId = item.id;
-      studioSelectedTrackName = item.name;
-      studioTrackFileName = item.name;
-      player.src = URL.createObjectURL(item.audioBlob);
-      status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la pista seleccionada");
-  }
+    try {
+        const item = await getLibraryItemById(selectedId);
+        
+        if (!item) {
+            alert("⚠️ No se encontró la pista");
+            return;
+        }
+        
+        studioSelectedTrackBlob = item.audioBlob;
+        studioSelectedTrackId = item.id;
+        studioSelectedTrackName = item.name;
+        
+        studioTrackFileName = item.name;
+        player.src = URL.createObjectURL(item.audioBlob);
+        status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+    
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo cargar la pista seleccionada");
+    }
 }
 
 async function loadVoiceOptionsInStudio() {
@@ -1474,18 +1475,16 @@ let karaokeDuoAnalyser2 = null;
 let karaokeDuoAnimationId = null;
 
 function cargarPistaKaraoke(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  karaokeSelectedTrackBlob = file;
-  karaokeSelectedTrackName = file.name;
-
-  const track = $("karaokeTrack");
-  track.src = URL.createObjectURL(file);
-  track.volume = 0.4;
-
-  $("karaokeStatus").textContent = "Estado: Pista lista. ¡Presiona Iniciar Grabación!";
-  cargarLetrasEnMonitor();
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    karaokeSelectedTrackBlob = item.audioBlob;
+    karaokeSelectedTrackName = item.name;
+    const track = $("karaokeTrack");
+    track.src = URL.createObjectURL(file);
+    track.volume = 0.4;
+    $("karaokeStatus").textContent = "Estado: Pista lista. ¡Presiona Iniciar Grabación!";
+    cargarLetrasEnMonitor();
 }
 
 async function loadTrackOptionsInKaraoke() {
@@ -2603,41 +2602,39 @@ function cancelTapSync() {
 }
 
 async function applyTapSync() {
-  if (tapSyncTimestamps.length === 0 || tapSyncLines.length === 0) {
-    alert("⚠️ No hay datos de sincronización.");
-    return;
-  }
-  
-  const voicePlayer = $("selectedVoicePlayer");
-  const totalDuration = voicePlayer ? voicePlayer.duration : 0;
-  const status = $("selectedVoiceStatus");
-  
-  // Mostrar estado
-  if (status) status.textContent = "Estado: Aplicando tiempos y analizando notas...";
-  
-  const newSegments = [];
-  
-  for (let i = 0; i < tapSyncLines.length; i++) {
-    const start = tapSyncTimestamps[i] || 0;
-    let end = (i < tapSyncTimestamps.length - 1) ? tapSyncTimestamps[i + 1] : (totalDuration || start + 3);
+    if (tapSyncTimestamps.length === 0 || tapSyncLines.length === 0) {
+        alert("⚠️ No hay datos de sincronización.");
+        return;
+    }
     
-    newSegments.push(buildWordTimingFromSegment({
-      start: start,
-      end: end,
-      text: tapSyncLines[i]
-    }));
-  }
-  
-  // Analizar pitch si tenemos el blob de audio
-  let analyzedSegments = newSegments;
-  if (selectedVoiceBlob) {
-    if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
-    analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
-  }
-  
-  baseTranscriptionSegments = analyzedSegments;
-  transcriptionSegments = analyzedSegments;
+    const voicePlayer = $("selectedVoicePlayer");
+    const totalDuration = voicePlayer ? voicePlayer.duration : 0;
+    const status = $("selectedVoiceStatus");
     
+    // Mostrar estado
+    if (status) status.textContent = "Estado: Aplicando tiempos y analizando notas...";
+    
+    const newSegments = [];
+    for (let i = 0; i < tapSyncLines.length; i++) {
+        const start = tapSyncTimestamps[i] || 0;
+        let end = (i < tapSyncTimestamps.length - 1) ? tapSyncTimestamps[i + 1] : (totalDuration || start + 3);
+        
+        newSegments.push(buildWordTimingFromSegment({
+            start: start,
+            end: end,
+            text: tapSyncLines[i]
+        }));
+    }
+    
+    // Analizar pitch si tenemos el blob de audio
+    let analyzedSegments = newSegments;
+    if (selectedVoiceBlob) {
+        if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
+        analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
+    }
+    
+    baseTranscriptionSegments = analyzedSegments;
+    transcriptionSegments = analyzedSegments;
     if (studioSelectedTrackBlob) {
         try {
             await addLibraryItem({
@@ -2659,6 +2656,7 @@ async function applyTapSync() {
     } else {
         console.warn("⚠️ No hay pista instrumental seleccionada para crear karaoke");
     }
+    
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
     if (selectedVoiceId) {
@@ -2674,7 +2672,6 @@ async function applyTapSync() {
     if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
     alert("✅ ¡Tiempos y notas aplicados! Reproduce para verificar.");
 }
-
 
 function redoTapSync() {
   $("tapSyncResult").style.display = "none";
@@ -3479,56 +3476,50 @@ async function loadMyKaraokeSongs() {
         const allSongs = [...karaokeSongs];
         
         if (allSongs.length === 0) {
+            
             container.innerHTML = `
-        <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-          <p>No tienes canciones listas aún.</p>
-          <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
-        </div>
-      `;
-      return;
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+            <p>No tienes canciones listas aún.</p>
+            <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
+            </div>
+            `;
+            return;
+            
+            container.innerHTML = "";
+            allSongs.forEach(song => {
+                const div = document.createElement("div");
+                div.className = "my-karaoke-item";
+                const title = song.metadata?.title || song.name || "Sin título";
+                const artist = song.metadata?.artist || "";
+                
+                div.innerHTML = `
+                <div class="my-karaoke-item-info">
+                <p class="my-karaoke-item-title">${title}</p>
+                <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
+                </div>
+                <div class="my-karaoke-item-actions">
+                <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
+                <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
+                </div>
+                `;
+                container.appendChild(div);
+            });
+            // Agregar eventos
+            container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
+                btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
+            });
+            container.querySelectorAll(".delete-karaoke-btn").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    if (confirm("¿Eliminar esta canción de tu biblioteca?")) {
+                        await deleteLibraryItemFromDB(Number(btn.dataset.id));
+                        await loadMyKaraokeSongs();
+                    }
+                });
+            });
+        } catch (error) {
+        console.error("Error cargando mis canciones:", error);
+        container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
     }
-    
-    container.innerHTML = "";
-    
-    allSongs.forEach(song => {
-      const div = document.createElement("div");
-      div.className = "my-karaoke-item";
-      
-      const title = song.metadata?.title || song.name || "Sin título";
-      const artist = song.metadata?.artist || "";
-      
-      div.innerHTML = `
-        <div class="my-karaoke-item-info">
-          <p class="my-karaoke-item-title">${title}</p>
-          <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
-        </div>
-        <div class="my-karaoke-item-actions">
-          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
-          <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
-        </div>
-      `;
-      
-      container.appendChild(div);
-    });
-    
-    // Agregar eventos
-    container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
-    });
-    
-    container.querySelectorAll(".delete-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        if (confirm("¿Eliminar esta canción de tu biblioteca?")) {
-          await deleteLibraryItemFromDB(Number(btn.dataset.id));
-          await loadMyKaraokeSongs();
-        }
-      });
-    });
-    
-  } catch (error) {
-    console.error("Error cargando mis canciones:", error);
-    container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
-  }
 }
 
 async function loadKaraokeSong(id) {
