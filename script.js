@@ -481,6 +481,202 @@ async function saveStudioRecording() {
     renderLibrary();
 }
 
+// --- 1. ACTIVACIÓN DEL MODO TAP ---
+function toggleTapSyncMode() {
+    const lyricsText = $("lyricsText");
+    const status = $("selectedVoiceStatus") || $("studioStatus");
+    const tapBtn = $("tapSyncBtn");
+
+    if (!lyricsText || !lyricsText.value.trim()) {
+        alert("⚠️ Primero debes tener una letra cargada o transcrita en el editor.");
+        return;
+    }
+
+    if (!tapSyncMode) {
+        // Activar modo sincronización
+        tapSyncMode = true;
+        if (tapBtn) {
+            tapBtn.textContent = "🛑 Salir de Modo Tap";
+            tapBtn.style.background = "#e11d48";
+        }
+        
+        // Convertir las líneas del editor de texto en el arreglo de sincronización
+        tapSyncLines = lyricsText.value.split("\n").map(l => l.trim()).filter(Boolean);
+        tapSyncTimestamps = [];
+        tapSyncCurrentIndex = 0;
+        
+        if (status) status.textContent = `Modo Tap Activo: Presiona PLAY en el reproductor de voz y pulsa [TAP ESPACIO / LÍNEA] al inicio de cada frase.`;
+        
+        // Render inicial para ver la lista de líneas pendientes
+        renderTapPreview();
+    } else {
+        // Desactivar modo
+        tapSyncMode = false;
+        if (tapBtn) {
+            tapBtn.textContent = "🎹 Sincronizar con Taps (Espacio)";
+            tapBtn.style.background = "";
+        }
+        if (status) status.textContent = "Estado: Modo Tap desactivado.";
+    }
+}
+
+// Visualización lateral o inferior de las frases que faltan por sincronizar
+function renderTapPreview() {
+    const container = $("karaokeLyrics") || $("lyricsPreviewContainer");
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div style="background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px;">
+            <p style="color: #67e8f9; font-weight: bold;">🎹 Control de Taps Activo:</p>
+            <div id="tapLinesList" style="max-height: 200px; overflow-y: auto; font-size: 14px; text-align: left;">
+                ${tapSyncLines.map((line, i) => `
+                    <div id="tapLine-${i}" style="padding: 4px; color: ${i === tapSyncCurrentIndex ? '#facc15' : '#9ca3af'}; font-weight: ${i === tapSyncCurrentIndex ? 'bold' : 'normal'}">
+                        ${i === tapSyncCurrentIndex ? "➡️ " : ""} ${line}
+                    </div>
+                `).join('')}
+            </div>
+            <button id="triggerTapBtn" type="button" style="width:100%; margin-top:10px; background:#22c55e;">¡MARCAR LÍNEA AHORA! (Espacio)</button>
+        </div>
+    `;
+    
+    // Enlazar click al botón visual de tap por si no quieren usar el teclado
+    safeAdd("triggerTapBtn", "click", registrarTapStamp);
+}
+
+// --- 2. REGISTRO DEL TIMESTAMP REAL AL PULSAR ---
+function registrarTapStamp() {
+    if (!tapSyncMode) return;
+    
+    const voicePlayer = $("selectedVoicePlayer");
+    const currentTime = voicePlayer ? voicePlayer.currentTime : 0;
+    
+    if (tapSyncCurrentIndex < tapSyncLines.length) {
+        // Registrar tiempo de inicio de la frase actual
+        tapSyncTimestamps.push({
+            text: tapSyncLines[tapSyncCurrentIndex],
+            start: currentTime
+        });
+        
+        // Iluminar la frase anterior completada en la UI
+        const prevEl = document.getElementById(`tapLine-${tapSyncCurrentIndex}`);
+        if (prevEl) prevEl.style.color = "#22c55e";
+        
+        tapSyncCurrentIndex++;
+        
+        // Mover flecha a la siguiente línea
+        const nextEl = document.getElementById(`tapLine-${tapSyncCurrentIndex}`);
+        if (nextEl) {
+            nextEl.style.color = "#facc15";
+            nextEl.style.fontWeight = "bold";
+            nextEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        // Si terminamos todas las líneas, cerramos y procesamos automáticamente
+        if (tapSyncCurrentIndex >= tapSyncLines.length) {
+            finalizarSincronizacionTaps();
+        }
+    }
+}
+
+// Escuchar la barra espaciadora para hacer los taps cómodamente
+window.addEventListener("keydown", (e) => {
+    if (tapSyncMode && e.code === "Space") {
+        e.preventDefault(); // Evita que la página salte hacia abajo
+        registrarTapStamp();
+    }
+});
+
+// --- 3. CONSTRUCCIÓN DE SEGMENTOS CON TIEMPOS ---
+function finalizarSincronizacionTaps() {
+    tapSyncMode = false;
+    const tapBtn = $("tapSyncBtn");
+    if (tapBtn) tapBtn.textContent = "🎹 Sincronizar con Taps (Espacio)";
+    
+    // Procesar marcas y calcular duraciones finales de cada frase
+    const finalSegments = tapSyncTimestamps.map((stamp, index) => {
+        const nextStamp = tapSyncTimestamps[index + 1];
+        // Si no hay siguiente línea, le damos 4 segundos por defecto de duración a la última frase
+        const endTime = nextStamp ? nextStamp.start : stamp.start + 4.0;
+        
+        const partialSegment = {
+            start: stamp.start,
+            end: endTime,
+            text: stamp.text
+        };
+        // Inyectar división inteligente de tiempos palabra por palabra
+        return buildWordTimingFromSegment(partialSegment);
+    });
+    
+    transcriptionSegments = finalSegments;
+    baseTranscriptionSegments = [...finalSegments];
+    
+    // Renderizar previsualización interactiva en el monitor de Karaoke
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
+    
+    const status = $("selectedVoiceStatus") || $("studioStatus");
+    if (status) status.textContent = "✅ Letra sincronizada con éxito. Lista para mezclar.";
+    alert("🎉 Sincronización terminada. Ahora puedes presionar 'Guardar y Mezclar Karaoke'.");
+}
+
+// --- 4. MEZCLA FINAL, ENVÍO A SUPABASE Y RE-MUESTREO EN TABLA KARAOKE ---
+async function mezclarYGuardarEnBibliotecaKaraoke() {
+    const studioTrackSelect = $("studioTrackSelect");
+    const status = $("selectedVoiceStatus") || $("studioStatus");
+    
+    if (!studioTrackSelect || !studioTrackSelect.value) {
+        alert("⚠️ Debes elegir la PISTA INSTRUMENTAL en el menú desplegable superior para poder acoplarla con la letra.");
+        return;
+    }
+    if (!selectedVoiceBlob || !transcriptionSegments.length) {
+        alert("⚠️ Falta el archivo de voz o los datos de la letra sincronizada por Taps.");
+        return;
+    }
+    
+    try {
+        if (status) status.textContent = "⚙️ Procesando y empaquetando pista de Karaoke...";
+        
+        // Obtener datos exactos de la pista de fondo seleccionada
+        const trackItem = await getLibraryItemByIdFromSupabase(studioTrackSelect.value);
+        if (!trackItem) throw new Error("No se pudo obtener la pista instrumental.");
+        
+        // El nuevo objeto Karaoke guarda la referencia de audio y la metadata/letra mapeada
+        const cancionKaraoke = {
+            name: `Karaoke - ${studioTrackFileName || "Nueva Canción"}`,
+            type: "karaoke",
+            blob: selectedVoiceBlob, // Mantiene la voz/guía para análisis dinámico
+            transcription: transcriptionSegments, // Tiempos exactos calculados por Taps
+            metadata: {
+                title: studioTrackFileName ? studioTrackFileName.replace(/\.[^/.]+$/, "") : "Canción sin Título",
+                instrumental_url: trackItem.file_url, // URL directa para cargar de fondo en la pestaña Karaoke
+                vocals_id: selectedVoiceId,
+                original_track_id: trackItem.id
+            }
+        };
+        
+        // Guardar directamente en la base de datos de la nube
+        await saveLibraryItemToSupabase(cancionKaraoke);
+        
+        if (status) status.textContent = "✅ ¡Karaoke creado con éxito y añadido a tu Biblioteca! 🎤";
+        alert("🚀 ¡Listo! Tu archivo se consolidó. Ya aparece disponible en la pestaña 'Karaoke' para cantar.");
+        
+        // Actualizar vistas en tiempo real
+        await renderLibrary("todos");
+        await loadTrackOptionsInKaraoke();
+        
+    } catch (err) {
+        console.error("Error al consolidar el archivo de Karaoke:", err);
+        if (status) status.textContent = "❌ Error en el proceso de mezcla.";
+    }
+}
+
+// --- 5. ENLAZAR BOTONES AUTOMÁTICAMENTE EN LA INTERFAZ ---
+// Agrega estas vinculaciones en tu función de inicio o directo en el script
+document.addEventListener("DOMContentLoaded", () => {
+    safeAdd("tapSyncBtn", "click", toggleTapSyncMode);
+    safeAdd("karaokeMixBtn", "click", mezclarYGuardarEnBibliotecaKaraoke);
+});
+
 // =========================================================================
 // BLOQUE 8: MONITOR GRÁFICO (PENTAGRAMA, BARRA GUÍA Y RASTRO VERDE NEÓN)
 // =========================================================================
