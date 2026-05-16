@@ -418,10 +418,12 @@ function forzarCargaCancionKaraokeDirecta(id) {
         const cancion = req.result;
         if (!cancion) return alert("No se encontró el archivo.");
 
-        // Intentar acoplarse a cualquier tag audio que use tu app
-        const reproductorGlobal = document.getElementById("player") || document.querySelector("audio");
+        // SOLUCIÓN: Apuntamos al reproductor REAL de la sección de Karaoke
+        const reproductorKaraoke = document.getElementById("karaokeTrack");
+        // Hacemos visible el monitor de letras de tu HTML
+        const monitorLetras = document.getElementById("karaokeLiveLyrics");
         
-        if (reproductorGlobal) {
+        if (reproductorKaraoke) {
             let urlAudio = "";
             if (cancion.audioBlob || cancion.blob) {
                 urlAudio = URL.createObjectURL(cancion.audioBlob || cancion.blob);
@@ -430,18 +432,36 @@ function forzarCargaCancionKaraokeDirecta(id) {
             }
 
             if (urlAudio) {
-                reproductorGlobal.src = urlAudio;
-                reproductorGlobal.load();
-                reproductorGlobal.play()
-                    .then(() => console.log(`▶️ Cantando ahora: ${cancion.name}`))
-                    .catch(e => console.warn("El audio requiere play manual del usuario:", e));
+                // Inyectar el audio en la pestaña de Karaoke
+                reproductorKaraoke.src = urlAudio;
+                reproductorKaraoke.load();
                 
-                alert(`🎤 Cargada: "${cancion.name}"\n\nDale Play al reproductor de música y ¡que empiece el show!`);
+                // Mostrar los controles nativos para que puedas Pausar/Subir Volumen
+                reproductorKaraoke.style.display = "block"; 
+
+                // Hacer visible el cuadro negro del monitor de letras
+                if (monitorLetras) {
+                    monitorLetras.style.display = "block";
+                    monitorLetras.innerHTML = `
+                        <p style="font-size: 20px; text-align: center; color: #facc15; font-weight: bold; animation: pulse 1.5s infinite;">
+                            🎤 "${cancion.name}" cargada correctamente.<br>
+                            <span style="font-size: 14px; color: #9ca3af;">Usa el reproductor de abajo para iniciar, pausar o detener.</span>
+                        </p>
+                    `;
+                }
+
+                // Actualizar la barra de estado de grabación si existe
+                const estadoGrabacion = document.getElementById("karaokeStatus");
+                if (estadoGrabacion) {
+                    estadoGrabacion.textContent = `Estado: Listo para cantar "${cancion.name}"`;
+                }
+
+                console.log(`🎵 Audio asignado con éxito al reproductor de Karaoke.`);
             } else {
-                alert("Este archivo no contiene datos de audio reproducibles.");
+                alert("Este archivo no contiene datos de audio válidos.");
             }
         } else {
-            alert("No se encontró un reproductor de audio en tu HTML para hacer sonar la música.");
+            alert("No se encontró el elemento #karaokeTrack en el HTML.");
         }
     };
 }
@@ -1049,3 +1069,51 @@ async function cargarArchivoAudioPC(event) {
         };
     }
 }
+// =========================================================================
+// CONTROL DE AUDIO Y GRABACIÓN SINCRONIZADA DE KARAOKE
+// =========================================================================
+async function iniciarGrabacionKaraokeCompleta() {
+    const audioTrack = document.getElementById("karaokeTrack");
+    const estadoTexto = document.getElementById("karaokeStatus");
+    
+    if (!audioTrack || !audioTrack.src || audioTrack.src === window.location.href) {
+        alert("⚠️ Por favor, selecciona primero una canción del catálogo o sube una pista antes de grabar.");
+        return;
+    }
+
+    try {
+        // 1. Sincronizar el inicio de la música
+        await audioTrack.play();
+        console.log("▶️ Música de Karaoke iniciada sincrónicamente con la grabación.");
+        
+        if (estadoTexto) {
+            estadoTexto.textContent = "🎙️ Estado: Grabando voz sobre la pista...";
+            estadoTexto.style.color = "#ef4444"; // Color rojo de grabación
+        }
+
+        // 2. ENLACE CON TU CAPTURA DE MICRÓFONO (MEDIARECORDER)
+        // Si tienes una variable global para el MediaRecorder de Karaoke, arráncala aquí:
+        if (typeof mediaRecorderKaraoke !== "undefined" && mediaRecorderKaraoke.state === "inactive") {
+            mediaRecorderKaraoke.start();
+        } else if (typeof startMediaRecorderGeneral === "function") {
+            // Si usas una función genérica de grabación para toda la app
+            startMediaRecorderGeneral();
+        }
+        
+    } catch (err) {
+        console.error("❌ No se pudo iniciar la reproducción automática:", err);
+        alert("Haz clic en el botón de Play del reproductor manualmente si el navegador bloqueó el inicio automático.");
+    }
+}
+
+// Conexión forzada y segura para el botón rojo de tu HTML (karaokeStartBtn)
+// Colocamos esto aquí abajo para asegurar que se vincule pase lo que pase
+setTimeout(() => {
+    const botonGrabarKaraoke = document.getElementById("karaokeStartBtn");
+    if (botonGrabarKaraoke) {
+        // Eliminamos cualquier evento previo para evitar ejecuciones dobles
+        botonGrabarKaraoke.removeEventListener("click", iniciarGrabacionKaraokeCompleta);
+        botonGrabarKaraoke.addEventListener("click", iniciarGrabacionKaraokeCompleta);
+        console.log("🎯 Botón '🎙️ Iniciar Grabación' de Karaoke enlazado correctamente al reproductor.");
+    }
+}, 1000);
