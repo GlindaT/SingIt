@@ -88,15 +88,32 @@ window.addEventListener('DOMContentLoaded', async () => {
 // =========================================================================
 // BLOQUE 3: INDEXED DB LOCAL & CONTROL DE BIBLIOTECA (FALLBACK ANTIFALLOS)
 // =========================================================================
+// =========================================================================
+// BLOQUE 3: INDEXED DB LOCAL - VERSIONADO PROTEGIDO
+// =========================================================================
 function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("SingItDB", 1);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => { db = request.result; resolve(db); };
+    // Subimos la versión a 2 para obligar al navegador a ejecutar onupgradeneeded
+    const request = indexedDB.open("SingItDB", 2); 
+    
+    request.onerror = () => {
+        console.error("❌ Error abriendo IndexedDB:", request.error);
+        reject(request.error);
+    };
+    
+    request.onsuccess = () => { 
+        db = request.result; 
+        resolve(db); 
+    };
+    
     request.onupgradeneeded = (e) => {
       const database = e.target.result;
+      console.log("🛠️ Actualizando/Creando almacenes de objetos en IndexedDB...");
+      
+      // Si la tabla no existe, la creamos de forma segura
       if (!database.objectStoreNames.contains("library_items")) {
         database.createObjectStore("library_items", { keyPath: "id", autoIncrement: true });
+        console.log("✅ Almacén 'library_items' creado con éxito.");
       }
     };
   });
