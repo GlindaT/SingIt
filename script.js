@@ -88,17 +88,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Afinador
         safeAdd("recordBtn", "click", toggleAfinadorBtn);
 
-        // Archivos Locales (Carga de voz desde PC)
-        safeAdd("audioFile", "change", cargarArchivoAudioPC);
+        // --- ENLACE CRÍTICO: INPUT DE AUDIO DE LA PC (SUPABASE + LOCAL) ---
+        // Buscamos el elemento "audioFile" y le asignamos la función que creamos antes
+        const audioFileInput = document.getElementById("audioFile") || $("audioFile");
+        if (audioFileInput) {
+            audioFileInput.addEventListener("change", cargarArchivoAudioPC);
+            console.log("📥 Buscador de archivos de la PC vinculado correctamente.");
+        }
       
-        // Inicializar el botón de actualizar listas
+        // Inicializar el botón de actualizar listas de la biblioteca
         inicializarBotonesBiblioteca();
 
         // Transcripción Whisper de Mentira / Simulada para desarrollo
         safeAdd("transcribeVoiceBtn", "click", transcribirVozConWhisper);
 
         // Taps Sincronización
-        safeAdd("startTapSyncBtn", "click", toggleTapSyncMode);
         safeAdd("applyTapSyncBtn", "click", finalizarSincronizacionTaps);
         safeAdd("redoTapSyncBtn", "click", () => location.reload());
 
@@ -117,7 +121,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         safeAdd("karaokeTrackSelect", "change", cargarCancionKaraoke);
         safeAdd("karaokeMixBtn", "click", mezclarYGuardarEnBibliotecaKaraoke);
 
-        // 4. Cargas de datos en la UI
+        // 4. Cargas de datos iniciales en la UI
         await loadTrackOptionsInStudio();
         inicializarBotonesCargaEstudio();
         await loadTrackOptionsInKaraoke();
@@ -173,47 +177,71 @@ async function cargarArchivoAudioPC(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Preguntar al usuario qué tipo de archivo está subiendo para clasificarlo bien
+    // 1. Preguntar al usuario el tipo de audio para clasificarlo en las carpetas
     const tipo = prompt(
-        `Detectamos: "${file.name}"\n\n¿Qué tipo de archivo es?\nEscribe:\n"pista" (para instrumentales/fondos)\n"voz" (para voces limpias o acapellas)\n"audio" (para canciones completas de origen)`, 
+        `Detectamos: "${file.name}"\n\n¿Qué tipo de archivo es?\nEscribe exactamente:\n"pista" (para instrumentales)\n"voz" (para acapellas)\n"audio" (canción completa)`, 
         "audio"
     );
 
-    // Validar que el tipo sea uno de los permitidos por el sistema
     const tipoNormalizado = (tipo && ["pista", "voz", "audio"].includes(tipo.toLowerCase())) ? tipo.toLowerCase() : "audio";
+    const nombreLimpio = file.name.replace(/\.[^/.]+$/, "");
 
+    // Generar la ruta interna en el bucket (Ej: "pistas/1715800000000_cancion.mp3")
+    const filePath = `${tipoNormalizado}s/${Date.now()}_${file.name}`;
+    let urlPublicaSupabase = "";
+
+    // --- AQUÍ VA EL BLOQUE DE SUPABASE ---
+    console.log("⏳ Subiendo archivo binario a Supabase Storage...");
+    try {
+        // Ejecuta la subida directa usando el cliente global 'supabase' que inicializaste arriba
+        const { data, error } = await supabase.storage
+            .from('library') // El nombre exacto de tu bucket
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (error) throw error;
+
+        // Si la subida es exitosa, solicitamos la URL pública de internet para hacer streaming
+        const { data: urlData } = supabase.storage
+            .from('library')
+            .getPublicUrl(filePath);
+            
+        urlPublicaSupabase = urlData.publicUrl;
+        console.log("☁️ Archivo guardado en la nube con éxito. URL:", urlPublicaSupabase);
+
+    } catch (err) {
+        // Si falla por las políticas, la app no se cae; te avisa y sigue en local
+        console.warn("⚠️ Nota: Guardando solo en Local (IndexedDB). Para subir a la nube, activa la Policy en Supabase:", err.message);
+    }
+
+    // --- 2. GUARDADO SIMULTÁNEO EN TU INDEXEDDB LOCAL ---
     if (db) {
-        const tx = db.transaction("library_items", "readwrite");
-        const store = tx.objectStore("library_items");
+        const tx = db.transaction("library", "readwrite"); // Tu almacén real 'library'
+        const store = tx.objectStore("library");
         
         const nuevoItem = {
-            name: file.name.replace(/\.[^/.]+$/, ""), // Quitar la extensión .mp3/.wav del nombre visual
+            name: nombreLimpio,
             type: tipoNormalizado,
-            blob: file, // Guardamos el binario real en IndexedDB
+            audioBlob: file, // Columna binaria mapeada en tu Application Tab
+            file_url: urlPublicaSupabase, // Guardamos el enlace de Supabase si existe
             created_at: new Date()
         };
 
         store.add(nuevoItem);
 
         tx.oncomplete = async () => {
-            console.log(`📥 Archivo indexado con éxito en la BD: ${file.name} como [${tipoNormalizado.toUpperCase()}]`);
-            alert(`✅ "${file.name}" se guardó en la Biblioteca como [${tipoNormalizado.toUpperCase()}].\nHaz clic en "Actualizar Lista" en tus pestañas para usarlo.`);
+            alert(`🎉 "${nombreLimpio}" procesado con éxito.\n¡Cargado en interfaz y listo para usar!`);
+            event.target.value = ""; // Resetear el input
             
-            // Limpiar el input para permitir subir el mismo archivo si se desea
-            event.target.value = "";
-            
-            // Refrescar vistas inmediatamente
-            await renderLibrary("todos");
-            await loadTrackOptionsInStudio();
-            await loadTrackOptionsInKaraoke();
-        };
-
-        tx.onerror = () => {
-            alert("❌ Ocurrió un error al intentar almacenar el archivo en la base de datos local.");
+            // Refrescar automáticamente todas las vistas de la app
+            if (typeof renderLibrary === "function") await renderLibrary("todos");
+            if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
+            if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
         };
     }
 }
-
 // Carga TODOS los audios tipo "voz" o "pista" disponibles para trabajar en el Estudio
 async function loadTrackOptionsInStudio() {
     try {
