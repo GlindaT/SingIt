@@ -90,6 +90,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         // Archivos Locales (Carga de voz desde PC)
         safeAdd("audioFile", "change", cargarArchivoAudioPC);
+      
         // Inicializar el botón de actualizar listas
         inicializarBotonesBiblioteca();
 
@@ -293,17 +294,19 @@ async function reproducirItemBiblioteca(id) {
 
 // Vincular la acción del botón "Actualizar Lista" manualmente
 function inicializarBotonesBiblioteca() {
-    // Si tu botón en el HTML se llama "refreshLibraryBtn" o similar, lo enlazamos aquí
-    const refreshBtn = $("refreshLibraryBtn") || $("updateLibraryListBtn") || $("btnActualizarLista");
+    // Busca el botón por cualquiera de los IDs habituales que maneja tu app
+    const refreshBtn = $("btnActualizarLista") || $("refreshLibraryBtn") || $("updateLibraryListBtn") || $("refreshListBtn");
     if (refreshBtn) {
-        refreshBtn.addEventListener("click", () => {
-            renderLibrary("todos");
-            loadTrackOptionsInStudio();
-            loadTrackOptionsInKaraoke();
-            console.log("🔄 Listas de biblioteca actualizadas manualmente.");
+        refreshBtn.addEventListener("click", async () => {
+            await renderLibrary("todos");
+            await loadTrackOptionsInStudio();
+            await loadTrackOptionsInKaraoke();
+            console.log("🔄 Biblioteca y selectores sincronizados manualmente.");
+            alert("🔄 Listas de la biblioteca actualizadas con éxito.");
         });
     }
 }
+
 // =========================================================================
 // BLOQUE 5: SPLITTER IA (SIMULADOR ESTABLE)
 // =========================================================================
