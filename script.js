@@ -43,51 +43,97 @@ function safeAdd(id, event, handler) {
 }
 
 // =========================================================================
-// BLOQUE 2: ARRANQUE E INICIALIZACIÓN COMPLETA (DOMContentLoaded)
+// BLOQUE 2: ARRANQUE E INICIALIZACIÓN COMPLETA (CORREGIDO CON IDS REALES)
 // =========================================================================
 window.addEventListener('DOMContentLoaded', async () => {
     try {
-        console.log("⚙️ Inicializando componentes de SingIt...");
+        console.log("⚙️ Sincronizando JavaScript con el HTML real...");
 
         // 1. Inicializar Base de Datos Local (IndexedDB)
         await initDB();
         console.log("📦 Base de datos local (IndexedDB) lista.");
 
-        // 2. Conectar de manera segura eventos de botones en todas las pestañas
+        // =========================================================================
+        // CONTROLADOR INTEGRADO DE PESTAÑAS (NAVEGACIÓN LATERAL REAL)
+        // =========================================================================
+        const mapeoPestanas = [
+            { botonId: "btnAfinador", seccionId: "afinador" },
+            { botonId: "btnEstudio", seccionId: "estudio" },
+            { botonId: "btnBiblioteca", seccionId: "biblioteca" },
+            { botonId: "btnKaraoke", seccionId: "karaoke" },
+            { botonId: "btnSplitter", seccionId: "splitter" },
+            { botonId: "btnConfig", seccionId: "config" }
+        ];
+
+        mapeoPestanas.forEach(mapeo => {
+            const botonEl = $(mapeo.botonId);
+            if (botonEl) {
+                botonEl.addEventListener('click', () => {
+                    // Ocultar todas las secciones removiendo la clase 'active'
+                    document.querySelectorAll('.tab').forEach(seccion => {
+                        seccion.classList.remove('active');
+                    });
+                    
+                    // Quitar la clase activa de todos los botones del menú (opcional para tus estilos)
+                    document.querySelectorAll('.sidebar button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+
+                    // Mostrar la sección seleccionada añadiendo 'active'
+                    const seccionObjetivo = $(mapeo.seccionId);
+                    if (seccionObjetivo) {
+                        seccionObjetivo.classList.add('active');
+                        botonEl.classList.add('active');
+                        console.log(`📂 Cambiado a pestaña: ${mapeo.seccionId}`);
+
+                        // Si entras a Karaoke, inicializamos el canvas para que no se quede congelado
+                        if (mapeo.seccionId === 'karaoke' && typeof drawKaraokeMonitor === 'function') {
+                            drawKaraokeMonitor(0, 0);
+                        }
+                    }
+                });
+            }
+        });
+
+        // =========================================================================
+        // ASIGNACIÓN DE EVENTOS INTERNOS (MAPEO DE ENLACES SEGUROS)
+        // =========================================================================
+        // Pestaña Afinador
         safeAdd("recordBtn", "click", toggleAfinadorBtn);
+
+        // Pestaña Estudio (Grabadora y Acciones)
         safeAdd("startStudioRecBtn", "click", startStudioRecording);
         safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
         safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
         safeAdd("redoStudioRecBtn", "click", () => {
-            if (confirm("¿Borrar grabación actual?")) location.reload();
+            if (confirm("¿Deseas resetear los buffers y borrar la grabación actual?")) location.reload();
         });
 
-        // Eventos de la pestaña Splitter y Configuración
-        safeAdd("processSplitterBtn", "click", procesarSeparacionAudio);
-        safeAdd("saveConfigBtn", "click", guardarConfiguracionLocal);
-
-        // Eventos de la pestaña Sincronización por Taps
+        // Sincronización Manual por Taps (Corregido al ID del HTML)
         safeAdd("applyTapSyncBtn", "click", aplicarTiemposTapSync);
         safeAdd("redoTapSyncBtn", "click", () => location.reload());
 
-        // Selectores de Karaoke
+        // Pestaña Splitter (Corregido: tu HTML usa 'splitBtn')
+        safeAdd("splitBtn", "click", procesarSeparacionAudio);
+
+        // Pestaña Configuración (Corregido: tu HTML usa selectores automáticos)
+        safeAdd("saveConfigBtn", "click", guardarConfiguracionLocal);
+
+        // Selectores de Karaoke vinculados
         safeAdd("karaokeTrackSelect", "change", cargarCancionKaraoke);
 
-        // 3. Cargar datos en los componentes de la interfaz
+        // 3. Ejecución de cargas iniciales en cascada
         await loadTrackOptionsInStudio();
         await loadTrackOptionsInKaraoke();
         renderLibrary();
         cargarConfiguracionPrevia();
 
-        console.log("🚀 ¡Todas las pestañas y funciones de SingIt están operativas!");
+        console.log("🚀 ¡Navegación enlazada y todas las pestañas operativas al 100%!");
     } catch (err) {
-        console.error("❌ Error en el arranque general de la app:", err);
+        console.error("❌ Error en el mapa de inicialización:", err);
     }
 });
 
-// =========================================================================
-// BLOQUE 3: INDEXED DB LOCAL & CONTROL DE BIBLIOTECA (FALLBACK ANTIFALLOS)
-// =========================================================================
 // =========================================================================
 // BLOQUE 3: INDEXED DB LOCAL - VERSIONADO PROTEGIDO
 // =========================================================================
