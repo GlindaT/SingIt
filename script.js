@@ -278,38 +278,96 @@ function cargarConfiguracionPrevia() {
 }
 
 // =========================================================================
-// BLOQUE 6: MÓDULO DEL AFINADOR (DETECCIÓN DE PITCH EN TIEMPO REAL)
+// BLOQUE 6: MÓDULO DEL AFINADOR (PITCH MATCHING CON FLECHAS Y COLORES)
 // =========================================================================
 async function toggleAfinadorBtn() {
     const btn = $("recordBtn");
     if (!state.isRecording) {
         state.isRecording = true;
         if (btn) btn.textContent = "🛑 Detener Afinador";
+        
+        // Limpiar pantallas
+        if ($("noteDisplay")) $("noteDisplay").textContent = "--";
+        if ($("guideText")) $("guideText").textContent = "";
+        
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audioContext.createMediaStreamSource(stream);
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 2048;
-        source.connect(analyser);
-        bucleDeteccionPitch();
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+            bucleDeteccionPitch();
+        } catch (err) {
+            console.error("No se pudo acceder al micrófono:", err);
+            state.isRecording = false;
+            if (btn) btn.textContent = "Iniciar";
+        }
     } else {
         state.isRecording = false;
-        if (btn) btn.textContent = "🎤 Iniciar Afinador";
+        if (btn) btn.textContent = "Iniciar";
         if (stream) stream.getTracks().forEach(t => t.stop());
         if (audioContext) audioContext.close();
+        if ($("guideText")) $("guideText").textContent = "";
     }
 }
 
 function bucleDeteccionPitch() {
     if (!state.isRecording || !analyser) return;
+    
     analyser.getFloatTimeDomainData(pitchBuffer);
     const pitch = autoCorrelateMath(pitchBuffer, audioContext.sampleRate);
     
-    // 440Hz representa la línea guía azul central (Nota LA)
-    drawKaraokeMonitor(pitch, 440); 
-
-    const display = $("noteDisplay");
-    if (display && pitch !== -1) display.textContent = getNoteNameFromFreq(pitch);
+    const noteDisplay = $("noteDisplay");
+    const guideText = $("guideText");
+    const targetSelect = $("targetNote");
+    
+    if (pitch !== -1 && targetSelect) {
+        // 1. Obtener la frecuencia de la nota que el usuario quiere alcanzar
+        const targetNoteName = targetSelect.value;
+        const targetFrequency = getFreqFromNoteName(targetNoteName);
+        
+        // 2. Calcular el nombre de la nota que está cantando realmente
+        const currentNoteName = getNoteNameFromFreq(pitch);
+        if (noteDisplay) noteDisplay.textContent = currentNoteName;
+        
+        // 3. Calcular la desviación en centésimas de tono (Cents)
+        // Fórmula: 1200 * log2(frecuencia_actual / frecuencia_objetivo)
+        const centsDeviation = 1200 * Math.log2(pitch / targetFrequency);
+        
+        // Dibujar en el canvas usando la nota objetivo real elegida
+        drawKaraokeMonitor(pitch, targetFrequency);
+        
+        // 4. Evaluar precisión (Margen de tolerancia: +-25 cents)
+        if (Math.abs(centsDeviation) < 25) {
+            // ¡EN LA NOTA CORRECTA! -> Verde neón
+            if (noteDisplay) noteDisplay.style.color = "#22c55e"; 
+            if (guideText) {
+                guideText.textContent = "🎯 ¡Perfecto! Estás en la nota.";
+                guideText.style.color = "#22c55e";
+            }
+        } else if (centsDeviation > 0) {
+            // Muy arriba -> Flecha hacia abajo (baja el tono)
+            if (noteDisplay) noteDisplay.style.color = "#eab308"; // Amarillo/Naranja
+            if (guideText) {
+                guideText.textContent = `⬇️ Un poco alto (+${Math.round(centsDeviation)} cents). Baja la voz.`;
+                guideText.style.color = "#facc15";
+            }
+        } else {
+            // Muy abajo -> Flecha hacia arriba (sube el tono)
+            if (noteDisplay) noteDisplay.style.color = "#eab308";
+            if (guideText) {
+                guideText.textContent = `⬆️ Un poco bajo (${Math.round(centsDeviation)} cents). Sube la voz.`;
+                guideText.style.color = "#facc15";
+            }
+        }
+    } else {
+        // Si no detecta audio o hay silencio, mantener colores base o gris
+        if (noteDisplay) noteDisplay.style.color = "white";
+        // Mantener el render del canvas corriendo en silencio
+        drawKaraokeMonitor(-1, targetSelect ? getFreqFromNoteName(targetSelect.value) : 440);
+    }
+    
     requestAnimationFrame(bucleDeteccionPitch);
 }
 
@@ -532,10 +590,20 @@ function autoCorrelateMath(buf, sampleRate) {
     return -1;
 }
 
-function getNoteNameFromFreq(freq) {
-    const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const formulaVal = Math.round(12 * Math.log2(freq / 440));
-    const normalizedIndex = (formulaVal + 57) % 12;
-    const octave = Math.floor((formulaVal + 57) / 12);
-    return noteStrings[normalizedIndex] + octave;
+// Convierte nombres de notas del selector (ej: "A4", "C3") a frecuencias Hz reales
+function getFreqFromNoteName(noteName) {
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    
+    // Separar las letras del número de octava (ej: "C#" y "2")
+    const octave = parseInt(noteName.slice(-1));
+    const notePos = noteName.slice(0, -1);
+    const noteIndex = notes.indexOf(notePos);
+    
+    if (noteIndex === -1) return 440; // Fallback por defecto (La 4)
+    
+    // Calcular distancia en semitonos respecto a C0 (Cero)
+    const semitonesFromC0 = (octave * 12) + noteIndex;
+    
+    // C0 está aproximadamente a 16.3516 Hz
+    return 16.3516 * Math.pow(2, semitonesFromC0 / 12);
 }
