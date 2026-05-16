@@ -877,9 +877,17 @@ async function cargarArchivoAudioPC(event) {
 
     console.log("⏳ Subiendo binario a Supabase Storage usando supabase-config...");
     try {
-        // Usamos directamente el cliente global 'supabase' de tu archivo de configuración
-        const { data, error } = await supabase.storage
-            .from('library') // Tu bucket real
+        // RECONEXIÓN: Usamos la variable exacta de tu configuración de GitHub
+        // Si por alguna razón no la encuentra suelta, la busca dentro del objeto window
+        const clienteActivo = (typeof supabaseClient !== "undefined") ? supabaseClient : window.supabaseClient;
+        
+        if (!clienteActivo) {
+            throw new Error("No se detectó 'supabaseClient'. Verifica que supabase-config.js cargue correctamente.");
+        }
+
+        // Ejecutamos la subida apuntando a tu bucket 'library'
+        const { data, error } = await clienteActivo.storage
+            .from('library') 
             .upload(filePath, file, {
                 cacheControl: '3600',
                 upsert: true
@@ -887,16 +895,16 @@ async function cargarArchivoAudioPC(event) {
 
         if (error) throw error;
 
-        // Si la Policy (true) está activa en tu panel, esto te dará el enlace público de streaming
-        const { data: urlData } = supabase.storage
+        // Solicitamos la URL de streaming a internet usando tu cliente real
+        const { data: urlData } = clienteActivo.storage
             .from('library')
             .getPublicUrl(filePath);
             
         urlPublicaSupabase = urlData.publicUrl;
-        console.log("☁️ ¡Subido con éxito a la nube! URL de streaming:", urlPublicaSupabase);
+        console.log("☁️ ¡Subido con éxito a Supabase! URL de streaming:", urlPublicaSupabase);
 
     } catch (err) {
-        // Alerta en consola si las RLS de Supabase rechazan el envío
+        // Si sale una alerta aquí, ahora sí será puramente por las Policies (reglas) de tu panel
         console.warn("⚠️ Nota: Guardando solo en Local (IndexedDB). Error en la nube:", err.message);
     }
 
