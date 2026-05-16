@@ -96,6 +96,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         { id: "splitBtn", evento: "click", fn: typeof procesarSeparacionAudio !== "undefined" ? procesarSeparacionAudio : null },
         { id: "karaokeMixBtn", evento: "click", fn: typeof mezclarYGuardarEnBibliotecaKaraoke !== "undefined" ? mezclarYGuardarEnBibliotecaKaraoke : null }
     ];
+    
+    safeAdd("refreshKaraokeCatalogBtn", "click", async () => {
+        await loadTrackOptionsInKaraoke();
+        alert("🔄 Catálogos de Karaoke actualizados al instante.");
+    });
 
     mapeoEventosReales.forEach(item => {
         try {
