@@ -607,3 +607,18 @@ function getFreqFromNoteName(noteName) {
     // C0 está aproximadamente a 16.3516 Hz
     return 16.3516 * Math.pow(2, semitonesFromC0 / 12);
 }
+
+function getNoteNameFromFreq(freq) {
+    if (!freq || freq <= 0) return "--";
+    const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    // Calcular cuántos semitonos hay de distancia con respecto a LA 440 (A4)
+    const formulaVal = Math.round(12 * Math.log2(freq / 440));
+    // Normalizar el índice dentro de la escala de 12 notas (sumando 57 para mover la base a C0)
+    const normalizedIndex = (formulaVal + 57) % 12;
+    const octave = Math.floor((formulaVal + 57) / 12);
+    
+    // Si da un índice inválido por ruido accidental, devolvemos guiones
+    if (normalizedIndex < 0 || normalizedIndex >= 12) return "--";
+    
+    return noteStrings[normalizedIndex] + octave;
+}
