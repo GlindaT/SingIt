@@ -338,29 +338,107 @@ function obtenerItemPorId(id) {
 }
 
 async function loadTrackOptionsInKaraoke() {
-    try {
-        const items = await getLibraryItems(); // Trae los elementos locales
-        
-        // Buscar el selector en la pestaña Karaoke (revisando variantes de ID comunes)
-        const selectKaraoke = $("karaokeTrackSelect") || document.querySelector("#karaoke select") || document.querySelector("section#karaoke select");
-        
-        if (selectKaraoke) {
-            selectKaraoke.innerHTML = '<option value="">-- Selecciona una canción desde tu Biblioteca --</option>';
-            
-            // Filtrar y mostrar los que tengan datos de letra guardados o tipo karaoke
-            items.forEach(item => {
-                if (item.type === "karaoke" || item.lyrics || item.type === "pista") {
-                    const opt = document.createElement("option");
-                    opt.value = item.id; // Guardamos solo el ID numérico para evitar errores
-                    opt.textContent = `🎤 ${item.name}`;
-                    selectKaraoke.appendChild(opt);
-                }
-            });
-            console.log("🎯 Selector de Karaoke sincronizado con éxito.");
-        }
-    } catch (err) {
-        console.error("Error al cargar las opciones en Karaoke:", err);
+    if (!db) {
+        console.warn("⚠️ Base de datos local no lista para Karaoke.");
+        return;
     }
+
+    try {
+        const tx = db.transaction("library", "readonly");
+        const store = tx.objectStore("library");
+        const req = store.getAll();
+        
+        req.onsuccess = () => {
+            const items = req.result || [];
+            console.log("📦 Analizando ítems para el catálogo de Karaoke:", items);
+
+            // Mapeo directo a los IDs exactos de tu HTML
+            const divCatalogoGlobal = document.getElementById("catalogList");
+            const divMisCanciones = document.getElementById("myKaraokeList");
+
+            // 1. Catálogo Global (Pistas instrumentales de base listas para cantar)
+            const pistasBase = items.filter(item => item.type === "pista" || item.type === "audio");
+            if (divCatalogoGlobal) {
+                if (pistasBase.length === 0) {
+                    divCatalogoGlobal.innerHTML = `<p style="color: var(--text-muted); font-style: italic; padding: 5px;">No hay pistas base cargadas en el catálogo.</p>`;
+                } else {
+                    divCatalogoGlobal.innerHTML = pistasBase.map(cancion => `
+                        <div class="song-card" style="background: #262626; padding: 10px 14px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--accent);">
+                            <div>
+                                <h4 style="margin: 0; color: #fff; font-size: 13px;">🎵 ${cancion.name}</h4>
+                                <small style="color: #9ca3af; font-size: 11px;">Pista Instrumental</small>
+                            </div>
+                            <button onclick="forzarCargaCancionKaraokeDirecta(${cancion.id})" class="btn-primary" style="padding: 4px 8px; font-size: 11px; background: var(--accent); border: none; border-radius: 4px; cursor: pointer; color: white;">
+                                ⚡ Cantar
+                            </button>
+                        </div>
+                    `).join("");
+                }
+            }
+
+            // 2. Mis Canciones (Los archivos que tú creas o sincronizas con tipo 'karaoke')
+            const misPropiosKaraokes = items.filter(item => item.type === "karaoke" || (item.name && item.name.toLowerCase().includes("karaoke")));
+            if (divMisCanciones) {
+                if (misPropiosKaraokes.length === 0) {
+                    divMisCanciones.innerHTML = `<p style="color: var(--text-muted); font-style: italic; padding: 5px;">No has sincronizado ninguna letra rítmica aún.</p>`;
+                } else {
+                    divMisCanciones.innerHTML = misPropiosKaraokes.map(cancion => `
+                        <div class="song-card" style="background: #262626; padding: 10px 14px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #f59e0b;">
+                            <div>
+                                <h4 style="margin: 0; color: #fff; font-size: 13px;">🎤 ${cancion.name}</h4>
+                                <small style="color: #f59e0b; font-size: 11px;">Sincronizado por Taps</small>
+                            </div>
+                            <button onclick="forzarCargaCancionKaraokeDirecta(${cancion.id})" class="btn-primary" style="padding: 4px 8px; font-size: 11px; background: #f59e0b; border: none; border-radius: 4px; cursor: pointer; color: white;">
+                                ⚡ Iniciar Juego
+                            </button>
+                        </div>
+                    `).join("");
+                }
+            }
+        };
+    } catch (err) {
+        console.error("❌ Error al renderizar catálogos de Karaoke:", err);
+    }
+}
+
+// FUNCIÓN PARA REPRODUCIR EL INSTRUMENTAL DE LA CANCIÓN SELECCIONADA EN KARAOKE
+function forzarCargaCancionKaraokeDirecta(id) {
+    if (!db) return;
+    
+    const tx = db.transaction("library", "readonly");
+    const store = tx.objectStore("library");
+    const req = store.get(id);
+    
+    req.onsuccess = () => {
+        const cancion = req.result;
+        if (!cancion) return alert("No se encontró el archivo.");
+
+        // Intentar acoplarse a cualquier tag audio que use tu app
+        const reproductorGlobal = document.getElementById("player") || document.querySelector("audio");
+        
+        if (reproductorGlobal) {
+            let urlAudio = "";
+            if (cancion.audioBlob || cancion.blob) {
+                urlAudio = URL.createObjectURL(cancion.audioBlob || cancion.blob);
+            } else if (cancion.file_url) {
+                urlAudio = cancion.file_url;
+            }
+
+            if (urlAudio) {
+                reproductorGlobal.src = urlAudio;
+                reproductorGlobal.load();
+                reproductorGlobal.play()
+                    .then(() => console.log(`▶️ Cantando ahora: ${cancion.name}`))
+                    .catch(e => console.warn("El audio requiere play manual del usuario:", e));
+                
+                alert(`🎤 Cargada: "${cancion.name}"\n\nDale Play al reproductor de música y ¡que empiece el show!`);
+            } else {
+                alert("Este archivo no contiene datos de audio reproducibles.");
+            }
+        } else {
+            alert("No se encontró un reproductor de audio en tu HTML para hacer sonar la música.");
+        }
+    };
 }
 
 // Renderiza la biblioteca con botones de reproducción reales para los Blobs
