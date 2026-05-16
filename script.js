@@ -166,7 +166,7 @@ async function getLibraryItems(type = null) {
 // =========================================================================
 // BLOQUE 4: CARGA DE ARCHIVOS DESDE PC Y BIBLIOTECA
 // =========================================================================
-/ Carga un archivo de voz limpia directamente desde la PC al Estudio
+// Carga un archivo de voz limpia directamente desde la PC al Estudio
 function cargarArchivoAudioPC(event) {
     const file = event.target.files[0];
     if (!file) return;
