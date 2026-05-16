@@ -88,8 +88,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Afinador
         safeAdd("recordBtn", "click", toggleAfinadorBtn);
 
-        // Archivos Locales (Carga desde PC en Estudio)
+        // Archivos Locales (Carga de voz desde PC)
         safeAdd("audioFile", "change", cargarArchivoAudioPC);
+        // Inicializar el botón de actualizar listas
+        inicializarBotonesBiblioteca();
 
         // Transcripción Whisper de Mentira / Simulada para desarrollo
         safeAdd("transcribeVoiceBtn", "click", transcribirVozConWhisper);
@@ -164,67 +166,124 @@ async function getLibraryItems(type = null) {
 // =========================================================================
 // BLOQUE 4: CARGA DE ARCHIVOS DESDE PC Y BIBLIOTECA
 // =========================================================================
+/ Carga un archivo de voz limpia directamente desde la PC al Estudio
 function cargarArchivoAudioPC(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    studioTrackFileName = file.name;
-    const player = $("player");
-    if (player) {
-        selectedVoiceBlob = file; // Guardamos el blob para el flujo de sincronización/splitter
-        player.src = URL.createObjectURL(file);
-        player.load();
-        console.log(`🎵 Archivo cargado localmente desde PC: ${file.name}`);
-        alert(`✅ Archivo "${file.name}" cargado con éxito en el reproductor.`);
+    // Asignar a las variables globales correctas del flujo de Estudio
+    studioSelectedTrackBlob = file;
+    studioSelectedTrackName = file.name;
+    
+    // Inyectar en el reproductor específico de voz del Estudio
+    const voicePlayer = $("selectedVoicePlayer") || $("player");
+    if (voicePlayer) {
+        voicePlayer.src = URL.createObjectURL(file);
+        voicePlayer.load();
+        console.log(`🎤 Voz cargada en Estudio desde PC: ${file.name}`);
+    }
+    
+    const status = $("selectedVoiceStatus") || $("studioStatus");
+    if (status) {
+        status.textContent = `Estado: "${file.name}" cargado desde PC. Listo para transcribir.`;
     }
 }
 
+// Carga las opciones en el selector de pistas de Estudio
 async function loadTrackOptionsInStudio() {
-    const tracks = await getLibraryItems();
+    const tracks = await getLibraryItems(); // Trae todo
     const select = $("studioTrackSelect");
     if (select) {
         select.innerHTML = '<option value="">Selecciona una pista desde Biblioteca</option>';
         tracks.forEach(track => {
-            const opt = document.createElement("option");
-            opt.value = track.id;
-            opt.textContent = track.name;
-            select.appendChild(opt);
+            // Solo mostrar elementos que sean pistas de fondo o instrumentales
+            if (track.type === "pista" || track.type === "audio") {
+                const opt = document.createElement("option");
+                opt.value = track.id;
+                opt.textContent = `🎵 ${track.name}`;
+                select.appendChild(opt);
+            }
         });
     }
 }
 
-async function loadTrackOptionsInKaraoke() {
-    const tracks = await getLibraryItems("karaoke");
-    const select = $("karaokeTrackSelect");
-    if (select) {
-        select.innerHTML = '<option value="">Selecciona una pista desde tu Biblioteca</option>';
-        tracks.forEach(track => {
-            const opt = document.createElement("option");
-            opt.value = JSON.stringify(track); 
-            opt.textContent = track.name;
-            select.appendChild(opt);
-        });
-    }
-}
-
-function renderLibrary(filtro = "todos") {
+// Renderiza la biblioteca con botones de reproducción reales para los Blobs
+async function renderLibrary(filtro = "todos") {
     const contenedor = $("libraryList");
     if (!contenedor) return;
     
-    getLibraryItems(filtro).then(items => {
-        if(items.length === 0) {
-            contenedor.innerHTML = "<p style='color: gray; padding: 10px;'>Esta carpeta de la biblioteca está vacía.</p>";
+    try {
+        const items = await getLibraryItems(filtro);
+        if (items.length === 0) {
+            contenedor.innerHTML = "<p style='color: #a3a3a3; padding: 10px; font-style: italic;'>Esta carpeta de la biblioteca está vacía.</p>";
             return;
         }
-        contenedor.innerHTML = items.map(item => `
-            <div class="card" style="margin-bottom:10px; padding:10px; border-left:4px solid #22c55e; background: #262626;">
-                <h4 style="margin: 0 0 5px 0;">🎵 ${item.name}</h4>
-                <small style="color: #a3a3a3;">Tipo: ${item.type.toUpperCase()}</small>
-            </div>
-        `).join("");
-    });
+        
+        contenedor.innerHTML = items.map(item => {
+            return `
+                <div class="card" style="margin-bottom:12px; padding:15px; border-left:4px solid #22c55e; background: #262626; border-radius:6px; display:flex; justify-content:between; align-items:center;">
+                    <div>
+                        <h4 style="margin: 0 0 5px 0; color: #fff;">🎵 ${item.name}</h4>
+                        <small style="background: #404040; padding: 2px 6px; border-radius:4px; color: #67e8f9; font-size: 11px;">
+                            ${item.type.toUpperCase()}
+                        </small>
+                    </div>
+                    <div>
+                        ${item.blob || item.file_url ? `
+                            <button onclick="reproducirItemBiblioteca(${item.id})" class="btn-small" style="background:#22c55e; padding:5px 10px; font-size:12px;">
+                                ▶️ Oír
+                            </button>
+                        ` : '<span style="color:gray; font-size:12px;">Sin audio</span>'}
+                    </div>
+                </div>
+            `;
+        }).join("");
+    } catch (err) {
+        console.error("Error al renderizar biblioteca:", err);
+    }
 }
 
+// Función clave: Permite reproducir los archivos almacenados en la base de datos
+async function reproducirItemBiblioteca(id) {
+    if (!db) return;
+    const tx = db.transaction("library_items", "readonly");
+    const store = tx.objectStore("library_items");
+    const req = store.get(id);
+    
+    req.onsuccess = () => {
+        const item = req.result;
+        if (!item) return;
+        
+        // Buscar un reproductor global o el del estudio para hacer la audición
+        const audioPlayer = $("player") || $("selectedVoicePlayer");
+        if (audioPlayer) {
+            if (item.blob) {
+                audioPlayer.src = URL.createObjectURL(item.blob);
+            } else if (item.file_url) {
+                audioPlayer.src = item.file_url;
+            }
+            audioPlayer.load();
+            audioPlayer.play();
+            alert(`▶️ Reproduciendo ahora desde Biblioteca: ${item.name}`);
+        } else {
+            alert("⚠️ No se encontró un reproductor de audio activo en esta pestaña.");
+        }
+    };
+}
+
+// Vincular la acción del botón "Actualizar Lista" manualmente
+function inicializarBotonesBiblioteca() {
+    // Si tu botón en el HTML se llama "refreshLibraryBtn" o similar, lo enlazamos aquí
+    const refreshBtn = $("refreshLibraryBtn") || $("updateLibraryListBtn") || $("btnActualizarLista");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+            renderLibrary("todos");
+            loadTrackOptionsInStudio();
+            loadTrackOptionsInKaraoke();
+            console.log("🔄 Listas de biblioteca actualizadas manualmente.");
+        });
+    }
+}
 // =========================================================================
 // BLOQUE 5: SPLITTER IA (SIMULADOR ESTABLE)
 // =========================================================================
@@ -242,28 +301,39 @@ function procesarSeparacionAudio() {
     const file = fileInput.files[0];
     if (statusBox) statusBox.style.display = "block";
     
-    if (statusText) statusText.textContent = "⏳ Analizando archivo y ejecutando Red Neuronal...";
-    if (detailText) detailText.textContent = "Separando frecuencias vocales de las instrumentales (Aprox. 3 segundos)...";
+    if (statusText) statusText.textContent = "⏳ Separando Voz y Pista con IA...";
+    if (detailText) detailText.textContent = "El algoritmo está aislando los canales armónicos del archivo original (3 segundos)...";
 
     setTimeout(() => {
-        if (statusText) statusText.textContent = "✅ ¡Separación Exitosa!";
-        if (detailText) detailText.textContent = "Se han generado 2 archivos: 'Pista (Instrumental)' y 'Voz (Limpia)'. Añadidos a la biblioteca.";
+        if (statusText) statusText.textContent = "✅ ¡Separación Completada con Éxito!";
+        if (detailText) detailText.textContent = "Se crearon e indexaron: '[Instrumental]' y '[Voz Limpia]' en tu Biblioteca.";
         
         if (db) {
             const tx = db.transaction("library_items", "readwrite");
             const store = tx.objectStore("library_items");
             
-            // Guardar las dos pistas resultantes
-            store.add({ name: `[Instrumental] ${file.name}`, type: 'pista', created_at: new Date() });
-            store.add({ name: `[Voz Limpia] ${file.name}`, type: 'voz', created_at: new Date() });
+            // Guardamos el archivo binario (Blob) real clonado para que se deje reproducir
+            store.add({ 
+                name: `[Instrumental] ${file.name.replace(/\.[^/.]+$/, "")}`, 
+                type: 'pista', 
+                blob: file, // Guardamos el binario real
+                created_at: new Date() 
+            });
+            
+            store.add({ 
+                name: `[Voz Limpia] ${file.name.replace(/\.[^/.]+$/, "")}`, 
+                type: 'voz', 
+                blob: file, // Usamos el mismo como base reproducible
+                created_at: new Date() 
+            });
+            
+            tx.oncomplete = () => {
+                // Actualizar todas las pantallas e inputs de la app automáticamente
+                renderLibrary("todos");
+                loadTrackOptionsInStudio();
+                loadTrackOptionsInKaraoke();
+            };
         }
-
-        setTimeout(() => {
-            renderLibrary("todos");
-            loadTrackOptionsInStudio();
-            loadTrackOptionsInKaraoke();
-        }, 500);
-
     }, 3000);
 }
 
