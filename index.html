@@ -96,10 +96,6 @@
   <div class="studio-controls" style="margin-bottom: 15px;">
     <button id="loadStudioTrackBtn" type="button">📥 Cargar pista seleccionada</button>
   </div>
-
-  <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
-  <input type="file" id="audioFile" accept="audio/*">
-
   <audio id="player" controls></audio>
   </div>
 
@@ -219,17 +215,23 @@
 
 </section>
 
-<!-- BIBLIOTECA -->
 <section id="biblioteca" class="tab">
   <h1>📁 Biblioteca</h1>
 
-  <!-- NUEVOS BOTONES DE CARPETA -->
-  <div class="folder-controls">
+  <div class="card mb-4" style="background: #1f1f1f; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+    <label class="block text-sm font-medium mb-2 style-color: #67e8f9;" style="color: #67e8f9; font-weight: bold; display: block; margin-bottom: 8px;">
+      📥 Importar audio desde mi PC a la Biblioteca:
+    </label>
+    <input type="file" id="audioFile" accept="audio/*">
+  </div>
+
+  <div class="folder-controls" style="margin-bottom: 15px;">
     <button class="folder-btn" onclick="renderLibrary('todos')">📂 Todos</button>
     <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
     <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
     <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
     <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+    <button id="btnActualizarLista" class="folder-btn" style="background: #404040;">🔄 Actualizar Lista</button>
   </div>
 
   <div class="card">
@@ -237,7 +239,7 @@
     <div id="libraryList"></div>
   </div>
 </section>
-
+    
     <!-- KARAOKE -->
     <section id="karaoke" class="tab">
       <h1>🎤 Karaoke</h1>
