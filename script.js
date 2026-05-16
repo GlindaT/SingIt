@@ -304,21 +304,27 @@ function obtenerItemPorId(id) {
 
 async function loadTrackOptionsInKaraoke() {
     try {
-        const tracks = await getLibraryItems("karaoke"); // Filtra solo los elementos tipo karaoke
-        const select = $("karaokeTrackSelect");
-        if (select) {
-            select.innerHTML = '<option value="">Selecciona una pista desde tu Biblioteca</option>';
-            tracks.forEach(track => {
-                const opt = document.createElement("option");
-                // Guardamos el objeto completo serializado en el value para poder leer la letra después
-                opt.value = JSON.stringify(track); 
-                opt.textContent = `🎤 ${track.name}`;
-                select.appendChild(opt);
+        const items = await getLibraryItems(); // Trae los elementos locales
+        
+        // Buscar el selector en la pestaña Karaoke (revisando variantes de ID comunes)
+        const selectKaraoke = $("karaokeTrackSelect") || document.querySelector("#karaoke select") || document.querySelector("section#karaoke select");
+        
+        if (selectKaraoke) {
+            selectKaraoke.innerHTML = '<option value="">-- Selecciona una canción desde tu Biblioteca --</option>';
+            
+            // Filtrar y mostrar los que tengan datos de letra guardados o tipo karaoke
+            items.forEach(item => {
+                if (item.type === "karaoke" || item.lyrics || item.type === "pista") {
+                    const opt = document.createElement("option");
+                    opt.value = item.id; // Guardamos solo el ID numérico para evitar errores
+                    opt.textContent = `🎤 ${item.name}`;
+                    selectKaraoke.appendChild(opt);
+                }
             });
-            console.log("🎯 Desplegable de Karaoke actualizado con éxito.");
+            console.log("🎯 Selector de Karaoke sincronizado con éxito.");
         }
     } catch (err) {
-        console.error("Error al cargar las opciones de Karaoke:", err);
+        console.error("Error al cargar las opciones en Karaoke:", err);
     }
 }
 
@@ -361,6 +367,40 @@ async function renderLibrary(filtro = "todos") {
 // Función clave: Permite reproducir los archivos almacenados en la base de datos
 async function reproducirItemBiblioteca(id) {
     if (!db) return;
+    
+    const botonActual = document.getElementById(`btn-lib-${id}`);
+
+    // SI EL USUARIO HACE CLIC EN EL AUDIO QUE YA ESTÁ SONANDO -> PAUSAR
+    if (audioActualBiblioteca && idItemActualBiblioteca === id) {
+        if (!audioActualBiblioteca.paused) {
+            audioActualBiblioteca.pause();
+            if (botonActual) {
+                botonActual.textContent = "▶️ Oír";
+                botonActual.style.background = "#22c55e";
+            }
+            console.log("⏸️ Audio pausado con éxito.");
+            return;
+        } else {
+            audioActualBiblioteca.play();
+            if (botonActual) {
+                botonActual.textContent = "⏸️ Pausar";
+                botonActual.style.background = "#e11d48";
+            }
+            return;
+        }
+    }
+
+    // SI HABÍA OTRO AUDIO SONANDO DE FONDO -> DETENERLO ANTES DE INICIAR EL NUEVO
+    if (audioActualBiblioteca) {
+        audioActualBiblioteca.pause();
+        // Restablecer el diseño del botón anterior si existe en pantalla
+        const botonAnterior = document.getElementById(`btn-lib-${idItemActualBiblioteca}`);
+        if (botonAnterior) {
+            botonAnterior.textContent = "▶️ Oír";
+            botonAnterior.style.background = "#22c55e";
+        }
+    }
+
     const tx = db.transaction("library_items", "readonly");
     const store = tx.objectStore("library_items");
     const req = store.get(id);
@@ -369,23 +409,58 @@ async function reproducirItemBiblioteca(id) {
         const item = req.result;
         if (!item) return;
         
-        // Buscar un reproductor global o el del estudio para hacer la audición
-        const audioPlayer = $("player") || $("selectedVoicePlayer");
-        if (audioPlayer) {
-            if (item.blob) {
-                audioPlayer.src = URL.createObjectURL(item.blob);
-            } else if (item.file_url) {
-                audioPlayer.src = item.file_url;
-            }
-            audioPlayer.load();
-            audioPlayer.play();
-            alert(`▶️ Reproduciendo ahora desde Biblioteca: ${item.name}`);
+        let urlAudio = "";
+        if (item.blob) {
+            urlAudio = URL.createObjectURL(item.blob);
+        } else if (item.file_url) {
+            urlAudio = item.file_url;
+        }
+        
+        if (!urlAudio) return alert("Este archivo no contiene datos binarios de audio reproducibles.");
+
+        // Enrutamiento inteligente según la pestaña activa o tipo
+        const playerPista = document.querySelector("#estudio audio") || $("player");
+        const playerVoz = document.querySelector("section#estudio .card:nth-of-type(2) audio") || $("selectedVoicePlayer");
+
+        if (item.type === "voz" && playerVoz) {
+            playerVoz.src = urlAudio;
+            audioActualBiblioteca = playerVoz;
+        } else if (item.type === "pista" && playerPista) {
+            playerPista.src = urlAudio;
+            audioActualBiblioteca = playerPista;
         } else {
-            alert("⚠️ No se encontró un reproductor de audio activo en esta pestaña.");
+            // Reproductor global por defecto
+            const defaultPlayer = $("player") || playerPista || playerVoz;
+            if (defaultPlayer) {
+                defaultPlayer.src = urlAudio;
+                audioActualBiblioteca = defaultPlayer;
+            }
+        }
+
+        if (audioActualBiblioteca) {
+            idItemActualBiblioteca = id;
+            audioActualBiblioteca.load();
+            audioActualBiblioteca.play()
+                .then(() => {
+                    if (botonActual) {
+                        botonActual.textContent = "⏸️ Pausar";
+                        botonActual.style.background = "#e11d48";
+                    }
+                })
+                .catch(err => console.error("Error al reproducir:", err));
+
+            // Al terminar el audio, restablecer el botón
+            audioActualBiblioteca.onended = () => {
+                if (botonActual) {
+                    botonActual.textContent = "▶️ Oír";
+                    botonActual.style.background = "#22c55e";
+                }
+                audioActualBiblioteca = null;
+                idItemActualBiblioteca = null;
+            };
         }
     };
 }
-
 // Vincular la acción del botón "Actualizar Lista" manualmente
 function inicializarBotonesBiblioteca() {
     // Busca el botón por cualquiera de los IDs habituales que maneja tu app
@@ -604,23 +679,22 @@ function mezclarYGuardarEnBibliotecaKaraoke() {
         return;
     }
 
-    const nombreKaraoke = prompt("Ponle un nombre a tu archivo Karaoke final listo para jugar:", `Karaoke - ${studioTrackFileName || "Nueva Canción"}`);
-    if (!nombreKaraoke) return;
+    const nombreKaraoke = prompt("Ponle un nombre a tu archivo Karaoke final listo para jugar:", "Mi nueva pista sincronizada");
+if (nombreKaraoke && db) {
+    const tx = db.transaction("library_items", "readwrite");
+    const store = tx.objectStore("library_items");
+    
+    store.add({
+        name: nombreKaraoke,
+        type: "karaoke", // ESTO ES CLAVE para que aparezca en el nuevo selector
+        lyrics: textoLetraGlobal, // Tu array de texto o marcas de tiempo
+        created_at: new Date()
+    });
 
-    if (db) {
-        const tx = db.transaction("library_items", "readwrite");
-        const store = tx.objectStore("library_items");
-        store.add({
-            name: nombreKaraoke,
-            type: 'karaoke',
-            transcription: transcriptionSegments,
-            created_at: new Date()
-        });
-    }
-
-    alert("🎉 ¡Mezcla completa! Empaquetado como Objeto Karaoke y enviado a tu Biblioteca.");
-    renderLibrary("todos");
-    loadTrackOptionsInKaraoke();
+    tx.oncomplete = async () => {
+        alert("🎉 ¡Objeto Karaoke creado y guardado en la Biblioteca con éxito!");
+        await loadTrackOptionsInKaraoke(); // Refresca el selector fantasma al instante
+    };
 }
 
 // =========================================================================
