@@ -854,3 +854,73 @@ function getFreqFromNoteName(noteName) {
     if (noteIndex === -1) return 440;
     return 16.3516 * Math.pow(2, ((octave * 12) + noteIndex) / 12);
 }
+
+// =========================================================================
+// FUNCIÓN INTEGRADA CON SUPABASE-CONFIG.JS E INDEXEDDB
+// =========================================================================
+async function cargarArchivoAudioPC(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 1. Clasificación rápida a través de prompt
+    const tipo = prompt(
+        `Detectamos el archivo: "${file.name}"\n\n¿Qué tipo de audio es?\nEscribe exactamente:\n"pista" (para instrumentales)\n"voz" (para voces limpias)\n"audio" (para canciones completas)`, 
+        "audio"
+    );
+
+    const tipoNormalizado = (tipo && ["pista", "voz", "audio"].includes(tipo.toLowerCase())) ? tipo.toLowerCase() : "audio";
+    const nombreLimpio = file.name.replace(/\.[^/.]+$/, "");
+
+    // Generar la ruta en el bucket real de tus capturas: "library"
+    const filePath = `${tipoNormalizado}s/${Date.now()}_${file.name}`;
+    let urlPublicaSupabase = "";
+
+    console.log("⏳ Subiendo binario a Supabase Storage usando supabase-config...");
+    try {
+        // Usamos directamente el cliente global 'supabase' de tu archivo de configuración
+        const { data, error } = await supabase.storage
+            .from('library') // Tu bucket real
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true
+            });
+
+        if (error) throw error;
+
+        // Si la Policy (true) está activa en tu panel, esto te dará el enlace público de streaming
+        const { data: urlData } = supabase.storage
+            .from('library')
+            .getPublicUrl(filePath);
+            
+        urlPublicaSupabase = urlData.publicUrl;
+        console.log("☁️ ¡Subido con éxito a la nube! URL de streaming:", urlPublicaSupabase);
+
+    } catch (err) {
+        // Alerta en consola si las RLS de Supabase rechazan el envío
+        console.warn("⚠️ Nota: Guardando solo en Local (IndexedDB). Error en la nube:", err.message);
+    }
+
+    // --- 2. BACKUP SIMULTÁNEO EN TU INDEXEDDB LOCAL ---
+    if (db) {
+        const tx = db.transaction("library", "readwrite"); // Tu almacén real de IndexedDB
+        const store = tx.objectStore("library");
+        
+        store.add({
+            name: nombreLimpio,
+            type: tipoNormalizado,
+            audioBlob: file, // Almacena el binario local para que no dependas de internet para oírlo
+            file_url: urlPublicaSupabase, // Enlace de Supabase por si se borra el caché
+            created_at: new Date()
+        });
+
+        tx.oncomplete = async () => {
+            alert(`🎉 "${nombreLimpio}" procesado con éxito.\n¡Mapeado en interfaz local y respaldado en internet!`);
+            event.target.value = ""; // Limpiar el input para nuevas subidas
+            
+            // Refrescar selectores de Estudio, Karaoke y tarjetas de Biblioteca al instante
+            if (typeof renderLibrary === "function") await renderLibrary("todos");
+            if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
+            if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
+        };
+    }
+}
