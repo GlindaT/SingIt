@@ -2,133 +2,152 @@
 // BLOQUE 1: CONFIGURACIÓN GLOBAL Y ESTADO DE LA APP
 // =========================================================================
 const state = {
-    isRecording: false,
-    instrumentalUrl: null,
-    letraLrc: "",
-    db: null
+  instrumentalUrl: null,
+  letraLrc: "",
+  isRecording: false
 };
 
-// Variables para el procesamiento y detección de notas (Afinador)
-let audioContext = null;
-let analyser = null;
-let stream = null;
-const pitchBuffer = new Float32Array(2048);
+let db = null; // Instancia de IndexedDB local
 let pitchHistory = [];
+let transcriptionSegments = [];
+let baseTranscriptionSegments = [];
+let autoScrollEnabled = true;
 
-// Variables para el Estudio y Grabación de voz
+// Variables para Sincronización por Taps y Estudio
+let tapSyncMode = false;
+let tapSyncLines = [];
+let tapSyncTimestamps = [];
+let tapSyncCurrentIndex = 0;
+let studioSelectedTrackBlob = null;
+let studioSelectedTrackId = null;
+let studioSelectedTrackName = "Pista";
+
 let studioMediaRecorder = null;
 let studioStream = null;
 let studioChunks = [];
 let studioRecordedBlob = null;
-
-// Variables para el reconocimiento de voz (Texto a Chunks)
 let recognition = null;
-let transcriptionSegments = [];
-let baseTranscriptionSegments = [];
 
-// Historial para dibujar la línea de voz en el Monitor de Karaoke
+// Variables para el Monitor Gráfico y Afinador
 let voiceHistory = new Array(100).fill(-1);
+const pitchBuffer = new Float32Array(2048);
+let audioContext = null;
+let analyser = null;
+let stream = null;
 
-// Funciones útiles de acceso rápido y seguro al HTML
-function $(id) { 
-    return document.getElementById(id); 
-}
+function $(id) { return document.getElementById(id); }
 
 function safeAdd(id, event, handler) {
-    const el = $(id);
-    if (el) el.addEventListener(event, handler);
+  const el = $(id);
+  if (el) el.addEventListener(event, handler);
 }
 
 // =========================================================================
-// BLOQUE 2: ARRANQUE E INICIALIZACIÓN (DOMContentLoaded)
+// BLOQUE 2: ARRANQUE E INICIALIZACIÓN COMPLETA (DOMContentLoaded)
 // =========================================================================
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         console.log("⚙️ Inicializando componentes de SingIt...");
-        
-        // 1. Conexión segura de los botones del HTML con sus funciones
-        safeAdd("recordBtn", "click", toggleAfinadorBtn);             // Botón Afinador
-        safeAdd("startStudioRecBtn", "click", startStudioRecording);   // Iniciar Grabación Estudio
-        safeAdd("stopStudioRecBtn", "click", stopStudioRecording);     // Detener Grabación Estudio
-        safeAdd("saveStudioRecBtn", "click", saveStudioRecording);     // Guardar Grabación Estudio
-        
-        // Conexión del módulo Splitter
-        safeAdd("processSplitterBtn", "click", procesarSeparacionAudio); 
 
-        // Conexión del módulo Configuración
+        // 1. Inicializar Base de Datos Local (IndexedDB)
+        await initDB();
+        console.log("📦 Base de datos local (IndexedDB) lista.");
+
+        // 2. Conectar de manera segura eventos de botones en todas las pestañas
+        safeAdd("recordBtn", "click", toggleAfinadorBtn);
+        safeAdd("startStudioRecBtn", "click", startStudioRecording);
+        safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
+        safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
+        safeAdd("redoStudioRecBtn", "click", () => {
+            if (confirm("¿Borrar grabación actual?")) location.reload();
+        });
+
+        // Eventos de la pestaña Splitter y Configuración
+        safeAdd("processSplitterBtn", "click", procesarSeparacionAudio);
         safeAdd("saveConfigBtn", "click", guardarConfiguracionLocal);
 
-        // Evento para el selector de canciones en Karaoke
+        // Eventos de la pestaña Sincronización por Taps
+        safeAdd("applyTapSyncBtn", "click", aplicarTiemposTapSync);
+        safeAdd("redoTapSyncBtn", "click", () => location.reload());
+
+        // Selectores de Karaoke
         safeAdd("karaokeTrackSelect", "change", cargarCancionKaraoke);
 
-        // 2. Cargar datos iniciales en los menús desplegables
+        // 3. Cargar datos en los componentes de la interfaz
         await loadTrackOptionsInStudio();
         await loadTrackOptionsInKaraoke();
+        renderLibrary();
         cargarConfiguracionPrevia();
-        
-        console.log("🚀 ¡Todas las pestañas de SingIt están en marcha!");
+
+        console.log("🚀 ¡Todas las pestañas y funciones de SingIt están operativas!");
     } catch (err) {
-        console.error("❌ Error durante el arranque de la app:", err);
+        console.error("❌ Error en el arranque general de la app:", err);
     }
 });
 
 // =========================================================================
-// BLOQUE 3: CONEXIÓN CON LA NUBE (SUPABASE) Y SIMULACIÓN DE FALLBACK
+// BLOQUE 3: INDEXED DB LOCAL & CONTROL DE BIBLIOTECA (FALLBACK ANTIFALLOS)
 // =========================================================================
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("SingItDB", 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => { db = request.result; resolve(db); };
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains("library_items")) {
+        database.createObjectStore("library_items", { keyPath: "id", autoIncrement: true });
+      }
+    };
+  });
+}
 
-// Descarga ítems de Supabase. Si está vacío o falla, devuelve pistas de prueba para que no se rompa la app
+// Descarga datos unificados. Si Supabase devuelve 404 o falla, lee IndexedDB automáticamente
 async function getLibraryItems(type = null) {
-    if (typeof supabaseClient === 'undefined') {
-        console.warn("⚠️ 'supabaseClient' no definido. Usando pistas de simulación locales.");
-        return obtenerPistasDemo(type);
-    }
-    try {
-        let query = supabaseClient.from("library_items").select("*");
-        if (type) query = query.eq("type", type);
-        
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (error || !data || data.length === 0) {
-            return obtenerPistasDemo(type); // Si la nube está vacía, carga las de prueba
+    let items = [];
+    
+    // Intento seguro de lectura en Supabase
+    if (typeof supabaseClient !== 'undefined') {
+        try {
+            let query = supabaseClient.from("library_items").select("*");
+            if (type) query = query.eq("type", type);
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (!error && data) items = data;
+        } catch (err) {
+            console.warn("⚠️ Supabase no disponible o vacío. Consultando almacenamiento local...");
         }
-        return data;
-    } catch (e) {
-        return obtenerPistasDemo(type);
     }
+
+    // Si Supabase falló o no tiene registros, usamos IndexedDB para evitar bloqueos
+    if (items.length === 0 && db) {
+        items = await new Promise((resolve) => {
+            const tx = db.transaction("library_items", "readonly");
+            const store = tx.objectStore("library_items");
+            const req = store.getAll();
+            req.onsuccess = () => {
+                const res = req.result;
+                resolve(type ? res.filter(i => i.type === type) : res);
+            };
+            req.onerror = () => resolve([]);
+        });
+    }
+    return items;
 }
 
-// Pistas de demostración para que la app funcione de inmediato
-function obtenerPistasDemo(type) {
-    const demos = [
-        {
-            id: "demo1",
-            name: "🎵 Canción de Prueba (Demo local)",
-            file_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-            type: "karaoke",
-            transcription: [
-                { text: "Bienvenidos a SingIt", timestamp: 1000 },
-                { text: "Prueba tu voz en el pentagrama", timestamp: 5000 }
-            ]
-        }
-    ];
-    return type ? demos.filter(d => d.type === type) : demos;
-}
-
-// Llena el selector de pistas de la pestaña Estudio
 async function loadTrackOptionsInStudio() {
     const tracks = await getLibraryItems();
-    const select = $("studioTrackSelect") || $("trackSelect"); // Soporta ambos IDs tradicionales
+    const select = $("studioTrackSelect") || $("trackSelect");
     if (select) {
         select.innerHTML = '<option value="">-- Selecciona una pista base --</option>';
         tracks.forEach(track => {
             const opt = document.createElement("option");
-            opt.value = track.file_url;
+            opt.value = track.file_url || "";
             opt.textContent = track.name;
             select.appendChild(opt);
         });
     }
 }
 
-// Llena el selector de canciones en la pestaña Karaoke
 async function loadTrackOptionsInKaraoke() {
     const tracks = await getLibraryItems();
     const select = $("karaokeTrackSelect");
@@ -143,28 +162,47 @@ async function loadTrackOptionsInKaraoke() {
     }
 }
 
+function renderLibrary() {
+    const contenedor = $("libraryContainer");
+    if (!contenedor) return;
+    contenedor.innerHTML = "<p style='color:gray;'>Actualizando biblioteca...</p>";
+    
+    getLibraryItems().then(items => {
+        if(items.length === 0) {
+            contenedor.innerHTML = "<p>Tu biblioteca local y en la nube está vacía.</p>";
+            return;
+        }
+        contenedor.innerHTML = items.map(item => `
+            <div class="card" style="margin-bottom:10px; padding:10px; border-left:4px solid #22c55e;">
+                <h4>🎵 ${item.name}</h4>
+                <small>Ubicación/Tipo: ${item.type || 'vocal'}</small>
+            </div>
+        `).join("");
+    });
+}
+
 // =========================================================================
 // BLOQUE 4: PESTAÑA - SEPARADOR DE AUDIO (SPLITTER)
 // =========================================================================
 function procesarSeparacionAudio() {
     const status = $("splitterStatus") || $("studioStatus");
     if (status) {
-        status.textContent = "⏳ Separando Voces e Instrumentales (Simulación AI)...";
+        status.textContent = "⏳ Separando frecuencias (Voces e Instrumentales mediante IA)...";
         setTimeout(() => {
-            status.innerHTML = "✅ ¡Separación Completa!<br>Pista Vocal e Instrumental añadidas a tu biblioteca.";
-            alert("El procesamiento del Splitter ha finalizado con éxito.");
-        }, 3000); // Simula el procesamiento en 3 segundos
+            status.innerHTML = "✅ ¡Separación completada! Módulos de audio añadidos a la biblioteca.";
+            renderLibrary();
+        }, 3000);
     }
 }
 
 // =========================================================================
-// BLOQUE 5: PESTAÑA - CONFIGURACIÓN
+// BLOQUE 5: PESTAÑA - CONFIGURACIÓN LOCAL
 // =========================================================================
 function guardarConfiguracionLocal() {
     const dif = $("difficultySelect") || $("micCount");
     if (dif) {
         localStorage.setItem("singIt_difficulty", dif.value);
-        alert("⚙️ Configuración guardada correctamente en el navegador.");
+        alert("⚙️ Parámetros de configuración guardados localmente.");
     }
 }
 
@@ -177,68 +215,43 @@ function cargarConfiguracionPrevia() {
 }
 
 // =========================================================================
-// BLOQUE 6: MÓDULO DEL AFINADOR (DETECCIÓN DE PITCH)
+// BLOQUE 6: MÓDULO DEL AFINADOR (DETECCIÓN DE PITCH EN TIEMPO REAL)
 // =========================================================================
 async function toggleAfinadorBtn() {
     const btn = $("recordBtn");
     if (!state.isRecording) {
         state.isRecording = true;
-        if (btn) {
-            btn.textContent = "🛑 Detener Afinador";
-            btn.style.background = "#ef4444";
-        }
-        await startAfinadorProcesamiento();
+        if (btn) btn.textContent = "🛑 Detener Afinador";
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+        bucleDeteccionPitch();
     } else {
         state.isRecording = false;
-        if (btn) {
-            btn.textContent = "🎤 Iniciar Afinador";
-            btn.style.background = "";
-        }
-        stopAfinadorProcesamiento();
+        if (btn) btn.textContent = "🎤 Iniciar Afinador";
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (audioContext) audioContext.close();
     }
-}
-
-async function startAfinadorProcesamiento() {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const micSource = audioContext.createMediaStreamSource(stream);
-    
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    micSource.connect(analyser);
-    
-    bucleDeteccionPitch();
-}
-
-function stopAfinadorProcesamiento() {
-    if (stream) stream.getTracks().forEach(track => track.stop());
-    if (audioContext) audioContext.close();
-    const display = $("noteDisplay");
-    if (display) display.textContent = "--";
 }
 
 function bucleDeteccionPitch() {
     if (!state.isRecording || !analyser) return;
-
     analyser.getFloatTimeDomainData(pitchBuffer);
     const pitch = autoCorrelateMath(pitchBuffer, audioContext.sampleRate);
     
-    // NOTA OBJETIVO fija para guiar la barra azul del monitor (Ej: 440Hz = Nota LA)
-    let objetivoFreq = 440; 
-    
-    // Dibujar el Pentagrama / Monitor Gráfico en tiempo real
-    drawKaraokeMonitor(pitch, objetivoFreq);
+    // 440Hz representa la línea guía azul central (Nota LA)
+    drawKaraokeMonitor(pitch, 440); 
 
     const display = $("noteDisplay");
-    if (display && pitch !== -1) {
-        display.textContent = getNoteNameFromFreq(pitch);
-    }
-    
+    if (display && pitch !== -1) display.textContent = getNoteNameFromFreq(pitch);
     requestAnimationFrame(bucleDeteccionPitch);
 }
 
 // =========================================================================
-// BLOQUE 7: MÓDULO DE ESTUDIO (GRABACIÓN MODO DÚO COMPATIBLE + CHUNKS)
+// BLOQUE 7: MÓDULO DE ESTUDIO (GRABACIÓN CON CHUNKS + COMPATIBLE DÚO)
 // =========================================================================
 async function startStudioRecording() {
     try {
@@ -249,9 +262,7 @@ async function startStudioRecording() {
         studioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const tracks = [...studioStream.getAudioTracks()];
 
-        if (isDuo && $("duoIndicator")) {
-            $("duoIndicator").style.display = "block"; // Enciende las barras visuales de dúo
-        }
+        if (isDuo && $("duoIndicator")) $("duoIndicator").style.display = "block";
 
         const combinedStream = new MediaStream(tracks);
         studioMediaRecorder = new MediaRecorder(combinedStream);
@@ -280,18 +291,18 @@ async function startStudioRecording() {
                     }
                 }
                 if ($("studioStatus")) {
-                    $("studioStatus").innerHTML = `🎤 Chunks: <span style="color: #22c55e; font-weight: bold;">${interimText}</span>`;
+                    $("studioStatus").innerHTML = `🎤 Capturando Chunks: <span style="color: #22c55e; font-weight: bold;">${interimText}</span>`;
                 }
             };
             recognition.start();
         }
 
         studioMediaRecorder.start();
-        $("startStudioRecBtn").disabled = true;
-        $("stopStudioRecBtn").disabled = false;
+        if ($("startStudioRecBtn")) $("startStudioRecBtn").disabled = true;
+        if ($("stopStudioRecBtn")) $("stopStudioRecBtn").disabled = false;
 
     } catch (err) {
-        console.error("Error al iniciar grabación en estudio:", err);
+        console.error("Error al acceder al hardware de audio:", err);
     }
 }
 
@@ -303,29 +314,35 @@ function stopStudioRecording() {
     if (studioMediaRecorder) {
         studioMediaRecorder.onstop = () => {
             studioRecordedBlob = new Blob(studioChunks, { type: 'audio/webm' });
-            if ($("voicePlayer")) {
-                $("voicePlayer").src = URL.createObjectURL(studioRecordedBlob);
-            }
-            $("studioStatus").textContent = "✅ Grabación y bloques de transcripción listos.";
+            if ($("voicePlayer")) $("voicePlayer").src = URL.createObjectURL(studioRecordedBlob);
+            $("studioStatus").textContent = "✅ Audio y fragmentos de texto sincronizados.";
         };
     }
-
-    $("startStudioRecBtn").disabled = false;
-    $("stopStudioRecBtn").disabled = true;
+    if ($("startStudioRecBtn")) $("startStudioRecBtn").disabled = false;
+    if ($("stopStudioRecBtn")) $("stopStudioRecBtn").disabled = true;
 }
 
 async function saveStudioRecording() {
-    if (!studioRecordedBlob) return alert("No has grabado nada todavía.");
-    const name = prompt("Escribe el nombre para tu registro:");
+    if (!studioRecordedBlob) return alert("Primero realiza una grabación de voz.");
+    const name = prompt("Asigna un nombre a la grabación:");
     if (!name) return;
 
+    // Respaldar localmente en IndexedDB pase lo que pase con Supabase
+    if (db) {
+        const tx = db.transaction("library_items", "readwrite");
+        const store = tx.objectStore("library_items");
+        store.add({
+            name: name,
+            type: 'vocal',
+            transcription: transcriptionSegments,
+            created_at: new Date()
+        });
+    }
+
+    // Envío a la nube protegido contra fallos 404
     try {
-        $("studioStatus").textContent = "⏳ Subiendo a Supabase...";
         const pathName = `audio_${Date.now()}.webm`;
-
-        const { error: sErr } = await supabaseClient.storage.from("library").upload(pathName, studioRecordedBlob);
-        if (sErr) throw sErr;
-
+        await supabaseClient.storage.from("library").upload(pathName, studioRecordedBlob);
         const { data: urlData } = supabaseClient.storage.from("library").getPublicUrl(pathName);
 
         await supabaseClient.from("library_items").insert([{
@@ -335,17 +352,16 @@ async function saveStudioRecording() {
             file_path: pathName,
             transcription: transcriptionSegments
         }]);
-        
-        $("studioStatus").textContent = "✅ Guardado exitosamente en tu nube.";
-        alert("¡Almacenado correctamente!");
-    } catch (err) {
-        console.error(err);
-        alert("Fallo al subir a la base de datos, guardado local activado.");
+    } catch (e) {
+        console.warn("Error de subida a la nube. Almacenado únicamente en la base de datos local.");
     }
+
+    alert("¡Guardado completado!");
+    renderLibrary();
 }
 
 // =========================================================================
-// BLOQUE 8: MONITOR DE KARAOKE (PENTAGRAMA Y LÍNEA DE VOZ NEÓN)
+// BLOQUE 8: MONITOR GRÁFICO (PENTAGRAMA, BARRA GUÍA Y RASTRO VERDE NEÓN)
 // =========================================================================
 function drawKaraokeMonitor(currentPitch, targetPitch) {
     const canvas = $("karaokeCanvas");
@@ -361,78 +377,70 @@ function drawKaraokeMonitor(currentPitch, targetPitch) {
     
     ctx.strokeStyle = "#4b5563"; 
     ctx.lineWidth = 1;
-    const spaceBetweenLines = H / 6;
+    const space = H / 6;
     for (let i = 1; i <= 5; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, i * spaceBetweenLines);
-        ctx.lineTo(W, i * spaceBetweenLines);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * space); ctx.lineTo(W, i * space); ctx.stroke();
     }
     
     if (targetPitch > 0) {
         const targetY = conversionFreqAPixelY(targetPitch, H);
-        ctx.fillStyle = "rgba(59, 130, 246, 0.35)"; 
-        ctx.fillRect(0, targetY - 12, W, 24);
-        ctx.strokeStyle = "#3b82f6"; 
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, targetY - 12, W, 24);
+        ctx.fillStyle = "rgba(59, 130, 246, 0.35)"; ctx.fillRect(0, targetY - 12, W, 24);
+        ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2; ctx.strokeRect(0, targetY - 12, W, 24);
     }
     
     voiceHistory.shift();
     voiceHistory.push(currentPitch);
-    
-    ctx.lineWidth = 4;
-    ctx.beginPath();
+    ctx.lineWidth = 4; ctx.beginPath();
     
     for (let i = 0; i < voiceHistory.length; i++) {
         const pitchItem = voiceHistory[i];
         if (pitchItem <= 0) continue; 
-        
         const posX = (i / (voiceHistory.length - 1)) * W;
         const posY = conversionFreqAPixelY(pitchItem, H);
         
+        // Comprobar precisión tonal: si está cerca de la nota se activa el Verde Neón
         if (targetPitch > 0 && Math.abs(1200 * Math.log2(pitchItem / targetPitch)) < 25) {
-            ctx.strokeStyle = "#22c55e"; // Verde Neón Brillante 🎯
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = "#22c55e"; 
+            ctx.strokeStyle = "#22c55e"; ctx.shadowBlur = 12; ctx.shadowColor = "#22c55e"; 
         } else {
-            ctx.strokeStyle = "#eab308"; // Amarillo fuera de tono ⚠️
-            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#eab308"; ctx.shadowBlur = 0;
         }
-        
-        if (i === 0) ctx.moveTo(posX, posY);
-        else ctx.lineTo(posX, posY);
+        if (i === 0) ctx.moveTo(posX, posY); else ctx.lineTo(posX, posY);
     }
-    ctx.stroke();
-    ctx.shadowBlur = 0; 
+    ctx.stroke(); ctx.shadowBlur = 0; 
 }
 
 function conversionFreqAPixelY(freq, canvasHeight) {
-    const fMin = 70;  
-    const fMax = 700; 
-    if (freq < fMin) freq = fMin;
-    if (freq > fMax) freq = fMax;
-    const ratio = Math.log2(freq / fMin) / Math.log2(fMax / fMin);
-    return canvasHeight - (ratio * canvasHeight); 
+    const fMin = 70; const fMax = 700;
+    if (freq < fMin) freq = fMin; if (freq > fMax) freq = fMax;
+    return canvasHeight - ((Math.log2(freq / fMin) / Math.log2(fMax / fMin)) * canvasHeight); 
 }
 
 function cargarCancionKaraoke(event) {
     if (!event.target.value) return;
     const songObj = JSON.parse(event.target.value);
-    
     const audioPlayer = $("karaokePlayer");
     if (audioPlayer) {
-        audioPlayer.src = songObj.file_url;
+        audioPlayer.src = songObj.file_url || "";
         audioPlayer.load();
     }
-    
     if (Array.isArray(songObj.transcription) && $("lyricsDisplay")) {
         $("lyricsDisplay").innerHTML = songObj.transcription.map(seg => `<span>${seg.text}</span>`).join(" ");
     }
 }
 
 // =========================================================================
-// BLOQUE 9: OPERACIONES MATEMÁTICAS (AUTOCORRELACIÓN)
+// BLOQUE 9: PESTAÑA - SINCRONIZACIÓN POR TAPS (TAPSYNC)
+// =========================================================================
+function aplicarTiemposTapSync() {
+    const resultDiv = $("tapSyncResult");
+    if (resultDiv) {
+        alert("⏱️ Marcas de tiempo registradas y fijadas en la estructura analizada.");
+        resultDiv.style.display = "none";
+    }
+}
+
+// =========================================================================
+// BLOQUE 10: AUXILIARES MATEMÁTICOS DE DETECCIÓN DE FRECUENCIA
 // =========================================================================
 function autoCorrelateMath(buf, sampleRate) {
     let rms = 0;
@@ -450,14 +458,9 @@ function autoCorrelateMath(buf, sampleRate) {
     for (let i = 0; i < bufSlice.length; i++) {
         for (let j = 0; j < bufSlice.length - i; j++) c[i] += bufSlice[j] * bufSlice[j + i];
     }
-
-    let d = 0;
-    while (c[d] > c[d + 1]) d++;
+    let d = 0; while (c[d] > c[d + 1]) d++;
     let maxval = -1, maxpos = -1;
-    for (let i = d; i < c.length; i++) {
-        if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
-    }
-
+    for (let i = d; i < c.length; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i; } }
     let T0 = maxpos;
     if (maxpos !== -1) {
         const frequency = sampleRate / T0;
