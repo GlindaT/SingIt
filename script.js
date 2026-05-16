@@ -46,91 +46,98 @@ function safeAdd(id, event, handler) {
 // BLOQUE 2: ARRANQUE E INICIALIZACIÓN (CONECTANDO NAVEGACIÓN Y BOTONES REALES)
 // =========================================================================
 window.addEventListener('DOMContentLoaded', async () => {
+    console.log("⚙️ Iniciando sincronización híbrida SingIt...");
+
+    // 1. Inicializar Base de Datos Local de forma segura
     try {
-        console.log("⚙️ Sincronizando JavaScript con el HTML real...");
-
-        // 1. Inicializar Base de Datos Local
         await initDB();
-        console.log("📦 Base de datos local (IndexedDB) lista.");
-
-        // 2. Controlador de Navegación Lateral (Tabs)
-        const mapeoPestanas = [
-            { botonId: "btnAfinador", seccionId: "afinador" },
-            { botonId: "btnEstudio", seccionId: "estudio" },
-            { botonId: "btnBiblioteca", seccionId: "biblioteca" },
-            { botonId: "btnKaraoke", seccionId: "karaoke" },
-            { botonId: "btnSplitter", seccionId: "splitter" },
-            { botonId: "btnConfig", seccionId: "config" }
-        ];
-
-        mapeoPestanas.forEach(mapeo => {
-            const botonEl = $(mapeo.botonId);
-            if (botonEl) {
-                botonEl.addEventListener('click', () => {
-                    document.querySelectorAll('.tab').forEach(seccion => seccion.classList.remove('active'));
-                    document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
-
-                    const seccionObjetivo = $(mapeo.seccionId);
-                    if (seccionObjetivo) {
-                        seccionObjetivo.classList.add('active');
-                        botonEl.classList.add('active');
-                        console.log(`📂 Cambiado a pestaña: ${mapeo.seccionId}`);
-                        if (mapeo.seccionId === 'karaoke' && typeof drawKaraokeMonitor === 'function') {
-                            drawKaraokeMonitor(0, 0);
-                        }
-                    }
-                });
-            }
-        });
-
-        // 3. Vinculación de Eventos del HTML a Funciones del Script
-        
-        // Afinador
-        safeAdd("recordBtn", "click", toggleAfinadorBtn);
-
-        // --- ENLACE CRÍTICO: INPUT DE AUDIO DE LA PC (SUPABASE + LOCAL) ---
-        // Buscamos el elemento "audioFile" y le asignamos la función que creamos antes
-        const audioFileInput = document.getElementById("audioFile") || $("audioFile");
-        if (audioFileInput) {
-            audioFileInput.addEventListener("change", cargarArchivoAudioPC);
-            console.log("📥 Buscador de archivos de la PC vinculado correctamente.");
-        }
-      
-        // Inicializar el botón de actualizar listas de la biblioteca
-        inicializarBotonesBiblioteca();
-
-        // Transcripción Whisper de Mentira / Simulada para desarrollo
-        safeAdd("transcribeVoiceBtn", "click", transcribirVozConWhisper);
-
-        // Taps Sincronización
-        safeAdd("applyTapSyncBtn", "click", finalizarSincronizacionTaps);
-        safeAdd("redoTapSyncBtn", "click", () => location.reload());
-
-        // Grabación en Estudio
-        safeAdd("startStudioRecBtn", "click", startStudioRecording);
-        safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
-        safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
-        safeAdd("redoStudioRecBtn", "click", () => {
-            if (confirm("¿Borrar grabación actual?")) location.reload();
-        });
-
-        // Splitter
-        safeAdd("splitBtn", "click", procesarSeparacionAudio);
-
-        // Karaoke e Importador
-        safeAdd("karaokeTrackSelect", "change", cargarCancionKaraoke);
-        safeAdd("karaokeMixBtn", "click", mezclarYGuardarEnBibliotecaKaraoke);
-
-        // 4. Cargas de datos iniciales en la UI
-        await loadTrackOptionsInStudio();
-        inicializarBotonesCargaEstudio();
-        await loadTrackOptionsInKaraoke();
-        renderLibrary("todos");
-
-        console.log("🚀 ¡SingIt completamente operativo!");
-    } catch (err) {
-        console.error("❌ Error en el mapa de inicialización:", err);
+        console.log("📦 Base de datos local (library) lista.");
+    } catch (e) {
+        console.error("❌ Fallo crítico al abrir IndexedDB:", e);
     }
+
+    // 2. Controlador de Navegación Lateral (Tabs) con verificación de existencia
+    const mapeoPestanas = [
+        { botonId: "btnAfinador", seccionId: "afinador" },
+        { botonId: "btnEstudio", seccionId: "estudio" },
+        { botonId: "btnBiblioteca", seccionId: "biblioteca" },
+        { botonId: "btnKaraoke", seccionId: "karaoke" },
+        { botonId: "btnSplitter", seccionId: "splitter" },
+        { botonId: "btnConfig", seccionId: "config" }
+    ];
+
+    mapeoPestanas.forEach(mapeo => {
+        const botonEl = document.getElementById(mapeo.botonId);
+        if (botonEl) {
+            botonEl.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(seccion => seccion.classList.remove('active'));
+                document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
+
+                const seccionObjetivo = document.getElementById(mapeo.seccionId);
+                if (seccionObjetivo) {
+                    seccionObjetivo.classList.add('active');
+                    botonEl.classList.add('active');
+                    console.log(`📂 Cambiado a pestaña: ${mapeo.seccionId}`);
+                }
+            });
+        } else {
+            console.warn(`⚠️ Ojo: El botón lateral con ID '${mapeo.botonId}' no existe en tu HTML actual.`);
+        }
+    });
+
+    // 3. Vinculación de Eventos Individuales (Aislados para que ninguno rompa al otro)
+    const mapeoEventosReales = [
+        { id: "recordBtn", evento: "click", fn: typeof toggleAfinadorBtn !== "undefined" ? toggleAfinadorBtn : null },
+        { id: "transcribeVoiceBtn", evento: "click", fn: typeof transcribirVozConWhisper !== "undefined" ? transcribirVozConWhisper : null },
+        { id: "applyTapSyncBtn", evento: "click", fn: typeof finalizarSincronizacionTaps !== "undefined" ? finalizarSincronizacionTaps : null },
+        { id: "startStudioRecBtn", evento: "click", fn: typeof startStudioRecording !== "undefined" ? startStudioRecording : null },
+        { id: "stopStudioRecBtn", evento: "click", fn: typeof stopStudioRecording !== "undefined" ? stopStudioRecording : null },
+        { id: "saveStudioRecBtn", evento: "click", fn: typeof saveStudioRecording !== "undefined" ? saveStudioRecording : null },
+        { id: "splitBtn", evento: "click", fn: typeof procesarSeparacionAudio !== "undefined" ? procesarSeparacionAudio : null },
+        { id: "karaokeMixBtn", evento: "click", fn: typeof mezclarYGuardarEnBibliotecaKaraoke !== "undefined" ? mezclarYGuardarEnBibliotecaKaraoke : null }
+    ];
+
+    mapeoEventosReales.forEach(item => {
+        try {
+            const el = document.getElementById(item.id);
+            if (el && item.fn) {
+                el.addEventListener(item.evento, item.fn);
+                console.log(`✅ Evento '${item.evento}' asignado con éxito al ID: ${item.id}`);
+            } else if (!el) {
+                console.warn(`🔍 Buscando ID: El elemento '#${item.id}' no se encuentra en el HTML.`);
+            }
+        } catch (err) {
+            console.error(`❌ Error al conectar el ID '${item.id}':`, err);
+        }
+    });
+
+    // Enlace especial para el cargador de archivos desde la PC (Híbrido Supabase + Local)
+    try {
+        const audioFileInput = document.getElementById("audioFile");
+        if (audioFileInput && typeof cargarArchivoAudioPC === "function") {
+            audioFileInput.addEventListener("change", cargarArchivoAudioPC);
+            console.log("📥 Selector de archivos '#audioFile' vinculado correctamente.");
+        } else {
+            console.warn("⚠️ Advertencia: No se encontró '#audioFile' o la función 'cargarArchivoAudioPC' está rota.");
+        }
+    } catch (e) {
+        console.error("Error en enlace de archivos:", e);
+    }
+
+    // Inicializar funciones nativas de la interfaz si existen
+    if (typeof inicializarBotonesBiblioteca === "function") inicializarBotonesBiblioteca();
+
+    // 4. EJECUCIÓN DEL RENDERIZADO (Aunque algo de arriba falte, esto correrá sí o sí)
+    console.log("🔄 Forzando carga visual de catálogos y listas...");
+    try {
+        if (typeof renderLibrary === "function") await renderLibrary("todos");
+        if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
+        if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
+    } catch (err) {
+        console.error("❌ Fallo al renderizar elementos visuales en las pestañas:", err);
+    }
+
+    console.log("🚀 ¡Circuito de inicialización SingIt completado con éxito!");
 });
 
 // =========================================================================
