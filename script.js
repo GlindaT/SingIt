@@ -119,6 +119,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         // 4. Cargas de datos en la UI
         await loadTrackOptionsInStudio();
+        inicializarBotonesCargaEstudio();
         await loadTrackOptionsInKaraoke();
         renderLibrary("todos");
 
@@ -215,22 +216,92 @@ async function cargarArchivoAudioPC(event) {
 
 // Carga TODOS los audios tipo "voz" o "pista" disponibles para trabajar en el Estudio
 async function loadTrackOptionsInStudio() {
-    const items = await getLibraryItems();
-    const select = $("studioTrackSelect"); // Selector de pistas/audios de fondo
-    
-    if (select) {
-        select.innerHTML = '<option value="">Selecciona una pista desde Biblioteca</option>';
+    try {
+        const items = await getLibraryItems(); // Recupera todo de IndexedDB
+        
+        const selectPista = $("studioTrackSelect") || document.querySelector("#estudio select");
+        const selectVoz = $("studioVoiceSelect") || document.querySelector("section#estudio .card:nth-of-type(2) select");
+
+        // Limpiar selectores con sus opciones por defecto
+        if (selectPista) {
+            selectPista.innerHTML = '<option value="">-- Selecciona una pista desde Biblioteca --</option>';
+        }
+        if (selectVoz) {
+            selectVoz.innerHTML = '<option value="">-- Selecciona una voz guardada --</option>';
+        }
+
+        // Distribuir de forma estricta según el tipo registrado
         items.forEach(item => {
-            // Permitir cargar pistas completas o instrumentales de fondo
-            if (item.type === "pista" || item.type === "audio") {
-                const opt = document.createElement("option");
-                opt.value = item.id;
-                opt.textContent = `🎵 [${item.type.toUpperCase()}] ${item.name}`;
-                select.appendChild(opt);
+            const opt = document.createElement("option");
+            opt.value = item.id;
+            opt.textContent = `${item.name}`;
+
+            if ((item.type === "pista" || item.type === "audio") && selectPista) {
+                selectPista.appendChild(opt);
+            } else if (item.type === "voz" && selectVoz) {
+                selectVoz.appendChild(opt);
+            }
+        });
+
+        console.log("✅ Selectores de Estudio (Pistas y Voces) mapeados correctamente.");
+    } catch (err) {
+        console.error("Error al poblar selectores de Estudio:", err);
+    }
+}
+
+// 2. FUNCIÓN PARA LOS BOTONES "CARGAR PISTA" Y "CARGAR VOZ" EN TU INTERFAZ
+function inicializarBotonesCargaEstudio() {
+    // Botón para inyectar la Pista Musical seleccionada al reproductor
+    const btnCargarPista = $("btnCargarPista") || document.querySelector("button[onclick*='Pista']"); 
+    if (btnCargarPista) {
+        btnCargarPista.addEventListener("click", async () => {
+            const selectPista = $("studioTrackSelect") || document.querySelector("#estudio select");
+            if (!selectPista || !selectPista.value) return alert("Por favor, selecciona una pista instrumental.");
+            
+            const item = await obtenerItemPorId(Number(selectPista.value));
+            const playerPista = document.querySelector("#estudio .card:nth-of-type(1) audio") || $("player");
+            
+            if (item && playerPista) {
+                playerPista.src = item.blob ? URL.createObjectURL(item.blob) : item.file_url;
+                playerPista.load();
+                console.log("🎵 Pista cargada con éxito en el reproductor de Estudio.");
+            }
+        });
+    }
+
+    // Botón para inyectar la Voz de la Biblioteca al reproductor inferior
+    const btnCargarVoz = $("btnCargarVoz") || document.querySelector("button[onclick*='Voz']");
+    if (btnCargarVoz) {
+        btnCargarVoz.addEventListener("click", async () => {
+            const selectVoz = $("studioVoiceSelect") || document.querySelector("section#estudio .card:nth-of-type(2) select");
+            if (!selectVoz || !selectVoz.value) return alert("Por favor, selecciona una voz guardada.");
+            
+            const item = await obtenerItemPorId(Number(selectVoz.value));
+            const playerVoz = document.querySelector("section#estudio .card:nth-of-type(2) audio") || $("selectedVoicePlayer") || $("voicePlayer");
+            
+            if (item && playerVoz) {
+                playerVoz.src = item.blob ? URL.createObjectURL(item.blob) : item.file_url;
+                playerVoz.load();
+                console.log("🎙️ Voz cargada con éxito en el reproductor de Estudio.");
+                const statusText = document.querySelector("section#estudio .card:nth-of-type(2) p") || $("studioStatus");
+                if (statusText) statusText.textContent = `Estado: "${item.name}" lista en buffer.`;
             }
         });
     }
 }
+
+// Función auxiliar para extraer datos binarios directos de la base local
+function obtenerItemPorId(id) {
+    return new Promise((resolve) => {
+        if (!db) return resolve(null);
+        const tx = db.transaction("library_items", "readonly");
+        const store = tx.objectStore("library_items");
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+    });
+}
+
 async function loadTrackOptionsInKaraoke() {
     try {
         const tracks = await getLibraryItems("karaoke"); // Filtra solo los elementos tipo karaoke
