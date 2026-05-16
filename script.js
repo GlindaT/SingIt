@@ -357,36 +357,63 @@ async function loadTrackOptionsInKaraoke() {
 }
 
 // Renderiza la biblioteca con botones de reproducción reales para los Blobs
-async function renderLibrary(filtro = "todos") {
-    const contenedor = $("libraryList");
-    if (!contenedor) return;
-    
+async function renderLibrary(filterType = "todos") {
+    if (!db) return;
+
     try {
-        const items = await getLibraryItems(filtro);
-        if (items.length === 0) {
-            contenedor.innerHTML = "<p style='color: #a3a3a3; padding: 10px; font-style: italic;'>Esta carpeta de la biblioteca está vacía.</p>";
-            return;
-        }
-        
-        contenedor.innerHTML = items.map(item => {
-            return `
-                <div class="card" style="margin-bottom:12px; padding:15px; border-left:4px solid #22c55e; background: #262626; border-radius:6px; display:flex; justify-content:between; align-items:center;">
-                    <div>
-                        <h4 style="margin: 0 0 5px 0; color: #fff;">🎵 ${item.name}</h4>
-                        <small style="background: #404040; padding: 2px 6px; border-radius:4px; color: #67e8f9; font-size: 11px;">
+        // Apuntamos al almacén exacto de tu captura: "library"
+        const tx = db.transaction("library", "readonly");
+        const store = tx.objectStore("library");
+        const req = store.getAll();
+
+        req.onsuccess = () => {
+            const items = req.result || [];
+            const container = document.getElementById("libraryList") || document.querySelector("#biblioteca .grid");
+            
+            if (!container) return;
+            container.innerHTML = ""; // Limpiar antes de dibujar
+
+            // Filtrar por categoría (pista, voz, audio)
+            const itemsFiltrados = items.filter(item => filterType === "todos" || item.type === filterType);
+
+            if (itemsFiltrados.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #a3a3a3; padding: 40px;">La biblioteca está vacía en esta sección.</div>`;
+                return;
+            }
+
+            itemsFiltrados.forEach(item => {
+                const card = document.createElement("div");
+                card.className = "card audio-card";
+                
+                // CORRECCIÓN VISUAL: Verificación híbrida basada en tu captura
+                // Evaluamos 'item.audioBlob' (el nombre real de tu columna) y 'item.file_url'
+                const tieneAudio = (item.audioBlob || item.file_url);
+                const badgeColor = item.type === "pista" ? "#22c55e" : item.type === "voz" ? "#a855f7" : "#3b82f6";
+
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                        <span class="badge" style="background: ${badgeColor}; color: white; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 4px;">
                             ${item.type.toUpperCase()}
+                        </span>
+                        <small style="color: #6b7280; font-size: 10px;">
+                            ${item.file_url ? "☁️ En Supabase" : "💻 Solo Local"}
                         </small>
                     </div>
-                    <div>
-                        ${item.blob || item.file_url ? `
-                            <button onclick="reproducirItemBiblioteca(${item.id})" class="btn-small" style="background:#22c55e; padding:5px 10px; font-size:12px;">
-                                ▶️ Oír
-                            </button>
-                        ` : '<span style="color:gray; font-size:12px;">Sin audio</span>'}
+                    <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${item.name}
+                    </h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="btn-lib-${item.id}" 
+                                onclick="reproducirItemBiblioteca(${item.id})" 
+                                class="btn-primary" 
+                                style="flex: 1; padding: 6px; font-size: 12px; background: ${tieneAudio ? '#22c55e' : '#4b5563'}; border: none; border-radius: 4px; color: white;">
+                            ${tieneAudio ? "▶️ Oír" : "❌ Sin audio"}
+                        </button>
                     </div>
-                </div>
-            `;
-        }).join("");
+                `;
+                container.appendChild(card);
+            });
+        };
     } catch (err) {
         console.error("Error al renderizar biblioteca:", err);
     }
