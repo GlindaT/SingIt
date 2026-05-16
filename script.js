@@ -168,46 +168,69 @@ async function getLibraryItems(type = null) {
 // BLOQUE 4: CARGA DE ARCHIVOS DESDE PC Y BIBLIOTECA
 // =========================================================================
 // Carga un archivo de voz limpia directamente desde la PC al Estudio
-function cargarArchivoAudioPC(event) {
+async function cargarArchivoAudioPC(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Asignar a las variables globales correctas del flujo de Estudio
-    studioSelectedTrackBlob = file;
-    studioSelectedTrackName = file.name;
-    
-    // Inyectar en el reproductor específico de voz del Estudio
-    const voicePlayer = $("selectedVoicePlayer") || $("player");
-    if (voicePlayer) {
-        voicePlayer.src = URL.createObjectURL(file);
-        voicePlayer.load();
-        console.log(`🎤 Voz cargada en Estudio desde PC: ${file.name}`);
-    }
-    
-    const status = $("selectedVoiceStatus") || $("studioStatus");
-    if (status) {
-        status.textContent = `Estado: "${file.name}" cargado desde PC. Listo para transcribir.`;
+    // Preguntar al usuario qué tipo de archivo está subiendo para clasificarlo bien
+    const tipo = prompt(
+        `Detectamos: "${file.name}"\n\n¿Qué tipo de archivo es?\nEscribe:\n"pista" (para instrumentales/fondos)\n"voz" (para voces limpias o acapellas)\n"audio" (para canciones completas de origen)`, 
+        "audio"
+    );
+
+    // Validar que el tipo sea uno de los permitidos por el sistema
+    const tipoNormalizado = (tipo && ["pista", "voz", "audio"].includes(tipo.toLowerCase())) ? tipo.toLowerCase() : "audio";
+
+    if (db) {
+        const tx = db.transaction("library_items", "readwrite");
+        const store = tx.objectStore("library_items");
+        
+        const nuevoItem = {
+            name: file.name.replace(/\.[^/.]+$/, ""), // Quitar la extensión .mp3/.wav del nombre visual
+            type: tipoNormalizado,
+            blob: file, // Guardamos el binario real en IndexedDB
+            created_at: new Date()
+        };
+
+        store.add(nuevoItem);
+
+        tx.oncomplete = async () => {
+            console.log(`📥 Archivo indexado con éxito en la BD: ${file.name} como [${tipoNormalizado.toUpperCase()}]`);
+            alert(`✅ "${file.name}" se guardó en la Biblioteca como [${tipoNormalizado.toUpperCase()}].\nHaz clic en "Actualizar Lista" en tus pestañas para usarlo.`);
+            
+            // Limpiar el input para permitir subir el mismo archivo si se desea
+            event.target.value = "";
+            
+            // Refrescar vistas inmediatamente
+            await renderLibrary("todos");
+            await loadTrackOptionsInStudio();
+            await loadTrackOptionsInKaraoke();
+        };
+
+        tx.onerror = () => {
+            alert("❌ Ocurrió un error al intentar almacenar el archivo en la base de datos local.");
+        };
     }
 }
 
-// Carga las opciones en el selector de pistas de Estudio
+// Carga TODOS los audios tipo "voz" o "pista" disponibles para trabajar en el Estudio
 async function loadTrackOptionsInStudio() {
-    const tracks = await getLibraryItems(); // Trae todo
-    const select = $("studioTrackSelect");
+    const items = await getLibraryItems();
+    const select = $("studioTrackSelect"); // Selector de pistas/audios de fondo
+    
     if (select) {
         select.innerHTML = '<option value="">Selecciona una pista desde Biblioteca</option>';
-        tracks.forEach(track => {
-            // Solo mostrar elementos que sean pistas de fondo o instrumentales
-            if (track.type === "pista" || track.type === "audio") {
+        items.forEach(item => {
+            // Permitir cargar pistas completas o instrumentales de fondo
+            if (item.type === "pista" || item.type === "audio") {
                 const opt = document.createElement("option");
-                opt.value = track.id;
-                opt.textContent = `🎵 ${track.name}`;
+                opt.value = item.id;
+                opt.textContent = `🎵 [${item.type.toUpperCase()}] ${item.name}`;
                 select.appendChild(opt);
             }
         });
     }
 }
-
 async function loadTrackOptionsInKaraoke() {
     try {
         const tracks = await getLibraryItems("karaoke"); // Filtra solo los elementos tipo karaoke
