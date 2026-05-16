@@ -672,29 +672,31 @@ function finalizarSincronizacionTaps() {
     tapSyncMode = false;
 }
 
-function mezclarYGuardarEnBibliotecaKaraoke() {
-    const selectorPista = $("studioTrackSelect");
-    if (!selectorPista || !selectorPista.value) {
-        alert("⚠️ Selecciona qué Pista Musical de fondo se va a mezclar con este modelo de letra.");
-        return;
-    }
 
-    const nombreKaraoke = prompt("Ponle un nombre a tu archivo Karaoke final listo para jugar:", "Mi nueva pista sincronizada");
-if (nombreKaraoke && db) {
+function mezclarYGuardarEnBibliotecaKaraoke() {
+  const selectorPista = $("studioTrackSelect");
+  if (!selectorPista || !selectorPista.value) {
+    alert("⚠️ Selecciona qué Pista Musical de fondo se va a mezclar con este modelo de letra.");
+    return;
+  }
+  
+  const nombreKaraoke = prompt("Ponle un nombre a tu archivo Karaoke final listo para jugar:", "Mi nueva pista sincronizada");
+  if (nombreKaraoke && db) {
     const tx = db.transaction("library_items", "readwrite");
     const store = tx.objectStore("library_items");
     
     store.add({
-        name: nombreKaraoke,
-        type: "karaoke", // ESTO ES CLAVE para que aparezca en el nuevo selector
-        lyrics: textoLetraGlobal, // Tu array de texto o marcas de tiempo
-        created_at: new Date()
+      name: nombreKaraoke,
+      type: "karaoke", // ESTO ES CLAVE para que aparezca en el nuevo selector
+      lyrics: textoLetraGlobal, // Tu array de texto o marcas de tiempo
+      created_at: new Date()
     });
-
+    
     tx.oncomplete = async () => {
-        alert("🎉 ¡Objeto Karaoke creado y guardado en la Biblioteca con éxito!");
-        await loadTrackOptionsInKaraoke(); // Refresca el selector fantasma al instante
+      alert("🎉 ¡Objeto Karaoke creado y guardado en la Biblioteca con éxito!");
+      await loadTrackOptionsInKaraoke(); // Refresca el selector fantasma al instante
     };
+  }
 }
 
 // =========================================================================
