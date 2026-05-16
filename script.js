@@ -207,6 +207,26 @@ async function loadTrackOptionsInStudio() {
     }
 }
 
+async function loadTrackOptionsInKaraoke() {
+    try {
+        const tracks = await getLibraryItems("karaoke"); // Filtra solo los elementos tipo karaoke
+        const select = $("karaokeTrackSelect");
+        if (select) {
+            select.innerHTML = '<option value="">Selecciona una pista desde tu Biblioteca</option>';
+            tracks.forEach(track => {
+                const opt = document.createElement("option");
+                // Guardamos el objeto completo serializado en el value para poder leer la letra después
+                opt.value = JSON.stringify(track); 
+                opt.textContent = `🎤 ${track.name}`;
+                select.appendChild(opt);
+            });
+            console.log("🎯 Desplegable de Karaoke actualizado con éxito.");
+        }
+    } catch (err) {
+        console.error("Error al cargar las opciones de Karaoke:", err);
+    }
+}
+
 // Renderiza la biblioteca con botones de reproducción reales para los Blobs
 async function renderLibrary(filtro = "todos") {
     const contenedor = $("libraryList");
