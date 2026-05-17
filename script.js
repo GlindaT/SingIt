@@ -28,9 +28,6 @@ let studioStream = null;
 let studioChunks = [];
 let studioRecordedBlob = null;
 let recognition = null;
-let studioTrackFileName = "";
-let selectedVoiceBlob = null;
-let selectedVoiceId = null;
 
 // Variables para gestión de micrófonos
 let micTestStream = null;
