@@ -1274,7 +1274,7 @@ function updateKaraokeHighlight(currentTime) {
 // =========================================================================
 // BLOQUE AFINADOR CORE
 // =========================================================================
-async function toggleAfinadorBtn() {
+async function toggleRecording() {
     const btn = $("recordBtn");
     if (!state.isRecording) {
         state.isRecording = true;
