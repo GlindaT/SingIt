@@ -561,6 +561,12 @@ input[type="text"] {
     border-radius: 8px;
     border: 2px solid #3b82f6;
 }
+
+/* Aseguramos que el contenido general scrollee si hay muchas canciones */
+.content {
+    overflow-y: auto !important;
+    padding-bottom: 100px;
+}
 /* ==========================================
    SISTEMA DE TEMAS GLOBALES
 ========================================== */
@@ -804,6 +810,30 @@ input[type="text"] {
 .catalog-item-actions button, .my-karaoke-item-actions button {
   padding: 8px 15px;
   font-size: 13px;
+}
+
+
+/* Estilos por Pestaña */
+#afinador { font-family: 'Comfortaa', cursive; }
+#estudio { font-family: 'Spectral', cursive; }
+#karaoke { font-family: 'Comfortaa', cursive; }
+#splitter { font-family: 'Comfortaa', cursive; }
+#config { font-family: 'Spectral', serif; }
+
+progress {
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  border: none;
+}
+
+progress::-webkit-progress-bar {
+  background-color: var(--bg-main);
+}
+
+progress::-webkit-progress-value {
+  background-color: var(--accent);
+  transition: width 0.3s ease;
 }
 
 /* Modal */
