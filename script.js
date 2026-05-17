@@ -100,9 +100,6 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     }
     initKaraokeListeners();
-    await renderLibrary('todos');
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
 
     function applyKaraokeTheme() {
       const theme = localStorage.getItem("singIt_stage") || "clasico";
