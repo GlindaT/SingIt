@@ -3845,10 +3845,7 @@ async function startKaraokePitchDetection() {
   loop(); 
 }
   
-// ==========================================
-// CATÁLOGO Y MIS CANCIONES
-// =========================================
-  const loadKaraokeCatalog = ();
+const loadKaraokeCatalog = async () => {
   const container = $("catalogList");
   if (!container) return;
   
@@ -3906,8 +3903,8 @@ async function startKaraokePitchDetection() {
       </div>
     `;
   }
-}
-
+};
+  
 function parseUltraStarSync(syncContent) {
   if (!syncContent || typeof syncContent !== "string") return [];
   const lines = syncContent.split("\n").map(line => line.trim()).filter(Boolean);
