@@ -98,6 +98,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
         });
       }
+      }
     }
     initKaraokeListeners();
 
