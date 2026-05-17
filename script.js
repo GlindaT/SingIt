@@ -1064,6 +1064,7 @@ async function downsampleAudioBuffer(buffer, targetSampleRate = 16000) {
   source.start();
   return await offlineCtx.startRendering();
 }
+
 async function transcribeSelectedVoice() {
     if (!selectedVoiceBlob) {
         alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
@@ -1156,14 +1157,13 @@ async function transcribeSelectedVoice() {
             } catch (err) {
                 console.error("❌ Error guardando transcripción en BD:", err);
             }
-        }
-        if (status) {
-            status.textContent = "Estado: Transcripción completada y guardada ✅";
-        }
-    } catch (error) {
-        console.error(error);
-        alert("❌ Error al transcribir: " + error.message);
-        if (status) status.textContent = "Estado: Error en la transcripción";
+            if (status) {
+                status.textContent = "Estado: Transcripción completada ✅";
+            }
+        } catch (error) {
+        console.error("Error en la transcripción:", error);
+        if (status) status.textContent = "Estado: Error en la transcripción ❌";
+        alert("Hubo un problema al transcribir el audio.");
     }
 }
 
@@ -1174,52 +1174,57 @@ function audioBufferToWav(buffer, start, end) {
   const numChannels = buffer.numberOfChannels;
   const sampleRate = buffer.sampleRate;
   const length = end - start;
-  
-  // CORRECCIÓN: El tamaño debe considerar TODOS los canales
-  // 44 bytes de cabecera + (muestras * canales * 2 bytes por muestra de 16bit)
-  const bytesPerSample = 2;
-  const dataLength = length * numChannels * bytesPerSample;
-  const wavBuffer = new ArrayBuffer(44 + dataLength);
+  const wavBuffer = new ArrayBuffer(44 + length * 2);
   const view = new DataView(wavBuffer);
+
+  // Escribir cabecera WAV
   const writeString = (offset, string) => {
     for (let i = 0; i < string.length; i++) {
       view.setUint8(offset + i, string.charCodeAt(i));
     }
   };
-  
-  // Cabecera WAV
+
   writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataLength, true);
+  view.setUint32(4, 36 + length * 2, true);
   writeString(8, 'WAVE');
   writeString(12, 'fmt ');
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM Lineal
+  view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
-  view.setUint16(32, numChannels * bytesPerSample, true);
-  view.setUint16(34, 16, true); // bits per sample
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
   writeString(36, 'data');
-  view.setUint32(40, dataLength, true);
+  view.setUint32(40, length * 2, true);
 
   // Escribir datos de audio
   let offset = 44;
   for (let i = start; i < end; i++) {
     for (let channel = 0; channel < numChannels; channel++) {
       let sample = buffer.getChannelData(channel)[i];
-      // Clamp
+      // Clamp a -1, 1
       sample = Math.max(-1, Math.min(1, sample));
-      // Convertir a 16-bit PCM
-      const s = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-      
-      // Verificación de seguridad antes de escribir
-      if (offset <= wavBuffer.byteLength - 2) {
-        view.setInt16(offset, s, true);
-        offset += 2;
-      }
+      // Convertir a PCM 16-bit
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
     }
   }
+
   return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // Extraer solo la parte base64 (quitando el prefijo 'data:audio/wav;base64,')
+      const base64String = reader.result.split(',')[1];
+      resolve(base64String);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 
@@ -2844,368 +2849,238 @@ function redoTapSync() {
 // ==========================================
 // INIT
 // ==========================================
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    await initDB();
-    initSettings();
-
-    function applyKaraokeTheme() {
-      const theme = localStorage.getItem("singIt_stage") || "clasico";
-      const monitor = $("karaokeLiveLyrics");
-      if (monitor) {
-        monitor.className = "karaoke-lyrics theme-" + theme;
-      }
-    }
-
-    applyKaraokeTheme();
-
-    safeAdd("karaokeStage", "change", (e) => {
-      saveSetting("singIt_stage", e.target);
-      applyKaraokeTheme();
-    });
-
-    // navegación
-    safeAdd("btnAfinador", "click", () => showTab("afinador"));
-    safeAdd("btnEstudio", "click", () => showTab("estudio"));
-    safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
-    safeAdd("btnKaraoke", "click", () => showTab("karaoke"));
-    safeAdd("btnSplitter", "click", () => showTab("splitter"));
-    safeAdd("btnConfig", "click", () => showTab("config"));
-
-    // afinador
-    safeAdd("recordBtn", "click", toggleRecording);
-
-    // estudio
-    safeAdd("audioFile", "change", cargarAudioEstudio);
-    safeAdd("refreshStudioTrackListBtn", "click", loadTrackOptionsInStudio);
-    safeAdd("loadStudioTrackBtn", "click", loadSelectedTrackFromLibraryStudio);
-    safeAdd("playTrackBtn", "click", playTrack);
-    safeAdd("pauseTrackBtn", "click", pauseTrack);
-    safeAdd("stopTrackBtn", "click", stopTrack);
-    safeAdd("startStudioRecBtn", "click", startStudioRecording);
-    safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
-    safeAdd("redoStudioRecBtn", "click", redoStudioRecording);
-    safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
-    safeAdd("refreshVoiceListBtn", "click", loadVoiceOptionsInStudio);
-    safeAdd("loadSelectedVoiceBtn", "click", loadSelectedVoiceFromLibrary);
-    safeAdd("transcribeVoiceBtn", "click", transcribeSelectedVoice);
-    safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
-
-    // Toggle auto-scroll
-    safeAdd("toggleAutoScrollBtn", "click", () => {
-      autoScrollEnabled = !autoScrollEnabled;
-      const btn = $("toggleAutoScrollBtn");
-      if (btn) {
-        btn.textContent = autoScrollEnabled ? "🔒 Auto-scroll: ON" : "🔓 Auto-scroll: OFF";
-        btn.style.background = autoScrollEnabled ? "#f59e0b" : "#6b7280";
-      }
-    });
-
-    // Eventos de sincronización con Taps
-    safeAdd("startTapSyncBtn", "click", startTapSync);
-    safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
-    safeAdd("tapBeatBtn", "click", recordTap);
-    safeAdd("applyTapSyncBtn", "click", applyTapSync);
-    safeAdd("redoTapSyncBtn", "click", redoTapSync);
+initSettings();
+if (typeof document !== 'undefined') {
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+          // 1. Inicialización de Datos
+          await initDB();
+          await renderLibrary('todos');
+          await loadTrackOptionsInStudio();
+          await loadTrackOptionsInKaraoke();
       
-    // Importador UltraStar
-    safeAdd("importUltrastarBtn", "click", openUltrastarModal);
-    safeAdd("cancelImportBtn", "click", closeUltrastarModal);
-    safeAdd("confirmImportBtn", "click", confirmUltrastarImport);
-    safeAdd("ultrastarTxtFile", "change", handleUltrastarTxtChange);
-    safeAdd("refreshKaraokeCatalogBtn", "click", async () => {
-      await loadKaraokeCatalog();
-      await loadMyKaraokeSongs();
+          // 2. Temas y Configuración Visual
+          function applyKaraokeTheme() {
+            const theme = localStorage.getItem("vocalApp_stage") || "clasico";
+            const monitor = $("karaokeLiveLyrics");
+            if (monitor) {
+              monitor.className = "karaoke-lyrics theme-" + theme;
+            }
+          }
+          applyKaraokeTheme();
+
+          // 3. Navegación Principal
+          const tabs = ["Afinador", "Estudio", "Biblioteca", "Karaoke", "Splitter", "Config"];
+          tabs.forEach(tab => {
+            safeAdd(`btn${tab}`, "click", () => showTab(tab.toLowerCase()));
+          });
+
+          // 4. Asignación de Eventos (Botones)
+          safeAdd("karaokeStage", "change", (e) => {
+            saveSetting("vocalApp_stage", e.target);
+            applyKaraokeTheme();
+          });
+
+          // Afinador / Grabación
+          safeAdd("recordBtn", "click", toggleRecording);
+
+          // Estudio
+          safeAdd("audioFile", "change", cargarAudioEstudio);
+          safeAdd("refreshStudioTrackListBtn", "click", loadTrackOptionsInStudio);
+          safeAdd("loadStudioTrackBtn", "click", loadSelectedTrackFromLibraryStudio);
+          safeAdd("playTrackBtn", "click", playTrack);
+          safeAdd("pauseTrackBtn", "click", pauseTrack);
+          safeAdd("stopTrackBtn", "click", stopTrack);
+          safeAdd("startStudioRecBtn", "click", startStudioRecording);
+          safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
+          safeAdd("redoStudioRecBtn", "click", redoStudioRecording);
+          safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
+          safeAdd("refreshVoiceListBtn", "click", loadVoiceOptionsInStudio);
+          safeAdd("loadSelectedVoiceBtn", "click", loadSelectedVoiceFromLibrary);
+          safeAdd("transcribeVoiceBtn", "click", transcribeSelectedVoice);
+          safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
+
+          // Sincronización Manual (Tap)
+          safeAdd("startTapSyncBtn", "click", startTapSync);
+          safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
+          safeAdd("tapBeatBtn", "click", recordTap);
+          safeAdd("applyTapSyncBtn", "click", applyTapSync);
+          safeAdd("redoTapSyncBtn", "click", redoTapSync);
+
+          // Biblioteca y Karaoke
+          safeAdd("saveLibraryFileBtn", "click", saveManualFileToLibrary);
+          safeAdd("karaokeTrackFile", "change", cargarPistaKaraoke);
+          safeAdd("karaokeStartBtn", "click", startKaraokeRecording);
+          safeAdd("karaokeStopBtn", "click", stopKaraokeRecording);
+          safeAdd("karaokeRestartBtn", "click", restartKaraokeRecording);
+          safeAdd("karaokeMixBtn", "click", mixKaraoke);
+          safeAdd("refreshKaraokeTrackBtn", "click", loadTrackOptionsInKaraoke);
+          safeAdd("loadKaraokeTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
+
+          // 5. Sincronización de Reproductores (Loop de Dibujo)
+          const kTrack = $("karaokeTrack");
+          if (kTrack) {
+            kTrack.addEventListener("timeupdate", () => {
+              const currentTime = kTrack.currentTime;
+              // Esto actualiza las letras de texto
+              if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
+              // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
+              if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(currentTime, 0);
+            });
+          }
+            // Toggle auto-scroll
+            safeAdd("toggleAutoScrollBtn", "click", () => {
+                autoScrollEnabled = !autoScrollEnabled;
+                const btn = $("toggleAutoScrollBtn");
+                if (btn) {
+                    btn.textContent = autoScrollEnabled ? "🔒 Auto-scroll: ON" : "🔓 Auto-scroll: OFF";
+                    btn.style.background = autoScrollEnabled ? "#f59e0b" : "#6b7280";
+                }
+            });
+            const player = $("player");
+            if (player) {
+                player.addEventListener("timeupdate", () => {
+                    if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
+                });
+            }
+            // 6. Micrófonos y Configuración final
+            safeAdd("refreshMicsBtn", "click", loadAvailableMics);
+            safeAdd("testMic1Btn", "click", () => testMicrophone(1));
+            safeAdd("testMic2Btn", "click", () => testMicrophone(2));
+            safeAdd("mic1Select", "change", () => saveMicSelection(1));
+            safeAdd("mic2Select", "change", () => saveMicSelection(2));
+            safeAdd("micCount", "change", toggleMic2Visibility);
+            // Cargas iniciales
+            loadAvailableMics();
+            toggleMic2Visibility();
+            loadKaraokeCatalog();
+            loadMyKaraokeSongs();
+        } catch (error) {
+            console.error("Error en la inicialización:", error);
+        }
     });
-      
-    // Cerrar modal al hacer clic fuera
-    $("ultrastarModal")?.addEventListener("click", (e) => {
-      if (e.target.id === "ultrastarModal") {
-        closeUltrastarModal();
-      }
-    });
-      
-    // Cargar catálogo y mis canciones al iniciar
-    loadKaraokeCatalog();
-    loadMyKaraokeSongs();
-    
-    // biblioteca
-    safeAdd("saveLibraryFileBtn", "click", saveManualFileToLibrary);
+}
 
-    // karaoke
-    safeAdd("karaokeTrackFile", "change", cargarPistaKaraoke);
-    safeAdd("karaokeStartBtn", "click", startKaraokeRecording);
-    safeAdd("karaokeStopBtn", "click", stopKaraokeRecording);
-    safeAdd("karaokeRestartBtn", "click", restartKaraokeRecording);
-    safeAdd("karaokeMixBtn", "click", mixKaraoke);
-    safeAdd("refreshKaraokeTrackBtn", "click", loadTrackOptionsInKaraoke);
-    safeAdd("loadKaraokeTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
-
-    const kTrack = $("karaokeTrack");
-    if (kTrack) {
-      kTrack.addEventListener("timeupdate", () => {
-        syncKaraokeMonitor(kTrack.currentTime);
-      });
-    }
-
-    // splitter
-    safeAdd("splitBtn", "click", splitAudio);
-
-    // micrófonos
-      safeAdd("refreshMicsBtn", "click", loadAvailableMics);
-      safeAdd("testMic1Btn", "click", () => testMicrophone(1));
-      safeAdd("testMic2Btn", "click", () => testMicrophone(2));
-      safeAdd("mic1Select", "change", () => saveMicSelection(1));
-      safeAdd("mic2Select", "change", () => saveMicSelection(2));
-      safeAdd("micCount", "change", toggleMic2Visibility);
-    
-    // Cargar micrófonos al iniciar
-      loadAvailableMics();
-      toggleMic2Visibility();
-
-    // init
-    await renderLibrary('todos');
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
-
-    const player = $("player");
-    if (player) {
-      player.addEventListener("timeupdate", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
-
-      player.addEventListener("ended", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
-    }
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error inicializando la app");
-  }
-});
 
 // ==========================================
 // MONITOR DE KARAOKE (CANVAS)
 // ==========================================
 function drawKaraokeMonitor(currentTime, currentFreq) {
-  const canvas = $("karaokeCanvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
+    const canvas = $("karaokeCanvas");
+    if (!canvas || !transcriptionSegments || transcriptionSegments.length === 0) {
+        if (canvas) {
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#666";
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Sin datos de karaoke", canvas.width / 2, canvas.height / 2);
+        }
+        return;
+    }
 
-  // Guardamos la frecuencia actual
-  pitchHistory.push(currentFreq > 0 ? currentFreq : null);
-  if (pitchHistory.length > 60) pitchHistory.shift();
-
-  // Limpiamos el canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Configuración del pentagrama
-  const pentagramTop = 30;
-  const pentagramBottom = canvas.height - 60;
-  const pentagramHeight = pentagramBottom - pentagramTop;
-  
-  // Rango de notas (MIDI): C3 (48) a C6 (84)
-  const midiMin = 48;
-  const midiMax = 84;
-  const midiRange = midiMax - midiMin;
-
-  // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
-  const numLines = 12;
-  for (let i = 0; i <= numLines; i++) {
-    const y = pentagramTop + (pentagramHeight / numLines) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
-    ctx.stroke();
-  }
-
-  // --- DIBUJAR INDICADORES DE NOTAS A LA IZQUIERDA ---
-  ctx.fillStyle = "#666";
-  ctx.font = "10px Arial";
-  ctx.textAlign = "right";
-  const noteLabels = ["C6", "A5", "F5", "D5", "B4", "G4", "E4", "C4", "A3", "F3", "D3", "C3"];
-  noteLabels.forEach((label, i) => {
-    const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
-    ctx.fillText(label, 25, y);
-  });
-
-  // Función para convertir MIDI a posición Y
-  function midiToY(midi) {
-    if (!midi || midi < midiMin) midi = midiMin;
-    if (midi > midiMax) midi = midiMax;
-    const normalized = (midiMax - midi) / midiRange;
-    return pentagramTop + normalized * pentagramHeight;
-  }
-
-  // --- DIBUJAR BARRAS DE NOTAS (ULTRASTAR STYLE) ---
-  if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
+    const ctx = canvas.getContext("2d");
     
-    // Ventana de tiempo visible (5 segundos hacia adelante, 1 hacia atrás)
-    const timeWindowStart = currentTime - 1;
-    const timeWindowEnd = currentTime + 5;
-    const pixelsPerSecond = (canvas.width - 40) / 6; // 6 segundos de ventana
-    const lineX = 40; // Línea de tiempo actual
+    // Guardar historial para el rastro de voz
+    if (typeof pitchHistory === 'undefined') window.pitchHistory = [];
+    pitchHistory.push(currentFreq > 0 ? currentFreq : null);
+    if (pitchHistory.length > 60) pitchHistory.shift();
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // --- 1. CONFIGURACIÓN DE VENTANA ---
+    const pixelsPerSecond = (canvas.width - 100) / 6; 
+    const lineX = 100; // Línea de tiempo actual
+    const topMargin = 50;
+    const bottomMargin = 100;
+    const drawHeight = canvas.height - topMargin - bottomMargin;
 
-    // Dibujar línea de tiempo actual
+    // Escala MIDI dinámica
+    const allMidis = transcriptionSegments.map(s => s.midi).filter(m => m > 0);
+    const viewMidiMin = (allMidis.length > 0 ? Math.min(...allMidis) : 60) - 5;
+    const viewMidiMax = (allMidis.length > 0 ? Math.max(...allMidis) : 72) + 5;
+    const midiRange = viewMidiMax - viewMidiMin;
+
+    const midiToY = (m) => {
+        const normalized = (viewMidiMax - m) / midiRange;
+        return topMargin + (normalized * drawHeight);
+    };
+
+    // --- 2. DIBUJAR PENTAGRAMA ---
+    ctx.textAlign = "left";
+    for (let m = viewMidiMin; m <= viewMidiMax; m++) {
+        const y = midiToY(m);
+        ctx.strokeStyle = (m % 12 === 0) ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)";
+        ctx.beginPath();
+        ctx.moveTo(lineX, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+
+    // --- 3. DIBUJAR BARRAS DE NOTAS ---
+    let currentLyric = "";
+
+    transcriptionSegments.forEach(seg => {
+        const x = lineX + (seg.start - currentTime) * pixelsPerSecond;
+        const w = (seg.end - seg.start) * pixelsPerSecond;
+        const y = midiToY(seg.midi || 60);
+
+        if (x + w < 0 || x > canvas.width) return;
+
+        const isActive = currentTime >= seg.start && currentTime <= seg.end;
+        const isPast = currentTime > seg.end;
+        if (isActive) currentLyric = seg.text;
+
+        // Lógica de color según acierto
+        let isCorrect = false;
+        if (isActive && currentFreq > 0) {
+            const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
+            isCorrect = Math.abs(userMidi - seg.midi) <= 2;
+        }
+
+        ctx.fillStyle = isPast ? "#4b5563" : (isCorrect ? "#22c55e" : (isActive ? "#3b82f6" : "rgba(59, 130, 246, 0.4)"));
+        
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(x, y - 10, Math.max(w, 5), 20, 5);
+        } else {
+            ctx.rect(x, y - 10, Math.max(w, 5), 20);
+        }
+        ctx.fill();
+
+        // Texto de la sílaba
+        ctx.fillStyle = isActive ? "white" : "rgba(255,255,255,0.6)";
+        ctx.font = "11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(seg.text, x + w / 2, y - 15);
+    });
+
+    // --- 4. DIBUJAR VOZ DEL USUARIO ---
+    if (currentFreq > 0) {
+        const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
+        const userY = midiToY(userMidi);
+        
+        ctx.beginPath();
+        ctx.fillStyle = "#facc15";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#facc15";
+        ctx.arc(lineX, userY, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+
+    // --- 5. LÍNEA DE TIEMPO Y LETRA GRANDE ---
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(lineX, pentagramTop);
-    ctx.lineTo(lineX, pentagramBottom);
+    ctx.moveTo(lineX, 20);
+    ctx.lineTo(lineX, canvas.height - 80);
     ctx.stroke();
 
-    // Recorrer todos los segmentos
-    transcriptionSegments.forEach((segment) => {
-      const words = Array.isArray(segment.words) ? segment.words : [];
-      
-      words.forEach((word) => {
-        // Verificar si está en la ventana visible
-        if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
-        
-        // Calcular posición X basada en el tiempo
-        const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
-        const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
-        const barWidth = Math.max(wordEndX - wordStartX, 20);
-        
-        // Posición Y basada en la nota MIDI
-        const midi = word.midi || segment.midi || 60; // Default: C4
-        const barY = midiToY(midi);
-        const barHeight = 22;
-        
-        // Determinar si la palabra está activa
-        const isActive = currentTime >= word.start && currentTime <= word.end;
-        const isPast = currentTime > word.end;
-        
-        // Determinar si el usuario está cantando la nota correcta
-        let isCorrect = false;
-        if (isActive && currentFreq > 0) {
-          const userMidi = frequencyToMidi(currentFreq);
-          isCorrect = Math.abs(userMidi - midi) <= 2; // Tolerancia de 2 semitonos
-        }
-        
-        // Colores según estado
-        let barColor, textColor, borderColor;
-        if (isPast) {
-          barColor = "#4b5563"; // Gris
-          textColor = "#9ca3af";
-          borderColor = "#6b7280";
-        } else if (isActive) {
-          if (isCorrect) {
-            barColor = "#22c55e"; // Verde - ¡Correcto!
-            textColor = "#ffffff";
-            borderColor = "#4ade80";
-          } else {
-            barColor = "#3b82f6"; // Azul - Activo
-            textColor = "#ffffff";
-            borderColor = "#60a5fa";
-          }
-        } else {
-          barColor = "#1e40af"; // Azul oscuro - Próximo
-          textColor = "#93c5fd";
-          borderColor = "#3b82f6";
-        }
-        
-        // Dibujar barra con bordes redondeados
-        ctx.fillStyle = barColor;
-        ctx.beginPath();
-        ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 8);
-        ctx.fill();
-        
-        // Borde
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = isActive ? 2 : 1;
-        ctx.stroke();
-        
-        // Texto de la palabra
-        ctx.fillStyle = textColor;
-        ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        
-        // Truncar si es muy largo
-        let displayWord = word.word || "";
-        if (displayWord.length > 10) {
-          displayWord = displayWord.substring(0, 8) + "..";
-        }
-        ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
-      });
-    });
-
-  } else {
-    ctx.fillStyle = "#666";
-    ctx.font = "16px Arial";
+    ctx.fillStyle = "white";
+    ctx.font = "bold 35px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
-  }
-
-  // --- DIBUJAR LA VOZ DEL USUARIO (LÍNEA/PUNTO) ---
-  if (currentFreq > 0) {
-    const userMidi = frequencyToMidi(currentFreq);
-    const userY = midiToY(userMidi);
-    
-    // Punto grande en la posición actual
-    ctx.beginPath();
-    ctx.fillStyle = "#facc15";
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#facc15";
-    ctx.arc(40, userY, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    
-    // Rastro de la voz
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-    ctx.lineWidth = 3;
-    
-    let started = false;
-    pitchHistory.forEach((freq, i) => {
-      if (freq) {
-        const midi = frequencyToMidi(freq);
-        const y = midiToY(midi);
-        const x = 40 - (pitchHistory.length - i) * 2;
-        
-        if (!started) {
-          ctx.moveTo(x, y);
-          started = true;
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-    });
-    ctx.stroke();
-  }
-
-  // --- DIBUJAR LETRA ACTUAL ABAJO ---
-  const currentSegment = transcriptionSegments.find(seg => 
-    currentTime >= seg.start && currentTime <= seg.end + 0.5
-  );
-  
-  if (currentSegment) {
-    // Fondo para la letra
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-    
-    // Letra actual
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 20px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(currentSegment.text || "", canvas.width / 2, canvas.height - 25);
-  }
-
-  // --- DIBUJAR SIGUIENTE LÍNEA ---
-  const nextSegment = transcriptionSegments.find(seg => seg.start > currentTime);
-  if (nextSegment && !currentSegment) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-    
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "16px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("Próximo: " + (nextSegment.text || ""), canvas.width / 2, canvas.height - 25);
-  }
+    ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
 }
 
 // ==========================================
@@ -3241,11 +3116,14 @@ async function startKaraokePitchDetection() {
         if (track && track.ended) return;
 
         // Seguimos el loop mientras se graba
-        if (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") {
+        if (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") 
+            requestAnimationFrame(loop);
+            
+        // Seguimos el loop si la pista está reproduciéndose
+        if (track && !track.paused && !track.ended) {
             requestAnimationFrame(loop);
         }
     }
-
     loop();
 }
 
@@ -3570,6 +3448,45 @@ async function loadKaraokeCatalog() {
   }
 }
 
+function parseUltraStarSync(syncContent) {
+    if (!syncContent || typeof syncContent !== "string") return [];
+
+    const lines = syncContent.split("\n").map(line => line.trim()).filter(Boolean);
+    let bpm = 120, gap = 0;
+    const noteLines = [];
+
+    for (const line of lines) {
+        if (line.startsWith("#BPM:")) bpm = parseFloat(line.replace("#BPM:", "")) || 120;
+        else if (line.startsWith("#GAP:")) gap = parseInt(line.replace("#GAP:", "")) || 0;
+        else if (/^[:*FR]/.test(line)) noteLines.push(line);
+    }
+
+    const secondsPerTick = (60 / bpm) / 4;
+
+    const parsedSegments = noteLines.map(line => {
+        const match = line.match(/^[:*FR]\s+(-?\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
+        if (!match) return null;
+
+        const startTick = parseInt(match[1], 10);
+        const durationTick = parseInt(match[2], 10);
+        const midiValue = parseInt(match[3], 10);
+        const text = match[4] || "";
+
+        const start = (gap / 1000) + (startTick * secondsPerTick);
+        const end = start + (durationTick * secondsPerTick);
+
+        return {
+            start, 
+            end, 
+            text: text.trim(),
+            midi: midiValue + 60, // Ajuste típico de UltraStar a MIDI estándar
+            pitch: midiValue > 0 ? 440 * Math.pow(2, (midiValue - 69) / 12) : -1
+        };
+    }).filter(Boolean);
+
+    return parsedSegments;
+}
+
 async function loadCatalogSong(folder, title, artist) {
   const status = $("karaokeStatus");
   const track = $("karaokeTrack");
@@ -3694,6 +3611,48 @@ async function loadMyKaraokeSongs() {
   }
 }
 
+async function loadKaraokeSong(id) {
+  try {
+    const song = await getLibraryItemByIdFromSupabase(id);
+    if (!song) return alert("⚠️ Canción no encontrada");
+
+    const track = $("karaokeTrack");
+    if (track) {
+      // IMPORTANTE: Revocar URL anterior para no saturar la memoria
+      if (track.src.startsWith("blob:")) URL.revokeObjectURL(track.src);
+
+      if (song.file_url) {
+        track.src = song.file_url;
+      } else if (song.audioBlob) {
+        track.src = URL.createObjectURL(song.audioBlob);
+      }
+      
+      track.volume = 0.4;
+    }
+
+    // Sincronizar letras
+    if (Array.isArray(song.transcription) && song.transcription.length > 0) {
+      transcriptionSegments = JSON.parse(JSON.stringify(song.transcription));
+      baseTranscriptionSegments = [...transcriptionSegments];
+      cargarLetrasEnMonitor();
+    } else {
+      transcriptionSegments = [];
+      cargarLetrasEnMonitor();
+    }
+
+    const title = song.metadata?.title || song.name;
+    if ($("karaokeStatus")) {
+        $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡A cantar! 🎤`;
+    }
+    
+    const canvas = $("karaokeCanvas");
+    if (canvas) canvas.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch (error) {
+    console.error("Error cargando canción:", error);
+    alert("❌ Error al cargar la canción");
+  }
+}
+
 async function loadAudioSecurely(url, element) {
     try {
         const response = await fetch(url);
@@ -3708,63 +3667,4 @@ async function loadAudioSecurely(url, element) {
         // Fallback a URL directa si el fetch falla
         element.src = url;
     }
-}
-
-async function loadKaraokeSong(id) {
-  try {
-    const song = await getLibraryItemByIdFromSupabase(id);
-    if (!song) return alert("⚠️ Canción no encontrada");
-
-    const track = $("karaokeTrack");
-    if (track) {
-      // 1. Limpieza de memoria
-      if (track.src && track.src.startsWith("blob:")) {
-        URL.revokeObjectURL(track.src);
-      }
-
-      // 2. Carga segura del audio (evitando el error de caché)
-      if (song.file_url) {
-        try {
-          // Intentamos descargar el archivo y convertirlo a un objeto local (blob)
-          const response = await fetch(song.file_url);
-          const blob = await response.blob();
-          const urlConCacheBuster = new URL(item.file_url);
-            urlConCacheBuster.searchParams.append('v', Date.now());
-            track.src = urlConCacheBuster.toString();
-        } catch (fetchErr) {
-            console.error("Error al descargar audio, usando fallback:", fetchErr);
-            // Si falla el fetch, intentamos la carga directa como último recurso
-            track.src = song.file_url;
-        }
-      } else if (song.audioBlob) {
-          track.src = URL.createObjectURL(song.audioBlob);
-      }
-        track.volume = 0.4;
-    }
-
-    // --- (Aquí sigue el resto de tu código original de letras) ---
-    if (Array.isArray(song.transcription) && song.transcription.length > 0) {
-        transcriptionSegments = song.transcription; 
-        baseTranscriptionSegments = [...song.transcription];
-        cargarLetrasEnMonitor();
-        const canvas = $("karaokeCanvas");
-        if (canvas) drawKaraokeMonitor(0, 0); 
-    } else {
-        transcriptionSegments = [];
-        baseTranscriptionSegments = [];
-        cargarLetrasEnMonitor();
-    }
-
-    const title = song.metadata?.title || song.name;
-    if ($("karaokeStatus")) {
-        $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡A cantar! 🎤`;
-    }
-    
-    const canvas = $("karaokeCanvas");
-    if (canvas) canvas.scrollIntoView({ behavior: "smooth", block: "center" });
-
-  } catch (error) {
-    console.error("Error cargando canción:", error);
-    alert("❌ Error al cargar la canción");
-  }
 }
