@@ -79,28 +79,25 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     await initDB();
     console.log("📦 Base de datos lista.");
-    
+
+    // Definimos la función
     function initKaraokeListeners() {
-      const kTrack = $("karaokeTrack");
-      if (kTrack) {
-        kTrack.addEventListener("timeupdate", () => {
-          const currentTime = kTrack.currentTime;
-          // Esto actualiza las letras de texto
-          if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
-          // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
-          if (typeof drawKaraokeMonitor === "function") {
-            drawKaraokeMonitor(currentTime, 0);
-          }
-      });
-      const player = $("player");
-      if (player) {
-        player.addEventListener("timeupdate", () => {
-          if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
+      const track = $("karaokeTrack");
+      if (track) {
+        track.addEventListener('seeked', () => {
+          drawKaraokeMonitor(track.currentTime, 0);
         });
-      }
+        track.addEventListener('timeupdate', () => {
+          if (typeof syncKaraokeMonitor === "function") {
+            syncKaraokeMonitor(track.currentTime);
+          }
+        });
       }
     }
     initKaraokeListeners();
+    await renderLibrary('todos');
+    await loadTrackOptionsInStudio();
+    await loadTrackOptionsInKaraoke();
 
     function applyKaraokeTheme() {
       const theme = localStorage.getItem("singIt_stage") || "clasico";
@@ -152,9 +149,28 @@ window.addEventListener('DOMContentLoaded', async () => {
     safeAdd("karaokeMixBtn", "click", mixKaraoke);
     safeAdd("refreshKaraokeTrackBtn", "click", loadTrackOptionsInKaraoke);
     safeAdd("loadKaraokeTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
+
+    // 5. Sincronización de Reproductores (Loop de Dibujo)
+    const kTrack = $("karaokeTrack");
+    if (kTrack) {
+      kTrack.addEventListener("timeupdate", () => {
+        const currentTime = kTrack.currentTime;
+        // Esto actualiza las letras de texto
+        if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
+        // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
+        if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(currentTime, 0);
+      });
+    }
+    const player = $("player");
+    if (player) {
+      player.addEventListener("timeupdate", () => {
+        if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
+      });
+    }
     // Cargas iniciales
     loadAvailableMics();
     toggleMic2Visibility();
+    
     // Micrófonos y config final
     safeAdd("refreshMicsBtn", "click", loadAvailableMics);
     safeAdd("testMic1Btn", "click", () => testMicrophone(1));
