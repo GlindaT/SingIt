@@ -3706,10 +3706,11 @@ function showSaveNotification() {
 
 function drawKaraokeMonitor(currentTime, currentFreq) {
   const canvas = $("karaokeCanvas");
-  if (canvas) return;
-  const ctx = canvas.getContext("2d");
+  if (!canvas) return; // Validación básica de existencia
 
-  if (!canvas || !transcriptionSegments || transcriptionSegments.length === 0) {
+  const ctx = canvas.getContext("2d"); // 💡 Declarado aquí para que funcione en toda la función
+
+  if (!transcriptionSegments || transcriptionSegments.length === 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#666";
     ctx.font = "16px Arial";
@@ -3717,19 +3718,21 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.fillText("Sin datos de karaoke", canvas.width / 2, canvas.height / 2);
     return;
   }
-  
-  if (typeof pitchHistory === 'undefined') window.pitchHistory = [];
+
+  // 💡 Movido aquí antes de limpiar pantalla para que el historial funcione correctamente
+  if (typeof window.pitchHistory === 'undefined') window.pitchHistory = [];
   window.pitchHistory.push(currentFreq > 0 ? currentFreq : null);
-  if (pitchHistory.length > 60) pitchHistory.shift();
+  if (window.pitchHistory.length > 60) window.pitchHistory.shift();
+  
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // --- 1. CONFIGURACIÓN DE VENTANA ---
   const pixelsPerSecond = (canvas.width - 100) / 6; 
-  const lineX = 100; // Línea de tiempo actual
+  const lineX = 100; 
   const topMargin = 50;
   const bottomMargin = 100;
   const drawHeight = canvas.height - topMargin - bottomMargin;
-  
+
   // Escala MIDI dinámica
   const allMidis = transcriptionSegments.map(s => s.midi).filter(m => m > 0);
   const viewMidiMin = (allMidis.length > 0 ? Math.min(...allMidis) : 60) - 5;
@@ -3739,6 +3742,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     const normalized = (viewMidiMax - m) / midiRange;
     return topMargin + (normalized * drawHeight);
   };
+
   // --- 2. DIBUJAR PENTAGRAMA ---
   ctx.textAlign = "left";
   for (let m = viewMidiMin; m <= viewMidiMax; m++) {
@@ -3749,6 +3753,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.lineTo(canvas.width, y);
     ctx.stroke();
   }
+
   // --- 3. DIBUJAR BARRAS DE NOTAS ---
   let currentLyric = "";
   transcriptionSegments.forEach(seg => {
@@ -3793,7 +3798,8 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.arc(lineX, userY, 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-  }
+  } // 💡 Punto y coma eliminado aquí
+
   // --- 5. LÍNEA DE TIEMPO Y LETRA GRANDE ---
   ctx.strokeStyle = "#ef4444";
   ctx.lineWidth = 2;
@@ -3801,44 +3807,41 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   ctx.moveTo(lineX, 20);
   ctx.lineTo(lineX, canvas.height - 80);
   ctx.stroke();
+
   ctx.fillStyle = "white";
   ctx.font = "bold 35px Arial";
   ctx.textAlign = "center";
   ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
-}
   
-aync function startKaraokePitchDetection() {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const micId = getSelectedMicId(1);
-  
-  const audioConstraints = { 
-    audio: micId ? { deviceId: { exact: micId } } : true 
-  };
-  const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-  const mic = audioCtx.createMediaStreamSource(stream);
-  const analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 2048;
-  mic.connect(analyser);
-
-  function loop() {
-    const track = $("karaokeTrack");
-    if (!track) return;
-
-    const currentTime = track.currentTime;
-    const buffer = new Float32Array(analyser.fftSize);
-    analyser.getFloatTimeDomainData(buffer);
-    const pitch = autoCorrelate(buffer, audioCtx.sampleRate);
-
-    // AQUÍ ES DONDE SE DIBUJA CON EL PITCH REAL
-    drawKaraokeMonitor(currentTime, pitch);
-
-    if (track && !track.paused && !track.ended) {
+  aync function startKaraokePitchDetection() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const micId = getSelectedMicId(1);
+    const audioConstraints = { 
+      audio: micId ? { deviceId: { exact: micId } } : true 
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+    const mic = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    mic.connect(analyser);
+    
+    function loop() {
+      const track = $("karaokeTrack");
+      if (!track) return;
+      
+      const currentTime = track.currentTime;
+      const buffer = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(buffer);
+      const pitch = autoCorrelate(buffer, audioCtx.sampleRate);
+      // AQUÍ ES DONDE SE DIBUJA CON EL PITCH REAL
+      drawKaraokeMonitor(currentTime, pitch);
+      if (track && !track.paused && !track.ended) {
         requestAnimationFrame(loop);
+      }
     }
   }
 }
-  
-// ==========================================
+  // ==========================================
 // CATÁLOGO Y MIS CANCIONES
 // =========================================
   const loadKaraokeCatalog = ();
@@ -3846,17 +3849,13 @@ aync function startKaraokePitchDetection() {
   if (!container) return;
   
   container.innerHTML = `<p style="color: var(--text-muted);">Cargando catálogo...</p>`;
-  
   try {
     // Cargar el catálogo desde el repositorio
     const response = await fetch("./karaoke-catalog/catalog.json");
-    
     if (!response.ok) {
       throw new Error("No se pudo cargar el catálogo");
     }
-    
     const catalog = await response.json();
-    
     if (!catalog.songs || catalog.songs.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 20px; color: var(--text-muted);">
@@ -3906,38 +3905,32 @@ aync function startKaraokePitchDetection() {
 }
 
 function parseUltraStarSync(syncContent) {
-    if (!syncContent || typeof syncContent !== "string") return [];
-    
-    const lines = syncContent.split("\n").map(line => line.trim()).filter(Boolean);
-    let bpm = 120, gap = 0;
-    const noteLines = [];
-    
-    for (const line of lines) {
-        if (line.startsWith("#BPM:")) bpm = parseFloat(line.replace("#BPM:", "")) || 120;
-        else if (line.startsWith("#GAP:")) gap = parseInt(line.replace("#GAP:", "")) || 0;
-        else if (/^[:*FR]/.test(line)) noteLines.push(line);
-    }
-    const secondsPerTick = (60 / bpm) / 4;
-    const parsedSegments = noteLines.map(line => {
-        const match = line.match(/^[:*FR]\s+(-?\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
-        if (!match) return null;
-
-        const startTick = parseInt(match[1], 10);
-        const durationTick = parseInt(match[2], 10);
-        const midiValue = parseInt(match[3], 10);
-        const text = match[4] || "";
-
-        const start = (gap / 1000) + (startTick * secondsPerTick);
-        const end = start + (durationTick * secondsPerTick);
-        
-        return {
-            start, 
-            end, 
-            text: text.trim(),
-            midi: midiValue + 60, // Ajuste típico de UltraStar a MIDI estándar
-            pitch: midiValue > 0 ? 440 * Math.pow(2, (midiValue - 69) / 12) : -1
-        };
-    }).filter(Boolean);
-
-    return parsedSegments;
+  if (!syncContent || typeof syncContent !== "string") return [];
+  const lines = syncContent.split("\n").map(line => line.trim()).filter(Boolean);
+  let bpm = 120, gap = 0;
+  const noteLines = [];
+  for (const line of lines) {
+    if (line.startsWith("#BPM:")) bpm = parseFloat(line.replace("#BPM:", "")) || 120;
+    else if (line.startsWith("#GAP:")) gap = parseInt(line.replace("#GAP:", "")) || 0;
+    else if (/^[:*FR]/.test(line)) noteLines.push(line);
+  }
+  const secondsPerTick = (60 / bpm) / 4;
+  const parsedSegments = noteLines.map(line => {
+    const match = line.match(/^[:*FR]\s+(-?\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
+    if (!match) return null;
+    const startTick = parseInt(match[1], 10);
+    const durationTick = parseInt(match[2], 10);
+    const midiValue = parseInt(match[3], 10);
+    const text = match[4] || "";
+    const start = (gap / 1000) + (startTick * secondsPerTick);
+    const end = start + (durationTick * secondsPerTick);
+    return {
+      start, 
+      end, 
+      text: text.trim(),
+      midi: midiValue + 60, // Ajuste típico de UltraStar a MIDI estándar
+      pitch: midiValue > 0 ? 440 * Math.pow(2, (midiValue - 69) / 12) : -1
+    };
+  }).filter(Boolean);
+  return parsedSegments;
 }
