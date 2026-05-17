@@ -415,28 +415,23 @@ function cargarAudioEstudio(e) {
 }
 
 function playTrack() {
-  const player = $("player");
-
-  if (!player || !player.src) {
-    alert("⚠️ Primero sube una pista");
-    return;
-  }
-
-  player.play();
-}
-
-function pauseTrack() {
-  const player = $("player");
-  if (player) player.pause();
-}
-
-function stopTrack() {
-  const player = $("player");
-  if (!player) return;
-
-  player.pause();
-  player.currentTime = 0;
-  updateKaraokeHighlight(0);
+     player.currentTime = 0;
+    const player = $("player");
+    
+    if (!player || !player.src) {
+        alert("⚠️ Primero sube una pista");
+        return;
+    }
+    player.play();
+    function pauseTrack() {
+        const player = $("player");
+        if (!player) return;
+    }
+    function stopTrack() {
+        const player = $("player");
+        if (!player) return;
+    }
+    updateKaraokeHighlight(0);
 }
 
 // Variables para grabación dúo
@@ -447,17 +442,15 @@ let duoAnalyser2 = null;
 let duoAnimationId = null;
 
 async function startStudioRecording() {
-  try {
-    const player = $("player");
-    const micCount = $("micCount");
-    const isDuo = micCount && micCount.value === "2";
-
-    studioChunks = [];
-    studioRecordedBlob = null;
-    $("voicePlayer").src = "";
-    $("studioStatus").textContent = "Estado: preparando grabación...";
-
-    // Obtener micrófonos seleccionados
+    try {
+        const player = $("player");
+        const micCount = $("micCount");
+        const isDuo = micCount && micCount.value === "2";
+        studioChunks = [];
+        studioRecordedBlob = null;
+        $("voicePlayer").src = "";
+        $("studioStatus").textContent = "Estado: preparando grabación...";
+        // Obtener micrófonos seleccionados
     const mic1Id = getSelectedMicId(1);
     const mic2Id = getSelectedMicId(2);
 
@@ -673,17 +666,15 @@ function saveStudioRecording() {
     alert("⚠️ No hay grabación para guardar");
     return;
   }
-
-  const baseName = studioTrackFileName
+    const baseName = studioTrackFileName
     ? `Voz - ${studioTrackFileName}`
     : "Grabación de voz";
-
-  saveToLibrary(studioRecordedBlob, {
+saveToLibrary(studioRecordedBlob, {
     name: baseName,
     type: "voz"
-  });
+});
 
-  $("studioStatus").textContent = "Estado: grabación guardada en Biblioteca";
+$("studioStatus").textContent = "Estado: grabación guardada en Biblioteca";
 }
 
 // ==========================================
@@ -2197,8 +2188,9 @@ function exportStereoWav(buffer) {
 // SPLITTER IA
 // ==========================================
 async function splitAudio() {
-  const fileInput = $("splitterFile");
-  const file = fileInput?.files[0];
+    const base64Audio = localStorage.getItem('audioData');
+    const fileInput = $("splitterFile");
+    const file = fileInput?.files[0];
 
   if (!file) {
     alert("⚠️ Selecciona una canción primero.");
