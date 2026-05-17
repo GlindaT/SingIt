@@ -10,6 +10,7 @@ const state = {
 
 let db = null;
 let pitchHistory = [];
+let pitchBuffer = [];
 let transcriptionSegments = [];
 let baseTranscriptionSegments = [];
 let autoScrollEnabled = true; // Control de auto-scroll
@@ -1290,7 +1291,7 @@ function aplicarCadenaDeAudio(audioCtx, source) {
 // ==========================================
 // ANÁLISIS DE PITCH 
 // ==========================================
-async function analyzePitchForSegments(audioBlob, segments) {
+async function analysePitchForSegments(audioBlob, segments) {
   if (!audioBlob || !segments || !segments.length) {
     console.log("⚠️ No hay audio o segmentos para analizar");
     return segments;
