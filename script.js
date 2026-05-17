@@ -1168,9 +1168,6 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
   });
 }
 
-// Variable global para cachear las líneas
-let cachedKaraokeLines = [];
-
 function renderKaraokeLyrics(segments) {
   const container = $("karaokeLyrics");
   if (!container) return;
