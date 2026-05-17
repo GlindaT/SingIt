@@ -3812,36 +3812,40 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   ctx.font = "bold 35px Arial";
   ctx.textAlign = "center";
   ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
+}
+
+async function startKaraokePitchDetection() {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const micId = getSelectedMicId(1);
+  const audioConstraints = { 
+    audio: micId ? { deviceId: { exact: micId } } : true 
+  };
+  const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+  const mic = audioCtx.createMediaStreamSource(stream);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  mic.connect(analyser);
   
-  aync function startKaraokePitchDetection() {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const micId = getSelectedMicId(1);
-    const audioConstraints = { 
-      audio: micId ? { deviceId: { exact: micId } } : true 
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
-    const mic = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    mic.connect(analyser);
+  function loop() {
+    const track = $("karaokeTrack");
+    if (!track) return;
     
-    function loop() {
-      const track = $("karaokeTrack");
-      if (!track) return;
-      
-      const currentTime = track.currentTime;
-      const buffer = new Float32Array(analyser.fftSize);
-      analyser.getFloatTimeDomainData(buffer);
-      const pitch = autoCorrelate(buffer, audioCtx.sampleRate);
-      // AQUÍ ES DONDE SE DIBUJA CON EL PITCH REAL
-      drawKaraokeMonitor(currentTime, pitch);
-      if (track && !track.paused && !track.ended) {
-        requestAnimationFrame(loop);
-      }
+    const currentTime = track.currentTime;
+    const buffer = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(buffer);
+    const pitch = autoCorrelate(buffer, audioCtx.sampleRate);
+    
+    // AQUÍ ES DONDE SE DIBUJA CON EL PITCH REAL
+    drawKaraokeMonitor(currentTime, pitch);
+    
+    if (track && !track.paused && !track.ended) {
+      requestAnimationFrame(loop);
     }
   }
+  loop(); 
 }
-  // ==========================================
+  
+// ==========================================
 // CATÁLOGO Y MIS CANCIONES
 // =========================================
   const loadKaraokeCatalog = ();
