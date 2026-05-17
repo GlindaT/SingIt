@@ -1543,18 +1543,16 @@ function updateKaraokeHighlight(currentTime) {
     const end = parseFloat(line.dataset.end);
 
     line.classList.remove("active", "past", "upcoming");
-
-    if (currentTime >= start && currentTime <= end) {
-      line.classList.add("active");
-      activeLine = line;
-    } else if (currentTime > end) {
-      line.classList.add("past");
-    } else {
+      if (currentTime >= start && currentTime <= end) {
+          line.classList.add("active");
+          activeLine = line;
+      } else if (currentTime > end) {
+          line.classList.add("past");
+      } else {
       line.classList.add("upcoming");
-    }
-
-    const words = line.querySelectorAll(".karaoke-word");
-    words.forEach((word) => {
+      }
+      const words = line.querySelectorAll(".karaoke-word");
+      words.forEach((word) => {
       const wordStart = parseFloat(word.dataset.start);
       const wordEnd = parseFloat(word.dataset.end);
 
