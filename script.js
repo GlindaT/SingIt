@@ -1130,7 +1130,7 @@ async function transcribeSelectedVoice() {
             if (!segText) return;
             
             const esFantasma = palabrasProhibidas.some((palabra) => {
-                segText.toLowerCase().includes(palabra.toLowerCase();
+                segText.toLowerCase().includes(palabra.toLowerCase());
         });
         if (esFantasma) return;
         const segmentWithOffset = {
