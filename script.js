@@ -3007,14 +3007,43 @@ async function mixKaraoke() {
 // ==========================================
 
 async function splitAudio() {
-  console.log("🚀 Iniciando separación..."); // <--- ESTO NOS DIRÁ SI EL BOTÓN FUNCIONA
-  const fileInput = $("splitterFile");
-  const file = fileInput?.files[0];
-  
-  if (!file) {
-    alert("⚠️ Selecciona una canción primero.");
+  const fileInput = document.getElementById("audioFile"); // Asegúrate de usar el ID correcto de tu input file
+  if (!fileInput || fileInput.files.length === 0) {
+    alert("Por favor, selecciona un archivo primero.");
     return;
   }
+
+  const file = fileInput.files[0];
+  
+  // Mostrar mensaje de carga en la interfaz
+  console.log("Transformando archivo a Base64...");
+
+  // Convertimos el archivo local a un string asíncronamente
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = async () => {
+    try {
+      // Extraemos la cadena pura en base64 quitando el encabezado del DataURL
+      const base64Data = reader.result.split(",")[1];
+
+      const response = await fetch("https://vercel.app", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          audioBase64: base64Data,
+          mimeType: file.type
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Error en la separación");
+      }
+
+      console.log("🔮 Predicción iniciada con éxito en Replicate:", data);
   
   const btn = $("splitBtn");
   const statusBox = $("splitterStatusBox");
