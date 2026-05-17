@@ -45,7 +45,6 @@ let duoAnimationId = null;
 let audioContext, analyser, stream;
 let voiceHistory = new Array(100).fill(-1);
 const pitchBuffer = new Float32Array(2048);
-let stream = null;
 
 // Variables del karaoke
 let karaokeMediaRecorder = null;
