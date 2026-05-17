@@ -30,10 +30,6 @@ function safeAdd(id, event, handler) {
   if (el) el.addEventListener(event, handler);
 }
 
-// CARGAS PROTEGIDAS: Si una falla, no detiene a las demás
-  loadKaraokeCatalog().catch(err => console.error("Fallo catálogo:", err));
-  loadMyKaraokeSongs().catch(err => console.error("Fallo mis canciones:", err));
-  renderLibrary().catch(err => console.error("Fallo render biblioteca:", err));
 
 // ==========================================
 // INDEXED DB - BIBLIOTECA
