@@ -320,6 +320,21 @@ input[type="text"] {
   margin: 0;
 }
 
+/* --- ESTILOS DE LAS LÍNEAS DE LETRA --- */
+.karaoke-line {
+    font-size: 24px;
+    margin: 15px 0;
+    opacity: 0.4;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.karaoke-line.active {
+    opacity: 1;
+    font-weight: bold;
+    font-size: 32px;
+}
+
 .karaoke-line {
   font-size: 22px;
   line-height: 1.6;
@@ -365,11 +380,9 @@ input[type="text"] {
 .save-notification.show {
   opacity: 1; /* Se hace visible cuando JS le pone esta clase */
 }
-.karaoke-line.active {
-  color: #22c55e;
-  font-weight: bold;
-  transform: scale(1.05);
-}
+
+
+
 
 /* ==========================================
    RESALTADO POR PALABRA
@@ -420,6 +433,12 @@ input[type="text"] {
   color: #ffffff; /* Blanco para las que ya pasaron */
   opacity: 0.8;
   font-size: 26px;
+}
+
+/* --- ESTILOS PARA EL CANVAS (PENTAGRAMA/NOTAS) --- */
+#karaokeCanvas {
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
 }
 
 /* ==========================================
