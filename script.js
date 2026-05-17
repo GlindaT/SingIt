@@ -3158,7 +3158,7 @@ async function startKaraokePitchDetection() {
 // ==========================================
 // CATÁLOGO Y MIS CANCIONES
 // ==========================================
-const loadKaraokeCatalog = ();
+const loadKaraokeCatalog = async () => {
   const container = $("catalogList");
   if (!container) return;
   
