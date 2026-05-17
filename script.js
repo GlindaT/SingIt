@@ -3487,7 +3487,7 @@ function initSettings() {
         applyAppTheme(e.target.value);
       }
     });
-  }
+  })
   applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
 }
 
