@@ -652,11 +652,6 @@ async function deleteLibraryItemFromSupabase(id) {
   }
 }
 
-// CARGAS PROTEGIDAS: Si una falla, no detiene a las demás
-loadKaraokeCatalog().catch(err => console.error("Fallo catálogo:", err));
-loadMyKaraokeSongs().catch(err => console.error("Fallo mis canciones:", err));
-renderLibrary().catch(err => console.error("Fallo render biblioteca:", err));
-
 async function renderLibrary(filter = "todos") {
   const container = $("libraryList");
   if (!container) return;
@@ -2656,6 +2651,10 @@ async function startKaraokeRecording() {
     alert("❌ Error al acceder al micrófono. Verifica en Configuración.");
   }
 }
+// CARGAS PROTEGIDAS: Si una falla, no detiene a las demás
+loadKaraokeCatalog().catch(err => console.error("Fallo catálogo:", err));
+loadMyKaraokeSongs().catch(err => console.error("Fallo mis canciones:", err));
+renderLibrary().catch(err => console.error("Fallo render biblioteca:", err));
 
 function startKaraokeDuoLevelMonitor() {
   const level1 = $("karaokeDuoMic1Level");
