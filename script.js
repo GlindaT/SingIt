@@ -1311,8 +1311,8 @@ function bucleDeteccionPitch() {
     const targetSelect = $("targetNote");
     
     if (pitch !== -1 && targetSelect) {
-        const targetFrequency = getFreqFromNoteName(targetSelect.value);
-        const currentNoteName = getNoteNameFromFreq(pitch);
+        const targetFrequency = getNoteFrequency(targetSelect.value);
+        const currentNoteName = getNoteFromFrequency(pitch);
         if (noteDisplay) noteDisplay.textContent = currentNoteName;
         
         const centsDeviation = 1200 * Math.log2(pitch / targetFrequency);
