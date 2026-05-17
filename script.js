@@ -30,7 +30,8 @@ function safeAdd(id, event, handler) {
   const el = $(id);
   if (el) el.addEventListener(event, handler);
 }
-
+// Reutilizar el buffer para el afinador
+const pitchBuffer = new Float32Array(2048);
 
 // ==========================================
 // INDEXED DB - BIBLIOTECA
