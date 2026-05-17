@@ -91,7 +91,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           if (typeof drawKaraokeMonitor === "function") {
             drawKaraokeMonitor(currentTime, 0);
           }
-      }
+      });
       const player = $("player");
       if (player) {
         player.addEventListener("timeupdate", () => {
