@@ -88,6 +88,8 @@ window.addEventListener('DOMContentLoaded', async () => {
           // Esto actualiza las letras de texto
           if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
           // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
+          if (typeof drawKaraokeMonitor === "function") {
+            drawKaraokeMonitor(currentTime, 0);
         });
       }
       const player = $("player");
@@ -141,7 +143,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     safeAdd("tapBeatBtn", "click", recordTap);
     safeAdd("applyTapSyncBtn", "click", applyTapSync);
     safeAdd("redoTapSyncBtn", "click", redoTapSync);
-    safeAdd("splitBtn", "click", splitAudio)
+    safeAdd("splitBtn", "click", splitAudio);
     safeAdd("stopTapSyncBtn", "click", stopTapSync);
     // Bibiloteca y karaoke
     safeAdd("saveLibraryFileBtn", "click", saveManualFileToLibrary);
