@@ -1304,7 +1304,7 @@ async function toggleRecording() {
 function bucleDeteccionPitch() {
     if (!state.isRecording || !analyser) return;
     analyser.getFloatTimeDomainData(pitchBuffer);
-    const pitch = autoCorrelateMath(pitchBuffer, audioContext.sampleRate);
+    const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
     
     const noteDisplay = $("noteDisplay");
     const guideText = $("guideText");
