@@ -2273,7 +2273,7 @@ async function startKaraokePitchDetection() {
 // ==========================================
 // CATÁLOGO Y MIS CANCIONES
 // ==========================================
-const loadKaraokeCatalog = () => {
+const loadKaraokeCatalog = async () => {
   const container = $("catalogList");
   if (!container) return;
   container.innerHTML = `<p style="color: var(--text-muted);">Cargando catálogo...</p>`;
