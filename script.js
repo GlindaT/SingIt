@@ -72,7 +72,7 @@ function safeAdd(id, event, handler) {
 function initDB() {
   return new Promise((resolve, reject) => {
     // Intentar abrir la base de datos
-    const request = indexedDB.open("SingItDB", 1);
+    const request = indexedDB.open("SingItDB", 2);
     
     request.onupgradeneeded = function (event) {
       const database = event.target.result;
