@@ -1,7 +1,7 @@
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '10mb', // 💡 Permite subir canciones de hasta 10MB
+      sizeLimit: '10mb', // Mantenemos el límite por seguridad en la API
     },
   },
 };
@@ -17,6 +17,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // 3. Validar el método de la petición
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
@@ -24,18 +25,17 @@ export default async function handler(req, res) {
   const token = process.env.REPLICATE_API_TOKEN;
 
   try {
-    // 💡 Recibimos el archivo convertido en un string Base64 desde el frontend
-    const { audioBase64, mimeType } = req.body || {};
+    // 💡 CAMBIO CLAVE: Ahora leemos 'fileUrl' enviado por script.js en lugar de Base64
+    const { fileUrl } = req.body || {};
     
-    if (!audioBase64) {
-      return res.status(400).json({ error: "Falta el archivo de audio en formato Base64" });
+    // Validamos que la URL exista
+    if (!fileUrl) {
+      return res.status(400).json({ error: "Falta la URL del archivo de audio (fileUrl)" });
     }
 
-    // 💡 Replicate permite pasar archivos pequeños directamente como Data URI convertidos en Base64
-    const dataUri = `data:${mimeType || 'audio/mpeg'};base64,${audioBase64}`;
-
-    // Llamada directa a la API de Replicate
-    const response = await fetch("https://replicate.com", {
+    // Llamada directa a la API oficial de Replicate
+    // 💡 Nota: Asegúrate de usar el endpoint correcto de predicciones: https://api.replicate.com/v1/predictions
+    const response = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -43,7 +43,10 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         version: "510b9b91aec1bfa7d634e6c06ee80c18492fb0fc06aa1474533fbda90dd3dba4", 
-        input: { audio: dataUri } // Pasamos el Data URI codificado
+        input: { 
+          // 💡 Enviamos la URL directa generada por tmpfiles.org
+          audio: fileUrl 
+        }
       })
     });
     
@@ -53,6 +56,7 @@ export default async function handler(req, res) {
        return res.status(response.status).json({ error: data.detail || "Error en la cuenta de Replicate" });
     }
 
+    // Retornamos la respuesta de Replicate (que incluye el .id para el sondeo/polling)
     return res.status(200).json(data);
   } catch (e) {
     console.error("Error en servidor:", e);
