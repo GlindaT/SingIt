@@ -1075,10 +1075,23 @@ async function deleteLibraryItemFromSupabase(id) {
     throw error;
   }
 }
-
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
 // ==========================================
+
+async function downsampleAudioBuffer(buffer, targetSampleRate = 16000) {
+    const offlineCtx = new OfflineAudioContext(1, 
+                                               // Forzamos a 1 solo canal (Mono)
+  Math.ceil(buffer.duration * targetSampleRate),
+  targetSampleRate
+  );
+  
+  const source = offlineCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+  return await offlineCtx.startRendering();
+}
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
@@ -1089,31 +1102,50 @@ async function transcribeSelectedVoice() {
   const lyricsText = $("lyricsText");
 
   try {
-    if (status) {
-      status.textContent = "Estado: Preparando audio (cortando en porciones)...";
-    }
-
+    if (status) status.textContent = "Estado: Preparando audio...";
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    let audioBuffer;
+    try {
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch (decodeError) {
+      throw new Error("El formato de audio no es compatible o está corrupto.");
+    }
 
     const CHUNK_SECONDS = 25;
-    const sampleRate = audioBuffer.sampleRate;
     const totalSamples = audioBuffer.length;
-    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
+      
+    // IMPORTANTE: El sampleRate original sirve para calcular dónde cortar
+    const originalSampleRate = audioBuffer.sampleRate; 
+    const samplesPerChunk = CHUNK_SECONDS * originalSampleRate;
 
     let fullSegments = [];
-
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
       const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
       const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
-
+      
       if (status) {
-        status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+        status.textContent = `Estado: Procesando parte ${chunkNumber} de ${totalChunks}...`;
+      }
+      
+      // --- PASO 1: Extraer el trozo original ---
+      // Creamos un buffer temporal para este trozo para poder "adelgazarlo"
+      const chunkDuration = (end - start) / originalSampleRate;
+      const tempBuffer = audioCtx.createBuffer(audioBuffer.numberOfChannels, end - start, originalSampleRate);
+      
+      for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+        tempBuffer.copyToChannel(audioBuffer.getChannelData(channel).subarray(start, end), channel);
       }
 
-      const wavBlob = audioBufferToWav(audioBuffer, start, end);
+      // --- PASO 2: ADELGAZAR EL AUDIO (Downsample a 16kHz y Mono) ---
+      // Esto es lo que evita el error 413
+      const lightBuffer = await downsampleAudioBuffer(tempBuffer, 16000);
+
+      // --- PASO 3: Convertir el buffer ligero a WAV ---
+      // Nota: Usamos 0 y lightBuffer.length porque es un buffer nuevo
+      const wavBlob = audioBufferToWav(lightBuffer, 0, lightBuffer.length);
       const base64Audio = await blobToBase64(wavBlob);
 
       const response = await fetch("/api/transcribe", {
@@ -1128,27 +1160,16 @@ async function transcribeSelectedVoice() {
       }
 
       const result = await response.json();
-
-      const palabrasProhibidas = [
-        "Amara",
-        "Subtítulos",
-        "subtítulos",
-        "Almorzo",
-        "Suscribete",
-        "comunidad"
-      ];
-
-      const timeOffset = start / sampleRate;
-
+      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
+      const timeOffset = start / originalSampleRate; // El offset se basa en el tiempo original
+      
       (result.segments || []).forEach((seg) => {
         const segText = (seg?.text || "").trim();
-
         if (!segText) return;
 
         const esFantasma = palabrasProhibidas.some((palabra) =>
           segText.toLowerCase().includes(palabra.toLowerCase())
         );
-
         if (esFantasma) return;
 
         const segmentWithOffset = {
@@ -1156,26 +1177,24 @@ async function transcribeSelectedVoice() {
           end: Number(seg.end || 0) + timeOffset,
           text: segText
         };
-
         fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
       });
     }
 
+    // --- RESTO DEL CÓDIGO (Guardado y Renderizado) ---
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
-
+    
     if (lyricsText) {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
-
-     // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
+    
     if (selectedVoiceId) {
       try {
         await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments // Guardamos los tiempos y textos
+          transcription: baseTranscriptionSegments 
         });
         console.log("✅ Transcripción guardada en Biblioteca");
       } catch (err) {
@@ -1188,7 +1207,7 @@ async function transcribeSelectedVoice() {
     }
   } catch (error) {
     console.error(error);
-    alert("❌ Error al transcribir el audio.");
+    alert("❌ Error al transcribir: " + error.message);
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
 }
