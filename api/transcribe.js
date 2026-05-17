@@ -1,4 +1,15 @@
 export default async function handler(req, res) {
+  // 💡 1. Configurar cabeceras CORS obligatorias al inicio
+  res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  // 💡 2. Responder de inmediato con éxito a la verificación previa (Preflight)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // 💡 3. Validar el método permitido posterior
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
   }
