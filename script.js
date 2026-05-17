@@ -1160,7 +1160,8 @@ async function transcribeSelectedVoice() {
             if (status) {
                 status.textContent = "Estado: Transcripción completada ✅";
             }
-        } catch (error) {
+        }
+    } catch (error) {
         console.error("Error en la transcripción:", error);
         if (status) status.textContent = "Estado: Error en la transcripción ❌";
         alert("Hubo un problema al transcribir el audio.");
