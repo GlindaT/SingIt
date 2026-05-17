@@ -189,14 +189,31 @@
       </section>
       
       <!-- KARAOKE -->
-      <section id="karaoke" class="tab">
-        <h1>🎤👄 Karaoke</h1>
-        
-        <!-- EL PENTAGRAMA: Ahora tiene todo el espacio -->
-        <div class="card" style="background: #000; padding: 0; overflow: hidden; border: 2px solid var(--border); min-height: 450px;">
-          <canvas id="karaokeCanvas" width="800" height="450" style="width: 100%; display: block;"></canvas>
-        </div>
-        
+<section id="karaoke" class="tab">
+  <h1>🎤👄 Karaoke</h1>
+  
+  <!-- EL PENTAGRAMA: Ahora tiene todo el espacio -->
+  <div class="card" style="background: #000; padding: 0; overflow: hidden; border: 2px solid var(--border); min-height: 450px;">
+    <canvas id="karaokeCanvas" width="800" height="450" style="width: 100%; display: block;"></canvas>
+  </div>
+
+  <!-- Pasos de Grabación simplificados -->
+  <div class="card">
+    <h3>1. Pista y Catálogo</h3>
+    <select id="karaokeTrackSelect"><option value="">Seleccionar pista...</option></select>
+    <div id="catalogList" style="max-height: 150px; overflow-y: auto; margin-top: 10px;"></div>
+  </div>
+
+  <div class="card">
+    <h3>2. Grabación de Desempeño</h3>
+    <p id="karaokeStatus" style="color: var(--text-muted);">El pentagrama mostrará tu afinación en tiempo real.</p>
+    <div class="studio-controls">
+      <button id="karaokeStartBtn" class="btn-danger">🎙️ Iniciar Grabación</button>
+      <button id="karaokeStopBtn">⏹️ Detener</button>
+    </div>
+    <audio id="karaokeVoicePlayer" controls style="width:100%; margin-top:10px;"></audio>
+  </div>
+</section>
         <!-- Catálogo y Mis Canciones (AHORA DENTRO DE KARAOKE) -->
         <div class="card">
           <h3>🎤 Catálogo y Mis Canciones</h3>
