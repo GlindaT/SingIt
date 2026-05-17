@@ -1330,7 +1330,7 @@ function bucleDeteccionPitch() {
         }
     } else {
         if (noteDisplay) noteDisplay.style.color = "white";
-        drawKaraokeMonitor(-1, targetSelect ? getFreqFromNoteName(targetSelect.value) : 440);
+        drawKaraokeMonitor(-1, targetSelect ? getNoteFrequency(targetSelect.value) : 440);
     }
     requestAnimationFrame(bucleDeteccionPitch);
 }
