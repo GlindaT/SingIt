@@ -64,10 +64,6 @@ let karaokeDuoAnimationId = null;
 // Variable global para cachear las líneas
 let cachedKaraokeLines = [];
 
-function $(id) { 
-  return document.getElementById(id); 
-}
-
 function safeAdd(id, event, handler) {
   const el = $(id);
   if (el) el.addEventListener(event, handler);
