@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://djwzneohwexymalnefhi.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqd3puZW9od2V4eW1hbG5lZmhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4Nzc0NDUsImV4cCI6MjA5NDQ1MzQ0NX0.AhBVDpfvRV-7ijiHjEulzaXM8HQJJ9EADg35961_O7Y"; 
+const SUPABASE_URL = "https://bvtfbdmqjxmjbqiagsxq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dGZiZG1xanhtamJxaWFnc3hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwMzE1MTMsImV4cCI6MjA5NDYwNzUxM30.YfJvbAvIUaXy0aVlmdHaUi89I9ypEY271nBJ5uFsObI"; 
 
 // Esto es necesario para que el cliente se inicialice correctamente
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
