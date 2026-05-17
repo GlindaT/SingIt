@@ -36,6 +36,7 @@ let tapSyncCurrentIndex = 0;
 let studioSelectedTrackBlob = null;
 let studioSelectedTrackId = null;
 let studioSelectedTrackName = "Pista";
+let audioBase64 = "";
 
 function $(id) {
   return document.getElementById(id);
