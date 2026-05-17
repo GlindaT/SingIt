@@ -423,16 +423,16 @@ function playTrack() {
         return;
     }
     player.play();
-    function pauseTrack() {
-        const player = $("player");
-        if (!player) return;
-    }
-    function stopTrack() {
-        const player = $("player");
-        if (!player) return;
-    }
-    updateKaraokeHighlight(0);
 }
+function pauseTrack() {
+    const player = $("player");
+    if (!player) return;
+}
+function stopTrack() {
+    const player = $("player");
+    if (!player) return;
+}
+    updateKaraokeHighlight(0);
 
 // Variables para grabación dúo
 let studioStream2 = null;
