@@ -670,7 +670,6 @@ async function saveToLibrary(blob, options = {}) {
       type: options.type || "audio",
       blob,
       transcription: options.transcription || [],
-      metadata: options.metadata || {}
     });
 
     await renderLibrary();
@@ -769,7 +768,6 @@ async function saveManualFileToLibrary() {
       type,
       blob: file,
       transcription: [],
-      metadata: {}
     });
 
     fileInput.value = "";
