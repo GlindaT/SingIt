@@ -8,6 +8,7 @@ const state = {
 };
 
 let db = null; 
+const $ = (id) => document.getElementById(id);
 let pitchHistory = [];
 let transcriptionSegments = [];
 let baseTranscriptionSegments = [];
@@ -72,29 +73,50 @@ function safeAdd(id, event, handler) {
   if (el) el.addEventListener(event, handler);
 }
 
+function initDB() {
+  return new Promise((resolve, reject) => {
+    // Intentar abrir la base de datos
+    const request = indexedDB.open("SingItDB", 1);
+    
+    request.onupgradeneeded = function (event) {
+      const database = event.target.result;
+      if (!database.objectStoreNames.contains("library")) {
+        const store = database.createObjectStore("library", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+        store.createIndex("type", "type", { unique: false });
+        store.createIndex("date", "date", { unique: false });
+      }
+    };
+    
+    request.onsuccess = function (event) {
+      window.db = event.target.result; // Asignación segura en el entorno global
+      resolve(window.db);
+    };
+    
+    request.onerror = function (event) {
+      // Diagnóstico avanzado del problema real
+      console.error("❌ Fallo crítico de IndexedDB:", event.target.error);
+      reject(event.target.error);
+    };
+  });
+}
+
+
 // =========================================================================
 // ARRANQUE E INICIALIZACIÓN
 // =========================================================================
 window.addEventListener('DOMContentLoaded', async () => {
   try {
+    // Conectamos la base de datos primero. Si falla, el catch detendrá todo.
     await initDB();
     console.log("📦 Base de datos lista.");
 
-    // Definimos la función
-    function initKaraokeListeners() {
-      const track = $("karaokeTrack");
-      if (track) {
-        track.addEventListener('seeked', () => {
-          drawKaraokeMonitor(track.currentTime, 0);
-        });
-        track.addEventListener('timeupdate', () => {
-          if (typeof syncKaraokeMonitor === "function") {
-            syncKaraokeMonitor(track.currentTime);
-          }
-        });
-      }
-    }
-    initKaraokeListeners();
+    // 💡 LIMPIEZA: Eliminé la función initKaraokeListeners() duplicada que tenías aquí arriba
+    // para evitar que los eventos timeupdate se disparen dos veces por segundo.
+
+    // Cargas de datos asíncronas iniciales (dependen de que initDB haya terminado)
     await renderLibrary('todos');
     await loadTrackOptionsInStudio();
     await loadTrackOptionsInKaraoke();
@@ -108,16 +130,20 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     applyKaraokeTheme();
     
+    // Configuración de pestañas de navegación
     const tabs = ["Afinador", "Estudio", "Biblioteca", "Karaoke", "Splitter", "Config"];
     tabs.forEach(tab => {
       safeAdd(`btn${tab}`, "click", () => showTab(tab.toLowerCase()));
     });
+    
     safeAdd("karaokeStage", "change", (e) => {
       saveSetting("singIt_stage", e.target);
     });
-    // Afinador / Grabación
+
+    // Eventos del Afinador / Grabación
     safeAdd("recordBtn", "click", toggleRecording);
-    // Estudio
+
+    // Eventos del Estudio
     safeAdd("audioFile", "change", cargarAudioEstudio);
     safeAdd("refreshStudioTrackListBtn", "click", loadTrackOptionsInStudio);
     safeAdd("loadStudioTrackBtn", "click", loadSelectedTrackFromLibraryStudio);
@@ -132,7 +158,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     safeAdd("loadSelectedVoiceBtn", "click", loadSelectedVoiceFromLibrary);
     safeAdd("transcribeVoiceBtn", "click", transcribeSelectedVoice);
     safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
-    // Sync manual taps
+
+    // Sincronización manual de Taps
     safeAdd("startTapSyncBtn", "click", startTapSync);
     safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
     safeAdd("tapBeatBtn", "click", recordTap);
@@ -140,7 +167,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     safeAdd("redoTapSyncBtn", "click", redoTapSync);
     safeAdd("splitBtn", "click", splitAudio);
     safeAdd("stopTapSyncBtn", "click", stopTapSync);
-    // Bibiloteca y karaoke
+
+    // Biblioteca y Karaoke
     safeAdd("saveLibraryFileBtn", "click", saveManualFileToLibrary);
     safeAdd("karaokeTrackFile", "change", cargarPistaKaraoke);
     safeAdd("karaokeStartBtn", "click", startKaraokeRecording);
@@ -148,40 +176,45 @@ window.addEventListener('DOMContentLoaded', async () => {
     safeAdd("karaokeRestartBtn", "click", restartKaraokeRecording);
     safeAdd("karaokeMixBtn", "click", mixKaraoke);
     safeAdd("refreshKaraokeTrackBtn", "click", loadTrackOptionsInKaraoke);
-    safeAdd("loadKaraokeTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
+    safeAdd("loadSelectedTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
 
-    // 5. Sincronización de Reproductores (Loop de Dibujo)
+    // Sincronización de Reproductores (Loop de Dibujo Único)
     const kTrack = $("karaokeTrack");
     if (kTrack) {
+      // Agregamos seeked para limpiar o redibujar el canvas inmediatamente si el usuario adelanta la canción
+      kTrack.addEventListener('seeked', () => {
+        if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(kTrack.currentTime, 0);
+      });
+      
       kTrack.addEventListener("timeupdate", () => {
         const currentTime = kTrack.currentTime;
-        // Esto actualiza las letras de texto
         if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
-        // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
         if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(currentTime, 0);
       });
     }
+
     const player = $("player");
     if (player) {
       player.addEventListener("timeupdate", () => {
         if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
       });
     }
-    // Cargas iniciales
+
+    // Configuración final de hardware de audio
     loadAvailableMics();
     toggleMic2Visibility();
     
-    // Micrófonos y config final
     safeAdd("refreshMicsBtn", "click", loadAvailableMics);
     safeAdd("testMic1Btn", "click", () => testMicrophone(1));
     safeAdd("testMic2Btn", "click", () => testMicrophone(2));
     safeAdd("mic1Select", "change", () => saveMicSelection(1));
     safeAdd("mic2Select", "change", () => saveMicSelection(2));
     safeAdd("micCount", "change", toggleMic2Visibility);
+
   } catch (error) {
-    console.error("Error en la inicialización:", error);
+    console.error("Error crítico en la inicialización de la interfaz:", error);
   }
-})
+});
                         
 // ==========================================
 // NAVEGACIÓN
@@ -204,29 +237,6 @@ function showTab(tabId) {
 // ==========================================
 // INDEXED DB - BIBLIOTECA
 // ==========================================
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("SingItDB", 1);
-    request.onupgradeneeded = function (event) {
-      const database = event.target.result;
-      if (!database.objectStoreNames.contains("library")) {
-        const store = database.createObjectStore("library", {
-          keyPath: "id",
-          autoIncrement: true
-        });
-        store.createIndex("type", "type", { unique: false });
-        store.createIndex("date", "date", { unique: false });
-      }
-    };
-    request.onsuccess = function (event) {
-      db = event.target.result;
-      resolve(db);
-    };
-    request.onerror = function () {
-      reject("❌ Error al abrir IndexedDB");
-    };
-  });
-}
 
 function addLibraryItem(item) {
   return new Promise((resolve, reject) => {
