@@ -33,9 +33,6 @@ let tapSyncMode = false;
 let tapSyncLines = [];
 let tapSyncTimestamps = [];
 let tapSyncCurrentIndex = 0;
-let studioSelectedTrackBlob = null;
-let studioSelectedTrackId = null;
-let studioSelectedTrackName = "Pista";
 
 function $(id) {
   return document.getElementById(id);
@@ -51,7 +48,7 @@ function safeAdd(id, event, handler) {
 // ==========================================
 function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("SingItDB", 1);
+    const request = indexedDB.open("VocalAppDB", 1);
 
     request.onupgradeneeded = function (event) {
       const database = event.target.result;
@@ -95,32 +92,42 @@ function addLibraryItem(item) {
 }
 
 function getAllLibraryItems() {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(["library"], "readonly");
-        const store = transaction.objectStore("library");
-        const request = store.getAll();
-        
-        request.onsuccess = function () {
-            resolve(request.result);
-        };
-        
-        request.onerror = function () {
-            reject("❌ Error al leer Biblioteca");
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["library"], "readonly");
+    const store = transaction.objectStore("library");
+    const request = store.getAll();
+
+    request.onsuccess = function () {
+      resolve(request.result);
+    };
+
+    request.onerror = function () {
+      reject("❌ Error al leer Biblioteca");
     };
   });
 }
 
-async function updateLibraryItem(id, changes) {
-  const { error } = await supabaseClient
-    .from("library_items")
-    .update(changes)
-    .eq("id", id);
-  
-  if (error) {
-    throw new Error(error.message || "Error al actualizar en Supabase");
-  }
+function updateLibraryItem(id, changes) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["library"], "readwrite");
+    const store = transaction.objectStore("library");
+    const getReq = store.get(id);
+
+    getReq.onsuccess = () => {
+      const item = getReq.result;
+      if (!item) return reject("Archivo no encontrado");
+
+      const updatedItem = { ...item, ...changes };
+      const putReq = store.put(updatedItem);
+
+      putReq.onsuccess = () => resolve();
+      putReq.onerror = () => reject("Error al actualizar la BD");
+    };
+
+    getReq.onerror = () => reject("Error al buscar en BD");
+  });
 }
-  
+
 function deleteLibraryItemFromDB(id) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(["library"], "readwrite");
@@ -223,36 +230,24 @@ async function toggleRecording() {
 }
 
 async function startAfinador() {
-    audioContext = new AudioContext();
-    stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-        }
-    });
-    const mic = audioContext.createMediaStreamSource(stream);
-    function aplicarFiltrosLimpieza(audioCtx, source) {
-        // Filtro de paso alto (Corta graves innecesarios)
-        const highPass = audioCtx.createBiquadFilter();
-        highPass.type = "highpass";
-        highPass.frequency.value = 80;
-        
-        // Filtro de paso bajo (Corta siseos de alta frecuencia)
-        const lowPass = audioCtx.createBiquadFilter();
-        lowPass.type = "lowpass";
-        lowPass.frequency.value = 1000; // Ajusta según qué tan brillante quieras la voz
-        source.connect(highPass);
-        highPass.connect(lowPass);
-        return lowPass; // Regresamos el final de la cadena
+  audioContext = new AudioContext();
+
+  stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false
     }
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    mic.connect(analyser);
-    
-    setTimeout(() => {
-        detectPitch();
-    }, 300);
+  });
+
+  const mic = audioContext.createMediaStreamSource(stream);
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
+  mic.connect(analyser);
+
+  setTimeout(() => {
+    detectPitch();
+  }, 300);
 }
 
 function stopAfinador() {
@@ -286,7 +281,7 @@ function detectPitch() {
 
       display.textContent = noteFull;
 
-      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
+      const dificultad = localStorage.getItem("vocalApp_difficulty") || "medio";
       let maxDesviation = 30;
         if (dificultad === "facil") maxDesviation = 50;
         else if (dificultad === "dificil") maxDesviation = 15;
@@ -403,15 +398,14 @@ let selectedVoiceId = null;
 // ESTUDIO
 // ==========================================
 function cargarAudioEstudio(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    studioSelectedTrackBlob = file;
-    studioSelectedTrackId = null;
-    studioSelectedTrackName = file.name;
-    studioTrackFileName = file.name;
-    const url = URL.createObjectURL(file);
-    $("player").src = url;
-    $("studioStatus").textContent = `Estado: pista cargada (${file.name})`;
+  const file = e.target.files[0];
+  if (!file) return;
+
+  studioTrackFileName = file.name;
+
+  const url = URL.createObjectURL(file);
+  $("player").src = url;
+  $("studioStatus").textContent = `Estado: pista cargada (${file.name})`;
 }
 
 function playTrack() {
@@ -691,32 +685,33 @@ function saveStudioRecording() {
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
   try {
-    await saveLibraryItemToSupabase({
+    await addLibraryItem({
       name: options.name || "Audio",
       type: options.type || "audio",
-      blob,
-      transcription: options.transcription || [],
-      metadata: options.metadata || {}
+      audioBlob: blob,
+      date: new Date().toLocaleString("es-ES"),
+      transcription: options.transcription || [] // Añadir campo para evitar errores
     });
 
-    await renderLibrary();
+    await renderLibrary(); // Antes decía loadLibrary (error)
   } catch (error) {
     console.error(error);
-    alert("❌ No se pudo guardar en la nube");
+    alert("❌ No se pudo guardar en Biblioteca");
   }
 }
 
-async function renderLibrary(filter = "todos") {
+async function renderLibrary(filter = 'todos') {
   const container = $("libraryList");
   if (!container) return;
 
   container.innerHTML = "<p>Cargando archivos...</p>";
 
   try {
-    let library = await getAllLibraryItemsFromSupabase();
+    let library = await getAllLibraryItems();
 
+    // Filtramos según la carpeta seleccionada
     let filteredItems = library;
-    if (filter !== "todos") {
+    if (filter !== 'todos') {
       filteredItems = library.filter(item => item.type === filter);
     }
 
@@ -727,27 +722,31 @@ async function renderLibrary(filter = "todos") {
     } else {
       filteredItems.forEach((item) => {
         const div = document.createElement("div");
-        div.className = "library-item card";
+        div.className = "library-item card"; // Usamos la clase card para que se vea bien
         div.style.marginBottom = "10px";
+
+        const audioURL = URL.createObjectURL(item.audioBlob);
 
         div.innerHTML = `
           <p><strong>${item.name}</strong></p>
-          <small>Tipo: ${item.type.toUpperCase()} | ${new Date(item.created_at).toLocaleString("es-ES")}</small>
-          <audio controls src="${item.file_url}" style="width:100%; margin: 10px 0;"></audio>
+          <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
+          <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
           <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
         `;
         container.appendChild(div);
       });
     }
 
+    // Reactivar botones de borrar
     document.querySelectorAll(".delete-library-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
+        const id = Number(btn.dataset.id);
         await deleteLibraryItem(id);
-        renderLibrary(filter);
+        renderLibrary(filter); // Recargamos la misma vista
       });
     });
 
+    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
     await loadVoiceOptionsInStudio();
     await loadTrackOptionsInStudio();
     await loadTrackOptionsInKaraoke();
@@ -758,15 +757,13 @@ async function renderLibrary(filter = "todos") {
   }
 }
 
-
 async function deleteLibraryItem(id) {
   try {
-    await deleteLibraryItemFromSupabase(id);
-    await renderLibrary();
-    alert("✅ Archivo eliminado");
+    await deleteLibraryItemFromDB(id);
+    await loadLibrary();
   } catch (error) {
     console.error(error);
-    alert("❌ Error al eliminar el archivo");
+    alert("❌ No se pudo eliminar el archivo");
   }
 }
 
@@ -775,41 +772,37 @@ async function saveManualFileToLibrary() {
   const typeSelect = $("libraryFileType");
   const nameInput = $("libraryFileName");
 
-  const file = fileInput.files[0];
+  const file = fileInput ? fileInput.files[0] : null;
+  const type = typeSelect ? typeSelect.value : "audio";
+  const customName = nameInput ? nameInput.value.trim() : "";
+
   if (!file) {
-    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
+    alert("⚠️ Selecciona un archivo de audio");
     return;
   }
 
-  if (file.size > 20 * 1024 * 1024) {
-    alert("⚠️ El archivo es muy grande (máx 20MB).");
-    return;
-  }
-
-  const name = nameInput.value.trim() || file.name;
-  const type = typeSelect.value;
+  const finalName = customName || file.name;
 
   try {
-    await saveLibraryItemToSupabase({
-      name,
-      type,
-      blob: file,
-      transcription: [],
-      metadata: {}
+    await addLibraryItem({
+      name: finalName,
+      type: type,
+      audioBlob: file,
+      date: new Date().toLocaleString("es-ES")
     });
 
-    fileInput.value = "";
-    nameInput.value = "";
+    await loadLibrary();
 
-    await renderLibrary("todos");
+    if (fileInput) fileInput.value = "";
+    if (nameInput) nameInput.value = "";
+    if (typeSelect) typeSelect.value = "pista";
 
-    alert("✅ ¡Archivo subido y guardado en la nube!");
+    alert("✅ Archivo guardado en Biblioteca");
   } catch (error) {
     console.error(error);
-    alert("❌ Error al guardar el archivo en Supabase.");
+    alert("❌ No se pudo guardar el archivo");
   }
 }
-
 
 async function loadTrackOptionsInStudio() {
   const select = $("studioTrackSelect");
@@ -818,7 +811,7 @@ async function loadTrackOptionsInStudio() {
   select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
 
   try {
-    const tracks = await getLibraryItemsByTypeFromSupabase("pista");
+    const tracks = await getLibraryItemsByType("pista");
 
     if (!tracks.length) {
       const option = document.createElement("option");
@@ -831,7 +824,7 @@ async function loadTrackOptionsInStudio() {
     tracks.forEach((item) => {
       const option = document.createElement("option");
       option.value = item.id;
-      option.textContent = `${item.name}`;
+      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
       select.appendChild(option);
     });
   } catch (error) {
@@ -846,7 +839,7 @@ async function loadSelectedTrackFromLibraryStudio() {
 
   if (!select || !player || !status) return;
 
-  const selectedId = select.value;
+  const selectedId = Number(select.value);
 
   if (!selectedId) {
     alert("⚠️ Selecciona una pista");
@@ -854,7 +847,7 @@ async function loadSelectedTrackFromLibraryStudio() {
   }
 
   try {
-    const item = await getLibraryItemByIdFromSupabase(selectedId);
+    const item = await getLibraryItemById(selectedId);
 
     if (!item) {
       alert("⚠️ No se encontró la pista");
@@ -862,7 +855,7 @@ async function loadSelectedTrackFromLibraryStudio() {
     }
 
     studioTrackFileName = item.name;
-    player.src = item.file_url;
+    player.src = URL.createObjectURL(item.audioBlob);
     status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
   } catch (error) {
     console.error(error);
@@ -873,12 +866,15 @@ async function loadSelectedTrackFromLibraryStudio() {
 async function loadVoiceOptionsInStudio() {
   const select = $("voiceLibrarySelect");
   if (!select) return;
+
   select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
-  
+
   try {
-    const voces = await getLibraryItemsByTypeFromSupabase("voz");
-    const grabaciones = await getLibraryItemsByTypeFromSupabase("grabacion");
+    const voces = await getLibraryItemsByType("voz");
+    const grabaciones = await getLibraryItemsByType("grabacion");
+
     const merged = [...voces, ...grabaciones];
+
     if (!merged.length) {
       const option = document.createElement("option");
       option.value = "";
@@ -886,10 +882,11 @@ async function loadVoiceOptionsInStudio() {
       select.appendChild(option);
       return;
     }
+
     merged.forEach((item) => {
       const option = document.createElement("option");
       option.value = item.id;
-      option.textContent = `${item.name} (${new Date(item.created_at).toLocaleString("es-ES")})`;
+      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
       select.appendChild(option);
     });
   } catch (error) {
@@ -904,175 +901,62 @@ async function loadSelectedVoiceFromLibrary() {
   const lyricsText = $("lyricsText");
 
   if (!select || !player || !status) return;
-  const selectedId = select.value;
+
+  const selectedId = Number(select.value);
+
   if (!selectedId) {
     alert("⚠️ Selecciona una voz");
     return;
   }
+
   try {
-    const item = await getLibraryItemByIdFromSupabase(selectedId);
+    const item = await getLibraryItemById(selectedId);
+
     if (!item) {
       alert("⚠️ No se encontró el archivo");
       return;
     }
-    const response = await fetch(item.file_url);
-    selectedVoiceBlob = await response.blob();
+
+    selectedVoiceBlob = item.audioBlob;
     selectedVoiceId = item.id;
-    
-    player.src = item.file_url;
+
+    const audioURL = URL.createObjectURL(item.audioBlob);
+    player.src = audioURL;
     status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-    
+
     if (Array.isArray(item.transcription) && item.transcription.length > 0) {
       baseTranscriptionSegments = item.transcription.map(seg =>
         buildWordTimingFromSegment(seg)
-    );
-    transcriptionSegments = [...baseTranscriptionSegments];
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
-      
-    if (lyricsText) {
-      lyricsText.value = transcriptionSegments
-        .map(seg => seg.text || "")
-        .join("\n")
-        .trim();
-    }
+      );
+
+      // IMPORTANTE:
+      // aquí respetamos exactamente las líneas guardadas
+      transcriptionSegments = baseTranscriptionSegments;
+
+      renderKaraokeLyrics(transcriptionSegments);
+      cargarLetrasEnMonitor();
+
+      if (lyricsText) {
+        lyricsText.value = transcriptionSegments
+          .map(seg => seg.text || "")
+          .join("\n")
+          .trim();
+      }
+
       status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
     } else {
       baseTranscriptionSegments = [];
       transcriptionSegments = [];
+
       renderKaraokeLyrics([]);
       cargarLetrasEnMonitor();
+
       if (lyricsText) lyricsText.value = "";
       status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
     }
   } catch (error) {
     console.error(error);
     alert("❌ No se pudo cargar la voz seleccionada");
-  }
-}
-
-async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
-  const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
-  const filePath = safeName;
-
-  const { error: uploadError } = await supabaseClient.storage
-    .from("library")
-    .upload(filePath, fileOrBlob, {
-      contentType: mimeType,
-      upsert: false
-    });
-
-  if (uploadError) {
-    throw uploadError;
-  }
-
-  const { data } = supabaseClient.storage
-    .from("library")
-    .getPublicUrl(filePath);
-
-  return {
-    filePath,
-    fileUrl: data.publicUrl
-  };
-}
-
-async function saveLibraryItemToSupabase({ name, type, blob, transcription = [], metadata = {} }) {
-  const mimeType = blob.type || "application/octet-stream";
-  const extension = mimeType.includes("wav")
-    ? "wav"
-    : mimeType.includes("mpeg")
-    ? "mp3"
-    : mimeType.includes("webm")
-    ? "webm"
-    : mimeType.includes("ogg")
-    ? "ogg"
-    : "bin";
-
-  const fileName = `${name}.${extension}`;
-
-  const { filePath, fileUrl } = await uploadFileToSupabase(blob, fileName, mimeType);
-
-  const { error } = await supabaseClient
-    .from("library_items")
-    .insert([
-      {
-        name,
-        type,
-        file_path: filePath,
-        file_url: fileUrl,
-        mime_type: mimeType,
-        transcription,
-        metadata
-      }
-    ]);
-
-  if (error) {
-    throw error;
-  }
-}
-
-async function getAllLibraryItemsFromSupabase() {
-  const { data, error } = await supabaseClient
-    .from("library_items")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  return data || [];
-}
-
-async function getLibraryItemsByTypeFromSupabase(type) {
-  const { data, error } = await supabaseClient
-    .from("library_items")
-    .select("*")
-    .eq("type", type)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  return data || [];
-}
-
-async function getLibraryItemByIdFromSupabase(id) {
-  const { data, error } = await supabaseClient
-    .from("library_items")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
-async function deleteLibraryItemFromSupabase(id) {
-  // primero buscamos el item para saber qué archivo borrar
-  const item = await getLibraryItemByIdFromSupabase(id);
-
-  if (item?.file_path) {
-    const { error: storageError } = await supabaseClient.storage
-      .from("library")
-      .remove([item.file_path]);
-
-    if (storageError) {
-      console.warn("No se pudo borrar el archivo del storage:", storageError.message);
-    }
-  }
-
-  const { error } = await supabaseClient
-    .from("library_items")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    throw error;
   }
 }
 
@@ -1196,58 +1080,57 @@ async function transcribeSelectedVoice() {
 // ==========================================
 // FUNCIONES AUXILIARES AUDIO
 // ==========================================
-function audioBufferToWav(buffer, start, end) {
-  const numChannels = buffer.numberOfChannels;
-  const sampleRate = buffer.sampleRate;
-  const length = end - start;
-  
-  // CORRECCIÓN: El tamaño debe considerar TODOS los canales
-  // 44 bytes de cabecera + (muestras * canales * 2 bytes por muestra de 16bit)
-  const bytesPerSample = 2;
-  const dataLength = length * numChannels * bytesPerSample;
-  const wavBuffer = new ArrayBuffer(44 + dataLength);
+function audioBufferToWav(buffer, startSample, endSample) {
+  const length = endSample - startSample;
+  const wavBuffer = new ArrayBuffer(44 + length * 2);
   const view = new DataView(wavBuffer);
-  const writeString = (offset, string) => {
+  const sampleRate = buffer.sampleRate;
+
+  const writeString = (viewObj, offset, string) => {
     for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
+      viewObj.setUint8(offset + i, string.charCodeAt(i));
     }
   };
-  
-  // Cabecera WAV
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataLength, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM Lineal
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
-  view.setUint16(32, numChannels * bytesPerSample, true);
-  view.setUint16(34, 16, true); // bits per sample
-  writeString(36, 'data');
-  view.setUint32(40, dataLength, true);
 
-  // Escribir datos de audio
+  writeString(view, 0, "RIFF");
+  view.setUint32(4, 36 + length * 2, true);
+  writeString(view, 8, "WAVE");
+  writeString(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(view, 36, "data");
+  view.setUint32(40, length * 2, true);
+
+  const channelData = buffer.getChannelData(0);
   let offset = 44;
-  for (let i = start; i < end; i++) {
-    for (let channel = 0; channel < numChannels; channel++) {
-      let sample = buffer.getChannelData(channel)[i];
-      // Clamp
-      sample = Math.max(-1, Math.min(1, sample));
-      // Convertir a 16-bit PCM
-      const s = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-      
-      // Verificación de seguridad antes de escribir
-      if (offset <= wavBuffer.byteLength - 2) {
-        view.setInt16(offset, s, true);
-        offset += 2;
-      }
-    }
+
+  for (let i = startSample; i < endSample; i++) {
+    let sample = Math.max(-1, Math.min(1, channelData[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    offset += 2;
   }
-  return new Blob([wavBuffer], { type: 'audio/wav' });
+
+  return new Blob([view], { type: "audio/wav" });
 }
 
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const base64String = reader.result.split(",")[1];
+      resolve(base64String);
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 function buildWordTimingFromSegment(segment) {
   const cleanText = (segment.text || "").trim();
@@ -1600,16 +1483,18 @@ let karaokeDuoAnalyser2 = null;
 let karaokeDuoAnimationId = null;
 
 function cargarPistaKaraoke(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    karaokeSelectedTrackBlob = item.audioBlob;
-    karaokeSelectedTrackName = item.name;
-    const track = $("karaokeTrack");
-    track.src = URL.createObjectURL(file);
-    track.volume = 0.4;
-    $("karaokeStatus").textContent = "Estado: Pista lista. ¡Presiona Iniciar Grabación!";
-    cargarLetrasEnMonitor();
+  const file = e.target.files[0];
+  if (!file) return;
+
+  karaokeSelectedTrackBlob = file;
+  karaokeSelectedTrackName = file.name;
+
+  const track = $("karaokeTrack");
+  track.src = URL.createObjectURL(file);
+  track.volume = 0.4;
+
+  $("karaokeStatus").textContent = "Estado: Pista lista. ¡Presiona Iniciar Grabación!";
+  cargarLetrasEnMonitor();
 }
 
 async function loadTrackOptionsInKaraoke() {
@@ -1619,7 +1504,7 @@ async function loadTrackOptionsInKaraoke() {
   select.innerHTML = `<option value="">Selecciona una pista desde tu Biblioteca</option>`;
 
   try {
-    const pistas = await getLibraryItemsByTypeFromSupabase("pista");
+    const pistas = await getLibraryItemsByType("pista");
 
     if (!pistas.length) {
       const option = document.createElement("option");
@@ -1642,7 +1527,7 @@ async function loadTrackOptionsInKaraoke() {
 
 async function loadSelectedTrackFromLibraryKaraoke() {
   const select = $("karaokeTrackSelect");
-  const id = select.value;
+  const id = Number(select.value);
 
   if (!id) {
     alert("⚠️ Selecciona una pista de la lista.");
@@ -1650,14 +1535,14 @@ async function loadSelectedTrackFromLibraryKaraoke() {
   }
 
   try {
-    const item = await getLibraryItemByIdFromSupabase(id);
+    const item = await getLibraryItemById(id);
     if (!item) return;
 
-    karaokeSelectedTrackBlob = null;
+    karaokeSelectedTrackBlob = item.audioBlob;
     karaokeSelectedTrackName = item.name;
 
     const track = $("karaokeTrack");
-    track.src = item.file_url;
+    track.src = URL.createObjectURL(item.audioBlob);
     track.volume = 0.4;
 
     $("karaokeStatus").textContent = `Estado: Pista cargada (${item.name}). ¡Inicia grabación!`;
@@ -1667,7 +1552,6 @@ async function loadSelectedTrackFromLibraryKaraoke() {
     alert("❌ Error al cargar la pista.");
   }
 }
-
 
 function cargarLetrasEnMonitor() {
   const container = $("karaokeLiveLyrics");
@@ -1982,97 +1866,33 @@ function syncKaraokeMonitor(currentTime) {
 }
 
 async function mixKaraoke() {
-  const trackEl = document.getElementById("karaokeTrack");
-  const btn = document.getElementById("karaokeMixBtn");
-  const resultDiv = document.getElementById("karaokeMixResult");
-
-  if ((!karaokeSelectedTrackBlob && (!trackEl || !trackEl.src)) || !karaokeRecordedBlob) {
+  if (!karaokeSelectedTrackBlob || !karaokeRecordedBlob) {
     alert("⚠️ Faltan ingredientes: Asegúrate de cargar una pista instrumental y grabar tu voz primero.");
     return;
   }
 
-  try {
-    btn.textContent = "🎧 Mezclando audios... ⏳";
-    btn.disabled = true;
-    resultDiv.innerHTML = "<p style='color: var(--accent);'>Uniendo la pista y tu voz. Esto puede tardar unos segundos...</p>";
+  const trackFile = karaokeSelectedTrackBlob;
+  const btn = $("karaokeMixBtn");
+  const resultDiv = $("karaokeMixResult");
 
+  btn.textContent = "🎧 Mezclando audios... ⏳";
+  btn.disabled = true;
+  resultDiv.innerHTML = "<p style='color: var(--text-muted);'>Uniendo la pista y tu voz. Esto puede tardar unos segundos...</p>";
+
+  try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // 1. Cargar ambos audios en paralelo
-    const [trackBuffer, voiceBuffer] = await Promise.all([
-      fetch(trackEl.src).then(r => r.arrayBuffer()).then(ab => audioCtx.decodeAudioData(ab)),
-      karaokeRecordedBlob.arrayBuffer().then(ab => audioCtx.decodeAudioData(ab))
-    ]);
-
-    // 2. Crear un buffer para la mezcla (usamos la duración de la pista)
-    const duration = Math.max(trackBuffer.duration, voiceBuffer.duration);
-    const mixedBuffer = audioCtx.createBuffer(2, duration * audioCtx.sampleRate, audioCtx.sampleRate);
-
-    // 3. Mezclar canales (L y R)
-    for (let channel = 0; channel < 2; channel++) {
-      const outputData = mixedBuffer.getChannelData(channel);
-      
-      // Añadir Pista (si es mono, usamos el canal 0 para ambos)
-      const trackData = trackBuffer.getChannelData(channel < trackBuffer.numberOfChannels ? channel : 0);
-      for (let i = 0; i < trackData.length; i++) outputData[i] += trackData[i];
-
-      // Añadir Voz (ajustar volumen de la voz si quieres, ej: trackData[i] + (voiceData[i] * 1.2))
-      const voiceData = voiceBuffer.getChannelData(channel < voiceBuffer.numberOfChannels ? channel : 0);
-      for (let i = 0; i < voiceData.length; i++) outputData[i] += voiceData[i];
-    }
-
-    // 4. Convertir a WAV (usando tu función audioBufferToWav)
-    const mixedBlob = audioBufferToWav(mixedBuffer, 0, mixedBuffer.length);
-    const url = URL.createObjectURL(mixedBlob);
-
-    // 5. Mostrar resultado
-    resultDiv.innerHTML = `
-      <div class="card" style="border: 1px solid var(--accent); margin-top: 15px;">
-        <p>✅ ¡Mezcla lista!</p>
-        <audio src="${url}" controls style="width: 100%;"></audio>
-        <br><br>
-        <a href="${url}" download="mi_karaoke.wav" class="btn-primary" style="text-decoration:none; padding: 10px 20px; display:inline-block;">Descargar Mezcla 📥</a>
-      </div>
-    `;
-  } catch (error) {
-    console.error("Error en la mezcla:", error);
-    alert("❌ No se pudo realizar la mezcla: " + error.message);
-  } finally {
-    btn.textContent = "🎙️ Mezclar Audios";
-    btn.disabled = false;
-  }
-  try {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const trackArrayBuffer = await trackBlob.arrayBuffer();
+    const trackArrayBuffer = await trackFile.arrayBuffer();
     const trackBuffer = await audioCtx.decodeAudioData(trackArrayBuffer);
+
     const voiceArrayBuffer = await karaokeRecordedBlob.arrayBuffer();
     const voiceBuffer = await audioCtx.decodeAudioData(voiceArrayBuffer);
-    const renderedBuffer = await offlineCtx.startRendering();
 
     const offlineCtx = new OfflineAudioContext(
       trackBuffer.numberOfChannels,
       trackBuffer.length,
       trackBuffer.sampleRate
     );
-    
-    let trackBlob = karaokeSelectedTrackBlob;
-    let trackName = karaokeSelectedTrackName || "Karaoke";
-
-    // Si la pista vino desde Supabase o desde una URL remota, la descargamos
-    if (!trackBlob && trackEl?.src) {
-      const trackResponse = await fetch(trackEl.src);
-      if (!trackResponse.ok) {
-        throw new Error("No se pudo descargar la pista instrumental");
-      }
-      trackBlob = await trackResponse.blob();
-    }
-
-    if (!trackBlob) {
-      throw new Error("No hay pista instrumental disponible para mezclar");
-    }
-
-    const outputLength = Math.max(trackBuffer.length, voiceBuffer.length);
-    const outputChannels = Math.max(trackBuffer.numberOfChannels, voiceBuffer.numberOfChannels);
 
     const trackGain = offlineCtx.createGain();
     trackGain.gain.value = 0.4;
@@ -2093,15 +1913,15 @@ async function mixKaraoke() {
     trackSource.start(0);
     voiceSource.start(0);
 
-   
+    const renderedBuffer = await offlineCtx.startRendering();
     const finalWavBlob = exportStereoWav(renderedBuffer);
     const finalUrl = URL.createObjectURL(finalWavBlob);
-    
+
     resultDiv.innerHTML = `
       <h4 style="color: #22c55e;">✅ ¡Mezcla completada!</h4>
       <audio controls src="${finalUrl}" style="width: 100%; margin-bottom: 15px; border-radius: 8px;"></audio>
       <div style="display: flex; gap: 10px;">
-        <a href="${finalUrl}" download="Mezcla_${trackName || "Karaoke"}.wav" style="flex: 1;">
+        <a href="${finalUrl}" download="Mezcla_${trackFile.name || "Karaoke"}.wav" style="flex: 1;">
           <button type="button" style="width: 100%; background: #22c55e; color: black;">💾 Descargar Archivo</button>
         </a>
         <button id="saveMixToLibBtn" type="button" style="flex: 1; background: #3b82f6; color: white;">📁 Guardar en Biblioteca</button>
@@ -2114,7 +1934,7 @@ async function mixKaraoke() {
       btnSave.disabled = true;
 
       await saveToLibrary(finalWavBlob, {
-        name: `Mezcla - ${trackName || "Canción"}`,
+        name: `Mezcla - ${trackFile.name || "Canción"}`,
         type: "grabacion"
       });
 
@@ -2335,52 +2155,43 @@ function showResult(url) {
 // ==========================================
 // CONFIGURACIÓN
 // ==========================================
-function initSettings() {
-    const settings = {
-        micCount: "singIt_micCount",
-        karaokeStage: "singIt_stage",
-        difficultyLevel: "singIt_difficulty",
-        userVoiceType: "singIt_voiceType",
-        appTheme: "singIt_theme"
-    };
-    // Función interna para guardar (Cerrada correctamente)
-    const saveSetting = (key, element) => {
-        if (!element) return;
-        localStorage.setItem(key, element.value);
-        showSaveNotification();
-    };
-    Object.entries(settings).forEach(([id, storageKey]) => {
-        const el = $(id);
-        if (el) {
-            // Cargar valor guardado
-            const saved = localStorage.getItem(storageKey);
-            if (saved) el.value = saved;
-
-             // Escuchar cambios
-            el.addEventListener("change", (e) => {
-                localStorage.setItem(storageKey, e.target.value);
-                showSaveNotification();
-                
-                // Si es el tema aplicarlo inmediatamente
-                if (id === "appTheme") {
-                    applyAppTheme(e.target.value);
-                }
-            });
-        }
-    });
-    // Aplicar tema guardado al iniciar
-    applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
+function saveSetting(key, element) {
+  if (!element) return;
+  localStorage.setItem(key, element.value);
+  showSaveNotification();
 }
 
-function showSaveNotification() {
-  const notif = $("saveNotification");
-  if (!notif) return;
+function initSettings() {
+  const settings = {
+    micCount: "vocalApp_micCount",
+    karaokeStage: "vocalApp_stage",
+    difficultyLevel: "vocalApp_difficulty",
+    userVoiceType: "vocalApp_voiceType",
+    appTheme: "vocalApp_theme"
+  };
 
-  notif.classList.add("show");
+  Object.entries(settings).forEach(([id, storageKey]) => {
+    const el = $(id);
+    if (el) {
+      // Cargar valor guardado
+      const saved = localStorage.getItem(storageKey);
+      if (saved) el.value = saved;
+      
+      // Escuchar cambios
+      el.addEventListener("change", (e) => {
+        localStorage.setItem(storageKey, e.target.value);
+        showSaveNotification();
+        
+        // Si es el tema, aplicarlo inmediatamente
+        if (id === "appTheme") {
+          applyAppTheme(e.target.value);
+        }
+      });
+    }
+  });
 
-  setTimeout(() => {
-    notif.classList.remove("show");
-  }, 2000);
+  // Aplicar tema guardado al iniciar
+  applyAppTheme(localStorage.getItem("vocalApp_theme") || "oscuro");
 }
 
 function applyAppTheme(theme) {
@@ -2426,7 +2237,7 @@ async function loadAvailableMics() {
       }
 
       // Cargar selección guardada
-      const savedMic1 = localStorage.getItem("singIt_mic1");
+      const savedMic1 = localStorage.getItem("vocalApp_mic1");
       if (savedMic1) mic1Select.value = savedMic1;
     }
 
@@ -2444,7 +2255,7 @@ async function loadAvailableMics() {
       }
 
       // Cargar selección guardada
-      const savedMic2 = localStorage.getItem("singIt_mic2");
+      const savedMic2 = localStorage.getItem("vocalApp_mic2");
       if (savedMic2) mic2Select.value = savedMic2;
     }
 
@@ -2571,7 +2382,7 @@ function stopMicTest() {
 
 function saveMicSelection(micNumber) {
   const selectId = micNumber === 1 ? "mic1Select" : "mic2Select";
-  const storageKey = micNumber === 1 ? "singIt_mic1" : "singIt_mic2";
+  const storageKey = micNumber === 1 ? "vocalApp_mic1" : "vocalApp_mic2";
 
   const select = $(selectId);
   if (select) {
@@ -2585,6 +2396,17 @@ function getSelectedMicId(micNumber) {
   const selectId = micNumber === 1 ? "mic1Select" : "mic2Select";
   const select = $(selectId);
   return select ? select.value : null;
+}
+
+function showSaveNotification() {
+  const notif = $("saveNotification");
+  if (!notif) return;
+
+  notif.classList.add("show");
+
+  setTimeout(() => {
+    notif.classList.remove("show");
+  }, 2000);
 }
 
 async function applyCorrectedLyrics() {
@@ -2792,76 +2614,62 @@ function cancelTapSync() {
 }
 
 async function applyTapSync() {
-    if (tapSyncTimestamps.length === 0 || tapSyncLines.length === 0) {
-        alert("⚠️ No hay datos de sincronización.");
-        return;
-    }
+  if (tapSyncTimestamps.length === 0 || tapSyncLines.length === 0) {
+    alert("⚠️ No hay datos de sincronización.");
+    return;
+  }
+  
+  const voicePlayer = $("selectedVoicePlayer");
+  const totalDuration = voicePlayer ? voicePlayer.duration : 0;
+  const status = $("selectedVoiceStatus");
+  
+  // Mostrar estado
+  if (status) status.textContent = "Estado: Aplicando tiempos y analizando notas...";
+  
+  const newSegments = [];
+  
+  for (let i = 0; i < tapSyncLines.length; i++) {
+    const start = tapSyncTimestamps[i] || 0;
+    let end = (i < tapSyncTimestamps.length - 1) ? tapSyncTimestamps[i + 1] : (totalDuration || start + 3);
     
-    const voicePlayer = $("selectedVoicePlayer");
-    const totalDuration = voicePlayer ? voicePlayer.duration : 0;
-    const status = $("selectedVoiceStatus");
-    
-    // Mostrar estado
-    if (status) status.textContent = "Estado: Aplicando tiempos y analizando notas...";
-    
-    const newSegments = [];
-    for (let i = 0; i < tapSyncLines.length; i++) {
-        const start = tapSyncTimestamps[i] || 0;
-        let end = (i < tapSyncTimestamps.length - 1) ? tapSyncTimestamps[i + 1] : (totalDuration || start + 3);
-        
-        newSegments.push(buildWordTimingFromSegment({
-            start: start,
-            end: end,
-            text: tapSyncLines[i]
-        }));
-    }
-    
-    // Analizar pitch si tenemos el blob de audio
-    let analyzedSegments = newSegments;
-    if (selectedVoiceBlob) {
-        if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
-        analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
-    }
-    
-    baseTranscriptionSegments = analyzedSegments;
-    transcriptionSegments = analyzedSegments;
-    if (studioSelectedTrackBlob) {
-        try {
-            await addLibraryItem({
-                name: `Karaoke - ${studioSelectedTrackName || "Sin título"}`,
-                type: "karaoke",
-                audioBlob: studioSelectedTrackBlob,
-                date: new Date().toLocaleString("es-ES"),
-                transcription: analyzedSegments,
-                metadata: {
-                    title: studioSelectedTrackName || "Sin título",
-                    sourceVoiceId: selectedVoiceId || null,
-                    sourceTrackId: studioSelectedTrackId || null
-                }
-            });
-            console.log("✅ Canción karaoke creada");
-        } catch (err) {
-            console.error("❌ Error creando karaoke:", err);
-        }
-    } else {
-        console.warn("⚠️ No hay pista instrumental seleccionada para crear karaoke");
-    }
-    
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
-    if (selectedVoiceId) {
-        updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
-            .then(() => console.log("✅ Guardado en Biblioteca"))
-            .catch(err => console.error("Error:", err));
-    }
-    $("startTapSyncBtn").style.display = "inline-block";
-    $("tapSyncResult").style.display = "none";
-    tapSyncLines = [];
-    tapSyncTimestamps = [];
-    tapSyncCurrentIndex = 0;
-    if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
-    alert("✅ ¡Tiempos y notas aplicados! Reproduce para verificar.");
+    newSegments.push(buildWordTimingFromSegment({
+      start: start,
+      end: end,
+      text: tapSyncLines[i]
+    }));
+  }
+  
+  // Analizar pitch si tenemos el blob de audio
+  let analyzedSegments = newSegments;
+  if (selectedVoiceBlob) {
+    if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
+    analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
+  }
+  
+  baseTranscriptionSegments = analyzedSegments;
+  transcriptionSegments = analyzedSegments;
+  
+  renderKaraokeLyrics(transcriptionSegments);
+  cargarLetrasEnMonitor();
+  
+  if (selectedVoiceId) {
+    updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
+      .then(() => console.log("✅ Guardado en Biblioteca"))
+      .catch(err => console.error("Error:", err));
+  }
+  
+  $("startTapSyncBtn").style.display = "inline-block";
+  $("tapSyncResult").style.display = "none";
+  
+  tapSyncLines = [];
+  tapSyncTimestamps = [];
+  tapSyncCurrentIndex = 0;
+  
+  if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
+  
+  alert("✅ ¡Tiempos y notas aplicados! Reproduce para verificar.");
 }
+
 
 function redoTapSync() {
   $("tapSyncResult").style.display = "none";
@@ -2877,7 +2685,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     initSettings();
 
     function applyKaraokeTheme() {
-      const theme = localStorage.getItem("singIt_stage") || "clasico";
+      const theme = localStorage.getItem("vocalApp_stage") || "clasico";
       const monitor = $("karaokeLiveLyrics");
       if (monitor) {
         monitor.className = "karaoke-lyrics theme-" + theme;
@@ -2887,7 +2695,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyKaraokeTheme();
 
     safeAdd("karaokeStage", "change", (e) => {
-      saveSetting("singIt_stage", e.target);
+      saveSetting("vocalApp_stage", e.target);
       applyKaraokeTheme();
     });
 
@@ -3599,197 +3407,160 @@ async function loadKaraokeCatalog() {
 
 async function loadCatalogSong(folder, title, artist) {
   const status = $("karaokeStatus");
-  const track = $("karaokeTrack");
-    // 1. Limpieza previa inmediata
+  
+  try {
     if (status) status.textContent = `Estado: Cargando "${title}"...`;
     
-    try {
-        // 2. Cargar sincronización (TXT)
-        const syncResponse = await fetch(`./karaoke-catalog/${folder}/sync.txt`);
-        if (!syncResponse.ok) throw new Error("No se pudo cargar la sincronización");
-        
-        const syncContent = await syncResponse.text();
-        const parsedSegments = parseUltraStarSync(syncContent);
-        
-        if (!parsedSegments.length) throw new Error("Formato de sincronización no válido");
-        // 3. Cargar audio (MP3)
-        const audioResponse = await fetch(`./karaoke-catalog/${folder}/audio.mp3`);
-        if (!audioResponse.ok) throw new Error("No se pudo cargar el audio");
-        
-        const audioBlob = await audioResponse.blob();
-        // 4. Configurar el reproductor (Manejo de memoria)
-        if (track) {
-            
-            // Liberamos la URL anterior si existía para evitar fugas de memoria
-            if (track.src && track.src.startsWith("blob:")) {
-                URL.revokeObjectURL(track.src);
-            }
-            const urlConCacheBuster = new URL(item.file_url);
-            urlConCacheBuster.searchParams.append('v', Date.now());
-            track.src = urlConCacheBuster.toString();
-            track.volume = 0.4;
-        }
-        // 5. Actualizar estado global
-        
-        karaokeSelectedTrackBlob = audioBlob;
-        karaokeSelectedTrackName = `${title} - ${artist}`;
-        transcriptionSegments = parsedSegments;
-        baseTranscriptionSegments = [...parsedSegments];
-        
-        // Reiniciar variables de seguimiento
-        currentTime = 0; 
-        if (typeof pitchHistory !== 'undefined') pitchHistory = [];
-        
-        // 6. UI y Feedback
-        cargarLetrasEnMonitor();
-        
-        if (typeof drawKaraokeMonitor === "function") {
-            drawKaraokeMonitor(0);
-        }
-        if (status) {
-            status.textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
-        }
-        
-        const canvas = $("karaokeCanvas");
-        if (canvas) {
-            canvas.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-    
-    } catch (error) {
-        console.error("Error en loadCatalogSong:", error);
-        if (status) status.textContent = `Estado: Error al cargar "${title}"`;
-        alert(`❌ Error: ${error.message}`);
+    // Cargar el archivo de sincronización
+    const syncResponse = await fetch(`./karaoke-catalog/${folder}/sync.txt`);
+    if (!syncResponse.ok) {
+      throw new Error("No se pudo cargar la sincronización");
     }
+    const syncContent = await syncResponse.text();
+    
+    // Parsear el archivo UltraStar
+    const parsed = parseUltrastarTxt(syncContent);
+    const segments = ultrastarToSegments(parsed);
+    
+    if (segments.length === 0) {
+      throw new Error("No se pudieron extraer las notas");
+    }
+    
+    // Cargar el audio
+    const audioResponse = await fetch(`./karaoke-catalog/${folder}/audio.mp3`);
+    if (!audioResponse.ok) {
+      throw new Error("No se pudo cargar el audio");
+    }
+    const audioBlob = await audioResponse.blob();
+    
+    // Configurar el reproductor
+    const track = $("karaokeTrack");
+    if (track) {
+      track.src = URL.createObjectURL(audioBlob);
+      track.volume = 0.4;
+      karaokeSelectedTrackBlob = audioBlob;
+      karaokeSelectedTrackName = `${title} - ${artist}`;
+    }
+    
+    // Configurar la sincronización
+    transcriptionSegments = segments;
+    baseTranscriptionSegments = segments;
+    cargarLetrasEnMonitor();
+    
+    if (status) status.textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
+    
+    // Scroll al monitor
+    const canvas = $("karaokeCanvas");
+    if (canvas) {
+      canvas.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    
+    console.log("✅ Canción del catálogo cargada:", title);
+    
+  } catch (error) {
+    console.error("Error cargando canción del catálogo:", error);
+    if (status) status.textContent = `Estado: Error al cargar "${title}"`;
+    alert(`❌ Error al cargar la canción: ${error.message}`);
+  }
 }
 
 async function loadMyKaraokeSongs() {
   const container = $("myKaraokeList");
   if (!container) return;
+  
   try {
-    // Usamos las versiones de Supabase que definimos antes para ser consistentes
-    const karaokeSongs = await getLibraryItemsByTypeFromSupabase("karaoke");
-    const voces = await getLibraryItemsByTypeFromSupabase("voz");
+    // Obtener canciones tipo "karaoke" de la biblioteca
+    const karaokeSongs = await getLibraryItemsByType("karaoke");
     
+    // También obtener voces que tengan transcripción
+    const voces = await getLibraryItemsByType("voz");
     const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
+    
     const allSongs = [...karaokeSongs, ...vocesConSync];
-
+    
     if (allSongs.length === 0) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 20px; color: #6b7280;">
+        <div style="text-align: center; padding: 20px; color: var(--text-muted);">
           <p>No tienes canciones listas aún.</p>
-          <p style="font-size: 13px;">Sincroniza una en Estudio.</p>
-        </div>`;
+          <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
+        </div>
+      `;
       return;
     }
-
+    
     container.innerHTML = "";
+    
     allSongs.forEach(song => {
       const div = document.createElement("div");
-      div.className = "my-karaoke-item card"; // Añadí 'card' para consistencia visual
+      div.className = "my-karaoke-item";
       
       const title = song.metadata?.title || song.name || "Sin título";
-      const artist = song.metadata?.artist || "Artista desconocido";
-
+      const artist = song.metadata?.artist || "";
+      
       div.innerHTML = `
         <div class="my-karaoke-item-info">
-          <p class="my-karaoke-item-title" style="font-weight:bold;">${title}</p>
-          <p class="my-karaoke-item-artist" style="font-size:0.8em; opacity:0.7;">${artist}</p>
+          <p class="my-karaoke-item-title">${title}</p>
+          <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
         </div>
-        <div class="my-karaoke-item-actions" style="display:flex; gap:5px;">
-          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">▶️ Cantar</button>
-          <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">🗑️</button>
-        </div>`;
+        <div class="my-karaoke-item-actions">
+          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
+          <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
+        </div>
+      `;
+      
       container.appendChild(div);
     });
-
-    // Eventos corregidos (sin forzar Number)
+    
+    // Agregar eventos
     container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", () => loadKaraokeSong(btn.dataset.id));
+      btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
     });
-
+    
     container.querySelectorAll(".delete-karaoke-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
-        if (confirm("¿Eliminar esta canción?")) {
-          await deleteLibraryItemFromSupabase(btn.dataset.id);
+        if (confirm("¿Eliminar esta canción de tu biblioteca?")) {
+          await deleteLibraryItemFromDB(Number(btn.dataset.id));
           await loadMyKaraokeSongs();
         }
       });
     });
+    
   } catch (error) {
-    console.error("Error cargando canciones:", error);
-    container.innerHTML = `<p style="color: #ef4444;">Error al cargar biblioteca</p>`;
+    console.error("Error cargando mis canciones:", error);
+    container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
   }
-}
-
-async function loadAudioSecurely(url, element) {
-    try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        // Revocamos la URL anterior para liberar memoria
-        if (element.src.startsWith("blob:")) URL.revokeObjectURL(element.src);
-        
-        // Creamos una nueva URL interna que NO tiene problemas de caché
-        element.src = URL.createObjectURL(blob);
-    } catch (err) {
-        console.error("Error al cargar audio:", err);
-        // Fallback a URL directa si el fetch falla
-        element.src = url;
-    }
 }
 
 async function loadKaraokeSong(id) {
   try {
-    const song = await getLibraryItemByIdFromSupabase(id);
-    if (!song) return alert("⚠️ Canción no encontrada");
-
-    const track = $("karaokeTrack");
-    if (track) {
-      // 1. Limpieza de memoria
-      if (track.src && track.src.startsWith("blob:")) {
-        URL.revokeObjectURL(track.src);
-      }
-
-      // 2. Carga segura del audio (evitando el error de caché)
-      if (song.file_url) {
-        try {
-          // Intentamos descargar el archivo y convertirlo a un objeto local (blob)
-          const response = await fetch(song.file_url);
-          const blob = await response.blob();
-          const urlConCacheBuster = new URL(item.file_url);
-            urlConCacheBuster.searchParams.append('v', Date.now());
-            track.src = urlConCacheBuster.toString();
-        } catch (fetchErr) {
-            console.error("Error al descargar audio, usando fallback:", fetchErr);
-            // Si falla el fetch, intentamos la carga directa como último recurso
-            track.src = song.file_url;
-        }
-      } else if (song.audioBlob) {
-          track.src = URL.createObjectURL(song.audioBlob);
-      }
-        track.volume = 0.4;
-    }
-
-    // --- (Aquí sigue el resto de tu código original de letras) ---
-    if (Array.isArray(song.transcription) && song.transcription.length > 0) {
-        transcriptionSegments = song.transcription; 
-        baseTranscriptionSegments = [...song.transcription];
-        cargarLetrasEnMonitor();
-        const canvas = $("karaokeCanvas");
-        if (canvas) drawKaraokeMonitor(0, 0); 
-    } else {
-        transcriptionSegments = [];
-        baseTranscriptionSegments = [];
-        cargarLetrasEnMonitor();
-    }
-
-    const title = song.metadata?.title || song.name;
-    if ($("karaokeStatus")) {
-        $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡A cantar! 🎤`;
+    const song = await getLibraryItemById(id);
+    if (!song) {
+      alert("⚠️ Canción no encontrada");
+      return;
     }
     
-    const canvas = $("karaokeCanvas");
-    if (canvas) canvas.scrollIntoView({ behavior: "smooth", block: "center" });
-
+    // Cargar pista
+    const track = $("karaokeTrack");
+    if (track && song.audioBlob) {
+      track.src = URL.createObjectURL(song.audioBlob);
+      track.volume = 0.4;
+      karaokeSelectedTrackBlob = song.audioBlob;
+      karaokeSelectedTrackName = song.name;
+    }
+    
+    // Cargar transcripción
+    if (song.transcription && song.transcription.length > 0) {
+      transcriptionSegments = song.transcription;
+      baseTranscriptionSegments = song.transcription;
+      cargarLetrasEnMonitor();
+    }
+    
+    const title = song.metadata?.title || song.name;
+    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
+    
+    // Scroll al monitor
+    $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
+    
   } catch (error) {
     console.error("Error cargando canción:", error);
     alert("❌ Error al cargar la canción");
