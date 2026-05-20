@@ -415,8 +415,9 @@ function cargarAudioEstudio(e) {
 }
 
 function playTrack() {
-     player.currentTime = 0;
+    player.currentTime = 0;
     const player = $("player");
+    
     
     if (!player || !player.src) {
         alert("⚠️ Primero sube una pista");
@@ -424,10 +425,12 @@ function playTrack() {
     }
     player.play();
 }
+
 function pauseTrack() {
     const player = $("player");
     if (!player) return;
 }
+
 function stopTrack() {
     const player = $("player");
     if (!player) return;
@@ -681,67 +684,63 @@ async function saveToLibrary(blob, options = {}) {
 }
 
 async function renderLibrary(filter = "todos") {
-  const container = $("libraryList");
-  if (!container) return;
-
-  container.innerHTML = "<p>Cargando archivos...</p>";
-
-  try {
-    let library = await getAllLibraryItemsFromSupabase();
-
-    let filteredItems = library;
-    if (filter !== "todos") {
-      filteredItems = library.filter(item => item.type === filter);
+    const container = $("libraryList");
+    if (!container) return;
+    
+    container.innerHTML = "<p>Cargando archivos...</p>";
+    
+    try {
+        let library = await getAllLibraryItemsFromSupabase();
+        
+        let filteredItems = library;
+        if (filter !== "todos") {
+            filteredItems = library.filter(item => item.type === filter);
+        }
+        
+        container.innerHTML = "";
+        if (filteredItems.length === 0) {
+            container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
+        } else {
+            filteredItems.forEach((item) => {
+                const div = document.createElement("div");
+                div.className = "library-item card";
+                div.style.marginBottom = "10px";
+                div.innerHTML = `
+                    <p><strong>${item.name}</strong></p>
+                    <small>Tipo: ${item.type.toUpperCase()} | ${new Date(item.created_at).toLocaleString("es-ES")}</small>
+                    <audio controls src="${item.file_url}" style="width:100%; margin: 10px 0;"></audio>
+                    <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+        document.querySelectorAll(".delete-library-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const id = btn.dataset.id;
+                await deleteLibraryItem(id);
+                renderLibrary(filter);
+            });
+        });
+        await loadVoiceOptionsInStudio();
+        await loadTrackOptionsInStudio();
+        await loadTrackOptionsInKaraoke();
+    
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
     }
-
-    container.innerHTML = "";
-
-    if (filteredItems.length === 0) {
-      container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
-    } else {
-      filteredItems.forEach((item) => {
-        const div = document.createElement("div");
-        div.className = "library-item card";
-        div.style.marginBottom = "10px";
-
-        div.innerHTML = `
-          <p><strong>${item.name}</strong></p>
-          <small>Tipo: ${item.type.toUpperCase()} | ${new Date(item.created_at).toLocaleString("es-ES")}</small>
-          <audio controls src="${item.file_url}" style="width:100%; margin: 10px 0;"></audio>
-          <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
-        await deleteLibraryItem(id);
-        renderLibrary(filter);
-      });
-    });
-
-    await loadVoiceOptionsInStudio();
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
-
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
-  }
 }
 
 
 async function deleteLibraryItem(id) {
-  try {
-    await deleteLibraryItemFromSupabase(id);
-    await renderLibrary();
-    alert("✅ Archivo eliminado");
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al eliminar el archivo");
-  }
+    try {
+        await deleteLibraryItemFromSupabase(id);
+        await renderLibrary();
+        alert("✅ Archivo eliminado");
+    } catch (error) {
+        console.error(error);
+        alert("❌ Error al eliminar el archivo");
+    }
 }
 
 async function saveManualFileToLibrary() {
@@ -763,7 +762,6 @@ async function saveManualFileToLibrary() {
             blob: file,
             transcription: []
         });
-
         alert("✅ ¡Archivo guardado en la nube!");
         await renderLibrary('todos');
     } catch (error) {
@@ -773,7 +771,6 @@ async function saveManualFileToLibrary() {
         // --- CAMBIO AQUÍ: Verificamos de nuevo ---
         const progress = $("uploadProgress");
         if (progress) progress.style.display = "none";
-        
         if (fileInput) fileInput.value = "";
     }
 }
@@ -829,34 +826,36 @@ async function loadTrackOptionsInStudio() {
 }
 
 async function loadSelectedTrackFromLibraryStudio() {
-  const select = $("studioTrackSelect");
-  const player = $("player");
-  const status = $("studioStatus");
-
-  if (!select || !player || !status) return;
-
-  const selectedId = select.value;
-
-  if (!selectedId) {
-    alert("⚠️ Selecciona una pista");
-    return;
-  }
-
-  try {
-    const item = await getLibraryItemByIdFromSupabase(selectedId);
-
-    if (!item) {
-      alert("⚠️ No se encontró la pista");
-      return;
+    const select = $("studioTrackSelect");
+    const player = $("player");
+    const status = $("studioStatus");
+    
+    if (!select || !player || !status) return;
+    const selectedId = select.value;
+    
+    if (!selectedId) {
+        alert("⚠️ Selecciona una pista");
+        return;
     }
-
-    studioTrackFileName = item.name;
-    player.src = item.file_url;
-    status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la pista seleccionada");
-  }
+    
+    try {
+        const item = await getLibraryItemByIdFromSupabase(selectedId);
+        
+        if (!item) {
+            alert("⚠️ No se encontró la pista");
+            return;
+        }
+        studioSelectedTrackBlob = item.audioBlob;
+        studioSelectedTrackId = item.id;
+        studioSelectedTrackName = item.name;
+        
+        studioTrackFileName = item.name;
+        player.src = URL.createObjectURL(item.audioBlob);
+        status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo cargar la pista seleccionada");
+    }
 }
 
 async function loadVoiceOptionsInStudio() {
