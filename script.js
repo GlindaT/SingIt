@@ -849,44 +849,34 @@ async function loadTrackOptionsInStudio() {
 }
 
 async function loadSelectedTrackFromLibraryStudio() {
-    const select = $("studioTrackSelect");
-    const player = $("player");
-    const status = $("studioStatus");
-    
-    if (!select || !player || !status) return;
-    const selectedId = select.value;
-    
-    if (!selectedId) {
-        alert("⚠️ Selecciona una pista");
-        return;
-    }
-    try {
-        const item = await getLibraryItemByIdFromSupabase(selectedId);
-        if (!item) {
-            alert("⚠️ No se encontró la pista");
-            return;
-        }
-        
-        // CORRECCIÓN: Asignar la URL pública de internet en lugar del campo inexistente
-        studioSelectedTrackFile = item.file_url; 
-        studioSelectedTrackId = item.id;
-        studioSelectedTrackName = item.name;
-        studioTrackFileName = item.name;
-        
-        // Liberamos memoria de blobs locales previos si el reproductor los tenía
-        if (player.src && player.src.startsWith("blob:")) {
-            URL.revokeObjectURL(player.src);
-        }
+  const select = $("studioTrackSelect");
+  const player = $("player");
+  const status = $("studioStatus");
 
-        // CORRECCIÓN: Asignación directa de la URL de Supabase con Cache Buster (?v=...)
-        player.src = `${item.file_url}?v=${Date.now()}`;
-        player.load(); // Fuerza al navegador a preparar el decodificador de audio inmediatamente
-        
-        status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
-    } catch (error) {
-        console.error(error);
-        alert("❌ No se pudo cargar la pista seleccionada");
+  if (!select || !player || !status) return;
+
+  const selectedId = select.value;
+
+  if (!selectedId) {
+    alert("⚠️ Selecciona una pista");
+    return;
+  }
+
+  try {
+    const item = await getLibraryItemByIdFromSupabase(selectedId);
+
+    if (!item) {
+      alert("⚠️ No se encontró la pista");
+      return;
     }
+
+    studioTrackFileName = item.name;
+    player.src = item.file_url;
+    status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+  } catch (error) {
+    console.error(error);
+    alert("❌ No se pudo cargar la pista seleccionada");
+  }
 }
 
 async function loadVoiceOptionsInStudio() {
