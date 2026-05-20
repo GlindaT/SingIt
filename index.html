@@ -255,9 +255,14 @@
       <!-- CATÁLOGO DE CANCIONES LISTAS -->
       <div class="card">
         <h3>🎤 Canciones Listas para Cantar</h3>
-        
-        <!-- Catálogo pre-cargado -->
-        <div id="catalogSection">
+        <div class="seccion-desplegable">
+          <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-canciones', 'flecha-canciones')">
+            <h2>🎤 Canciones Listas para Cantar</h2>
+            <span id="flecha-canciones" class="flecha">▶</span>
+          </div>
+          <div id="contenido-canciones" class="contenido-desplegable oculto">
+            <!-- Catálogo pre-cargado -->
+            <div id="catalogSection">
           <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
           <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
             <p style="color: var(--text-muted);">Cargando catálogo...</p>
@@ -331,6 +336,13 @@
       </div>
 
       <!-- Paso 1: Pista -->
+          <div class="seccion-desplegable">
+            <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-pista', 'flecha-pista')">
+        <h2>1. Cargar Pista (Instrumental)</h2>
+        <span id="flecha-pista" class="flecha">▶</span>
+    </div>
+    <div id="contenido-pista" class="contenido-desplegable oculto">
+
       <div class="card">
         <h3>1. Cargar Pista (Instrumental)</h3>
         
@@ -351,6 +363,7 @@
         
         <audio id="karaokeTrack" controls style="margin-top: 15px;"></audio>
       </div>
+    </div>
 
       <!-- MONITOR ESTILO ULTRASTAR -->
       <div class="card" style="background: black; border: 2px solid var(--border);">
