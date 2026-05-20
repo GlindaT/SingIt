@@ -212,31 +212,56 @@ let audioContext, analyser, stream;
 
 async function toggleAfinadorBtn() {
     const btn = $("recordBtn");
+    
+    // 1. Si ya se estaba intentando conectar, salimos para evitar doble ejecución
+    if (state.isConnecting) return; 
+
     if (!state.isRecording) {
         state.isRecording = true;
+        state.isConnecting = true; // Bloqueo de seguridad
         if (btn) btn.textContent = "🛑 Detener Afinador";
         
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // 2. Verificación: Si el usuario canceló mientras esperaba el micrófono, detenemos todo
+            if (!state.isRecording) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                return;
+            }
+
+            stream = mediaStream;
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
             const source = audioContext.createMediaStreamSource(stream);
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 2048;
             source.connect(analyser);
+            
             bucleDeteccionPitch();
         } catch (err) {
             console.error(err);
             state.isRecording = false;
             if (btn) btn.textContent = "Iniciar";
+        } finally {
+            state.isConnecting = false; // Liberamos el bloqueo
         }
     } else {
         state.isRecording = false;
+        state.isConnecting = false;
         if (btn) btn.textContent = "Iniciar";
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        if (audioContext) audioContext.close();
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+        if (audioContext) {
+            if (audioContext.state !== "closed") {
+                await audioContext.close();
+            }
+            audioContext = null;
+        }
     }
 }
-
 function bucleDeteccionPitch() {
     if (!state.isRecording || !analyser) return;
     analyser.getFloatTimeDomainData(pitchBuffer);
