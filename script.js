@@ -2313,7 +2313,7 @@ async function splitAudio() {
                     // NOTA: Asegúrate de tener implementada la función exportStereoWav en tu proyecto
                     const blobPistaWav = exportStereoWav(renderedBuffer);
 
-                    const recorder = new MediaRecorder(new MediaStream([new AudioContext().createMediaStreamSource()]));
+                    const recorder = new MediaRecorder(new MediaStream([new AudioCtx().createMediaStreamSource()]));
                     
                     // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
                     await saveToLibrary(blobPista, { 
