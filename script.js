@@ -981,7 +981,7 @@ async function handleLyricsUpload() {
         
         // Guardamos esto en el objeto que está seleccionado en el Estudio
         if (selectedVoiceId) {
-            await updateLibraryItemInSupabase(selectedVoiceId, { transcription: ... })
+            await updateLibraryItemInSupabase(selectedVoiceId, { transcription})
                 transcription: parsedSegments
             });
             $("lyricsStatus").textContent = "✅ ¡Letras guardadas!";
