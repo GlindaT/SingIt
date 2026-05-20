@@ -878,86 +878,98 @@ async function loadSelectedTrackFromLibraryStudio() {
 }
 
 async function loadVoiceOptionsInStudio() {
-    const select = $("voiceLibrarySelect");
-    if (!select) return;
+  const select = $("voiceLibrarySelect");
+  if (!select) return;
 
-    select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
 
-    try {
-        const voces = await getLibraryItemsByType("voz");
-        const grabaciones = await getLibraryItemsByType("grabacion");
-        const merged = [...voces, ...grabaciones];
+  try {
+    const voces = await getLibraryItemsByTypeFromSupabase("voz");
+    const grabaciones = await getLibraryItemsByTypeFromSupabase("grabacion");
 
-        if (!merged.length) {
-            const option = document.createElement("option");
-            option.value = "";
-            option.textContent = "No hay voces guardadas";
-            select.appendChild(option);
-            return;
-        }
+    const merged = [...voces, ...grabaciones];
 
-        merged.forEach((item) => {
-            const option = document.createElement("option");
-            option.value = item.id;
-            option.textContent = `${item.name} (${item.date || "sin fecha"})`;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        console.error(error);
+    if (!merged.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No hay voces guardadas";
+      select.appendChild(option);
+      return;
     }
+
+    merged.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = `${item.name} (${new Date(item.created_at).toLocaleString("es-ES")})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 async function loadSelectedVoiceFromLibrary() {
-    const select = $("voiceLibrarySelect");
-    const player = $("selectedVoicePlayer");
-    const status = $("selectedVoiceStatus");
-    const lyricsText = $("lyricsText");
-    
-    if (!select || !player || !status) return;
-    const selectedId = select.value;
-    if (!selectedId) {
-        alert("⚠️ Selecciona una voz");
-        return;
+  const select = $("voiceLibrarySelect");
+  const player = $("selectedVoicePlayer");
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  if (!select || !player || !status) return;
+
+  const selectedId = select.value;
+
+  if (!selectedId) {
+    alert("⚠️ Selecciona una voz");
+    return;
+  }
+
+  try {
+    const item = await getLibraryItemByIdFromSupabase(selectedId);
+
+    if (!item) {
+      alert("⚠️ No se encontró el archivo");
+      return;
     }
-    try {
-        const item = await getLibraryItemByIdFromSupabase(selectedId);
-        if (!item) {
-            alert("⚠️ No se encontró el archivo");
-            return;
-        }
-        const response = await fetch(item.file_url);
-        selectedVoiceBlob = await response.blob();
-        selectedVoiceId = item.id;
-        player.src = item.file_url;
-        status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-        
-        if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-            baseTranscriptionSegments = item.transcription.map(seg =>
-            buildWordTimingFromSegment(seg)
-        );
-        transcriptionSegments = [...baseTranscriptionSegments];
-        renderKaraokeLyrics(transcriptionSegments);
-        cargarLetrasEnMonitor();
-      
-        if (lyricsText) {
-            lyricsText.value = transcriptionSegments
-                .map(seg => seg.text || "")
-                .join("\n")
-                .trim();
-        }
-        status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
-        } else {
-            baseTranscriptionSegments = [];
-            transcriptionSegments = [];
-            renderKaraokeLyrics([]);
-            cargarLetrasEnMonitor();
-            if (lyricsText) lyricsText.value = "";
-            status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
-        }
-    } catch (error) {
-        console.error(error);
-        alert("❌ No se pudo cargar la voz seleccionada");
+
+    const response = await fetch(item.file_url);
+    selectedVoiceBlob = await response.blob();
+    selectedVoiceId = item.id;
+
+    player.src = item.file_url;
+    status.textContent = `Estado: voz seleccionada -> ${item.name}`;
+
+    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+      baseTranscriptionSegments = item.transcription.map(seg =>
+        buildWordTimingFromSegment(seg)
+      );
+
+      transcriptionSegments = [...baseTranscriptionSegments];
+
+      renderKaraokeLyrics(transcriptionSegments);
+      cargarLetrasEnMonitor();
+
+      if (lyricsText) {
+        lyricsText.value = transcriptionSegments
+          .map(seg => seg.text || "")
+          .join("\n")
+          .trim();
+      }
+
+      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+    } else {
+      baseTranscriptionSegments = [];
+      transcriptionSegments = [];
+
+      renderKaraokeLyrics([]);
+      cargarLetrasEnMonitor();
+
+      if (lyricsText) lyricsText.value = "";
+      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
     }
+  } catch (error) {
+    console.error(error);
+    alert("❌ No se pudo cargar la voz seleccionada");
+  }
 }
 
 async function handleLyricsUpload() {
@@ -2291,20 +2303,17 @@ function exportStereoWav(buffer) {
 async function splitAudio() {
     const fileInput = $("splitterFile");
     const file = fileInput?.files[0];
-    console.log("Archivo detectado:", file);
     
     if (!file) {
         alert("⚠️ Selecciona una canción primero.");
         return;
     }
     
-    const originalName = file.name;
-    const btn = $("splitBtn");
-    const statusBox = $("splitterStatusBox");
-    const statusText = $("splitterStatusText");
-    const detailText = $("splitterDetailText");
+    const btn = ("splitBtn");conststatusBox=("splitterStatusBox");
+    const statusText = ("splitterStatusText");constdetailText=("splitterDetailText");
     
     btn.disabled = true;
+    
     statusBox.style.display = "block";
     statusText.textContent = "1/4 📦 Subiendo canción...";
     detailText.textContent = "Enviando al casillero temporal seguro...";
@@ -2312,7 +2321,6 @@ async function splitAudio() {
     try {
         const formData = new FormData();
         formData.append("file", file);
-        
         const tmpResponse = await fetch("https://tmpfiles.org/api/v1/upload", {
             method: "POST",
             body: formData
@@ -2324,6 +2332,7 @@ async function splitAudio() {
         }
         
         const directUrl = tmpData.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+        
         statusText.textContent = "2/4 🚀 Iniciando Inteligencia Artificial...";
         detailText.textContent = "Despertando al modelo de alta calidad MDX23...";
         
@@ -2346,45 +2355,36 @@ async function splitAudio() {
                 const statusData = await checkResponse.json();
                 
                 if (statusData.status === "succeeded") {
-                    clearInterval(interval); // Detener polling inmediatamente
+                    clearInterval(interval);
                     statusText.textContent = "4/4 🎧 Armando la pista final...";
-                    detailText.textContent = "Mezclando bajo, batería y melodía...";
+                    detailText.textContent = "Mezclando bajo, batería y melodía en una sola pista instrumental...";
                     
                     const urls = statusData.output;
                     let vocalUrl = null;
                     let instUrls = [];
                     
                     if (Array.isArray(urls)) {
-                        urls.forEach(u => {
-                            if (u.toLowerCase().includes("vocal")) vocalUrl = u;
-                            else instUrls.push(u);
-                        });
-                        if (!vocalUrl && urls.length > 0) {
+                        urls.forEach(u => u.toLowerCase().includes("vocal") ? (vocalUrl = u) : instUrls.push(u));
+                        if (!vocalUrl) {
                             vocalUrl = urls[0];
                             instUrls = urls.slice(1);
                         }
-                    } else if (urls && typeof urls === "object") {
+                    } else {
                         for (const [key, value] of Object.entries(urls)) {
                             if (key.toLowerCase().includes("vocal")) vocalUrl = value;
                             else instUrls.push(value);
                         }
                     }
-                    
-                    if (!vocalUrl) throw new Error("No se encontraron las pistas procesadas.");
-
                     const resVoz = await fetch(vocalUrl);
                     const blobVoz = await resVoz.blob();
                     
                     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const buffers = [];
-                    
                     for (const url of instUrls) {
                         const res = await fetch(url);
                         const arrayBuffer = await res.arrayBuffer();
                         buffers.push(await audioCtx.decodeAudioData(arrayBuffer));
                     }
-                    
-                    if (buffers.length === 0) throw new Error("No hay pistas instrumentales para mezclar.");
                     
                     const maxLength = Math.max(...buffers.map(b => b.length));
                     const offlineCtx = new OfflineAudioContext(2, maxLength, buffers[0].sampleRate);
@@ -2395,114 +2395,41 @@ async function splitAudio() {
                         source.connect(offlineCtx.destination);
                         source.start(0);
                     });
+                    
                     const renderedBuffer = await offlineCtx.startRendering();
-                    // --- SISTEMA DE COMPRESIÓN A WEBM CORREGIDO ---
-                    statusText.textContent = "⚡ Comprimiendo pista instrumental...";
-                    detailText.textContent = "Reduciendo tamaño para guardado rápido en la nube...";
+                    const blobPista = exportStereoWav(renderedBuffer);
                     
-                    const compressAudio = async (audioBuffer) => {
-                        return new Promise((resolve) => {
-                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                            const source = ctx.createBufferSource();
-                            source.buffer = audioBuffer;
-                            
-                            const destination = ctx.createMediaStreamDestination();
-                            source.connect(destination);
-                            
-                            const mediaRecorder = new MediaRecorder(destination.stream, {
-                                mimeType: "audio/webm;codecs=opus",
-                                audioBitsPerSecond: 192000 
-                            });
-                            
-                            const chunks = [];
-                            mediaRecorder.ondataavailable = (e) => {
-                                if (e.data.size > 0) chunks.push(e.data);
-                            };
-                            
-                            mediaRecorder.onstop = () => {
-                                const compressedBlob = new Blob(chunks, { type: "audio/webm" });
-                                ctx.close();
-                                resolve(compressedBlob);
-                            };
-                            
-                            mediaRecorder.start();
-                            source.start(0);
-                            
-                            setTimeout(() => {
-                                mediaRecorder.stop();
-                                source.stop();
-                            }, (audioBuffer.duration * 1000) + 200);
-                        });
-                    };
-                    
-                    // 1. Generamos el archivo comprimido ligero de la pista instrumental
-                    const blobPistaWebM = await compressAudio(renderedBuffer);
-                    
-                    statusText.textContent = "⚡ Comprimiendo pista de voz...";
-                    
-                    // 2. CORRECCIÓN CRÍTICA: Leemos el arrayBuffer desde el 'blobVoz' que ya consumimos localmente,
-                    // en lugar de intentar leer el 'resVoz' de la red por segunda vez.
-                    const arrayBufferVozLocal = await blobVoz.arrayBuffer();
-                    const audioBufferVoz = await audioCtx.decodeAudioData(arrayBufferVozLocal);
-                    const blobVozWebM = await compressAudio(audioBufferVoz);
-                    
-                    // 3. Definición de nombres limpios con extensión .webm
-                    const nombrePista = `Pista - ${originalName.replace(/\.[^/.]+$/, "")}.webm`;
-                    const nombreVoz = `Voz - ${originalName.replace(/\.[^/.]+$/, "")}.webm`;
-                    
-                    statusText.textContent = "☁️ Guardando en la nube...";
-                    detailText.textContent = "Subiendo pistas ultra ligeras a tu biblioteca...";
-                    
-                    // 4. Subida paralela asegurada a Supabase
-                    await Promise.all([
-                        saveToLibrary(blobPistaWebM, { 
-                            name: nombrePista, 
-                            type: "pista" 
-                        }),
-                        saveToLibrary(blobVozWebM, {
-                            name: nombreVoz,
-                            type: "voz"
-                        })
-                    ]);
-                    
+                    await saveToLibrary(blobVoz, { name: `Voz - ${file.name}`, type: "voz" });
+                    await saveToLibrary(blobPista, { name: `Pista - ${file.name}`, type: "pista" });
                     statusText.textContent = "🎉 ¡Separación perfecta!";
                     detailText.textContent = "Voz pura y Pista Instrumental guardadas en Biblioteca.";
                     btn.disabled = false;
                     btn.textContent = "✨ Separar Otra Canción";
                 } else if (statusData.status === "failed" || statusData.status === "canceled") {
                     clearInterval(interval);
-                    throw new Error("La IA falló o canceló el procesamiento del audio.");
+                    throw new Error("La IA falló al procesar el audio.");
                 } else {
-                    detailText.textContent = `Procesando... Estado actual: ${statusData.status}`;
+                    detailText.textContent = `Estado de la IA: ${statusData.status}... por favor espera.`;
                 }
-            } catch (err) {
-                clearInterval(interval); // CORRECCIÓN: Evita bucle infinito si falla el fetch interno
-                handleSplitError(err, statusText, detailText, btn);
+            } catch (pollError) {
+                clearInterval(interval);
+                console.error(pollError);
+                statusText.textContent = "❌ Error detectado";
+                detailText.textContent = pollError.message || "Revisa la consola para más detalles.";
+                btn.disabled = false;
+                btn.textContent = "✨ Separar Audio con IA";
             }
-        }, 3000);
-    
+        }, 4000);
     } catch (err) {
-        // CORRECCIÓN: Cierre de catch principal de la función async
-        handleSplitError(err, statusText, detailText, btn);
+        console.error(err);
+        statusText.textContent = "❌ Error detectado";
+        detailText.textContent = err.message || "Revisa la consola para más detalles.";
+        btn.disabled = false;
+        btn.textContent = "✨ Separar Audio con IA";
     }
 }
 
-// Función auxiliar para no repetir código de errores
-function handleSplitError(err, statusText, detailText, btn) {
-    console.error(err);
-    statusText.textContent = "❌ Error detectado";
-    detailText.textContent = err.message || "Revisa la consola para más detalles.";
-    btn.disabled = false;
-    btn.textContent = "✨ Separar Audio con IA";
-}
-
-async function showResult(url) {
-    const parentContainer = document.getElementById("splitter");
-    if (!parentContainer) {
-        console.error("Error: El contenedor principal '#splitter' no existe en el DOM.");
-        return;
-    }
-
+function showResult(url) {
     let container = document.getElementById("splitResult");
     if (!container) {
         container = document.createElement("div");
@@ -2510,8 +2437,6 @@ async function showResult(url) {
         container.style.marginTop = "20px";
         parentContainer.appendChild(container);
     }
-
-    // 1. Estructura HTML limpia y segura
     container.innerHTML = `
         <p>✅ API respondió correctamente</p>
         <audio controls class="karaoke-result-player" style="width:100%; margin-bottom:10px;"></audio>
@@ -2520,49 +2445,14 @@ async function showResult(url) {
             📥 Descargar Canción
         </button>
     `;
-
-    // 2. Asignación segura del origen del reproductor
-    const audioPlayer = container.querySelector(".karaoke-result-player");
-    if (audioPlayer) audioPlayer.src = url;
-
-    // 3. CORRECCIÓN: Forzar descarga real sorteando el bloqueo de CORS del navegador
-    const downloadBtn = container.querySelector(".download-result-btn");
-    if (downloadBtn) {
-        downloadBtn.addEventListener("click", async () => {
-            try {
-                downloadBtn.disabled = true;
-                downloadBtn.textContent = "⏳ Preparando archivo...";
-
-                // Descargamos el archivo en segundo plano para convertirlo en un objeto local
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("No se pudo obtener el archivo del servidor");
-                
-                const blob = await response.blob();
-                const localBlobUrl = URL.createObjectURL(blob);
-
-                // Creamos un enlace invisible para disparar la descarga real en el disco duro
-                const tempLink = document.createElement("a");
-                tempLink.href = localBlobUrl;
-                
-                // Detectamos la extensión real del archivo de la URL original
-                const isWebM = url.toLowerCase().includes(".webm");
-                tempLink.download = isWebM ? "resultado.webm" : "resultado.mp3";
-                
-                document.body.appendChild(tempLink);
-                tempLink.click();
-
-                // Limpieza de memoria
-                document.body.removeChild(tempLink);
-                URL.revokeObjectURL(localBlobUrl);
-            } catch (err) {
-                console.error("Fallo al descargar el archivo:", err);
-                alert("❌ No se pudo descargar directamente. Prueba haciendo clic derecho en el reproductor.");
-            } finally {
-                downloadBtn.disabled = false;
-                downloadBtn.textContent = "📥 Descargar Canción";
-            }
-        });
-    }
+}
+// Función auxiliar para no repetir código de errores
+function handleSplitError(err, statusText, detailText, btn) {
+    console.error(err);
+    statusText.textContent = "❌ Error detectado";
+    detailText.textContent = err.message || "Revisa la consola para más detalles.";
+    btn.disabled = false;
+    btn.textContent = "✨ Separar Audio con IA";
 }
 
 // ==========================================
