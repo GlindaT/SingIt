@@ -254,13 +254,13 @@
 
 <!-- CATÁLOGO DE CANCIONES LISTAS -->
       <div class="card">
-        <!-- Reemplazamos el h3 por un contenedor con flecha -->
-        <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-catalogo', 'flecha-catalogo')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+        <!-- Encabezado interactivo sin onclick -->
+        <div class="encabezado-desplegable" data-target="contenido-catalogo" data-arrow="flecha-catalogo" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
           <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
           <span id="flecha-catalogo" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
 
-        <!-- Envolvemos todo el contenido interior aquí -->
+        <!-- Contenido que se va a ocultar -->
         <div id="contenido-catalogo" class="contenido-desplegable" style="margin-top: 15px;">
           <!-- Catálogo pre-cargado -->
           <div id="catalogSection">
@@ -287,7 +287,6 @@
       </div>
       
       <!-- MODAL IMPORTAR ULTRASTAR -->
-      <!-- El modal lo dejas exactamente igual que antes -->
       <div id="ultrastarModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
         <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
           <h3 style="margin-top: 0; color: var(--accent);">📥 Importar Canción UltraStar</h3>
@@ -296,7 +295,7 @@
             <p style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-muted);">
               <strong>¿Dónde conseguir canciones?</strong>
             </p>
-            <a href="https://usdb.animux.de/" target="_blank" style="color: #3b82f6; text-decoration: none;">
+            <a href="https://animux.de" target="_blank" style="color: #3b82f6; text-decoration: none;">
               🔗 USDB (UltraStar Database) - Miles de canciones gratis
             </a>
             <p style="margin: 10px 0 0 0; font-size: 12px; color: var(--text-muted);">
@@ -339,13 +338,13 @@
 
       <!-- Paso 1: Pista -->
       <div class="card">
-        <!-- Reemplazamos el h3 por un contenedor con flecha -->
-        <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-pista', 'flecha-pista')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+        <!-- Encabezado interactivo sin onclick -->
+        <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
           <h3 style="margin: 0;">1. Cargar Pista (Instrumental)</h3>
           <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
         
-        <!-- Envolvemos todo el contenido interior aquí -->
+        <!-- Contenido que se va a ocultar -->
         <div id="contenido-pista" class="contenido-desplegable" style="margin-top: 15px;">
           <!-- Opción A: Desde la Biblioteca -->
           <div class="studio-controls">
