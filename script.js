@@ -2888,7 +2888,7 @@ if (typeof document !== 'undefined') {
       
           // 2. Temas y Configuración Visual
           function applyKaraokeTheme() {
-            const theme = localStorage.getItem("vocalApp_stage") || "clasico";
+            const theme = localStorage.getItem("singIt_stage") || "clasico";
             const monitor = $("karaokeLiveLyrics");
             if (monitor) {
               monitor.className = "karaoke-lyrics theme-" + theme;
@@ -2904,7 +2904,7 @@ if (typeof document !== 'undefined') {
 
           // 4. Asignación de Eventos (Botones)
           safeAdd("karaokeStage", "change", (e) => {
-            saveSetting("vocalApp_stage", e.target);
+            saveSetting("singIt_stage", e.target);
             applyKaraokeTheme();
           });
 
@@ -2943,6 +2943,7 @@ if (typeof document !== 'undefined') {
           safeAdd("karaokeMixBtn", "click", mixKaraoke);
           safeAdd("refreshKaraokeTrackBtn", "click", loadTrackOptionsInKaraoke);
           safeAdd("loadKaraokeTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
+          safeAdd("splitBtn", "click", splitAudio);
 
           // 5. Sincronización de Reproductores (Loop de Dibujo)
           const kTrack = $("karaokeTrack");
