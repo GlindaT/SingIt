@@ -116,7 +116,7 @@ async function updateLibraryItem(id, changes) {
     .from("library_items")
     .update(changes)
     .eq("id", id);
-  
+
   if (error) {
     throw new Error(error.message || "Error al actualizar en Supabase");
   }
@@ -669,22 +669,18 @@ function saveStudioRecording() {
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
   try {
-    // 1. Llamamos directamente a la función encargada que ya procesa la subida y la base de datos
     await saveLibraryItemToSupabase({
       name: options.name || "Audio",
       type: options.type || "audio",
-      blob: blob, // Le pasamos el archivo binario crudo
+      blob,
       transcription: options.transcription || [],
       metadata: options.metadata || {}
     });
 
-    // 2. Si la base de datos se actualizó correctamente, refrescamos la vista
-    await renderLibrary('todos');
-    
+    await renderLibrary();
   } catch (error) {
-    console.error("Error real capturado en saveToLibrary:", error);
-    alert(`❌ No se pudo guardar en la nube: ${error.message || error}`);
-    throw error; // Lanza el error hacia arriba para que Promise.all en splitAudio se entere del fallo
+    console.error(error);
+    alert("❌ No se pudo guardar en la nube");
   }
 }
 
@@ -763,35 +759,43 @@ async function deleteLibraryItem(id) {
 }
 
 async function saveManualFileToLibrary() {
-    const fileInput = $("libraryFileInput");
-    const typeSelect = $("libraryFileType");
-    const nameInput = $("libraryFileName");
-    const file = fileInput?.files[0];
+  const fileInput = $("libraryFileInput");
+  const typeSelect = $("libraryFileType");
+  const nameInput = $("libraryFileName");
 
-    if (!file) return alert("⚠️ Selecciona un archivo.");
+  const file = fileInput.files[0];
+  if (!file) {
+    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
+    return;
+  }
 
-    try {
-        // --- CAMBIO AQUÍ: Verificamos si el elemento existe antes de usarlo ---
-        const progress = $("uploadProgress");
-        if (progress) progress.style.display = "block";
-        
-        await saveLibraryItemToSupabase({
-            name: nameInput.value.trim() || file.name,
-            type: typeSelect.value,
-            blob: file,
-            transcription: []
-        });
-        alert("✅ ¡Archivo guardado en la nube!");
-        await renderLibrary('todos');
-    } catch (error) {
-        console.error(error);
-        alert("❌ Error al guardar: " + error.message);
-    } finally {
-        // --- CAMBIO AQUÍ: Verificamos de nuevo ---
-        const progress = $("uploadProgress");
-        if (progress) progress.style.display = "none";
-        if (fileInput) fileInput.value = "";
-    }
+  if (file.size > 20 * 1024 * 1024) {
+    alert("⚠️ El archivo es muy grande (máx 20MB).");
+    return;
+  }
+
+  const name = nameInput.value.trim() || file.name;
+  const type = typeSelect.value;
+
+  try {
+    await saveLibraryItemToSupabase({
+      name,
+      type,
+      blob: file,
+      transcription: [],
+      metadata: {}
+    });
+
+    fileInput.value = "";
+    nameInput.value = "";
+
+    await renderLibrary("todos");
+
+    alert("✅ ¡Archivo subido y guardado en la nube!");
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al guardar el archivo en Supabase.");
+  }
 }
 
 function cargarArchivoVoz() {
@@ -943,7 +947,7 @@ async function loadSelectedVoiceFromLibrary() {
         buildWordTimingFromSegment(seg)
       );
 
-      transcriptionSegments = [...baseTranscriptionSegments];
+      transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
       renderKaraokeLyrics(transcriptionSegments);
       cargarLetrasEnMonitor();
@@ -998,53 +1002,35 @@ async function handleLyricsUpload() {
 }
 
 async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
-    // CORRECCIÓN: Eliminamos caracteres especiales, acentos y símbolos raros del nombre
-    const cleanFileName = fileName
-        .normalize("NFD") // Separa los acentos de las letras
-        .replace(/[\u0300-\u036f]/g, "") // Remueve los acentos completamente
-        .replace(/[^a-zA-Z0-9._-]/g, "_"); // Reemplaza cualquier símbolo raro por un guion bajo
+  const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
+  const filePath = safeName;
 
-    const safeName = `${Date.now()}_${cleanFileName}`;
-    const filePath = safeName;
-    
-    // 1. Subir el archivo físico al bucket "library"
-    const { error: uploadError } = await supabaseClient.storage
-        .from("library")
-        .upload(filePath, fileOrBlob, {
-            contentType: mimeType,
-            upsert: false
-        });
+  const { error: uploadError } = await supabaseClient.storage
+    .from("library")
+    .upload(filePath, fileOrBlob, {
+      contentType: mimeType,
+      upsert: false
+    });
 
-    if (uploadError) {
-        console.error("Error directo de Supabase Storage:", uploadError);
-        throw uploadError;
-    }
+  if (uploadError) {
+    throw uploadError;
+  }
 
-    // 2. CORRECCIÓN: Obtención segura de la URL pública compatible con Supabase v2
-    const res = supabaseClient.storage
-        .from("library")
-        .getPublicUrl(filePath);
-        
-    // Validamos la estructura de respuesta para evitar crashes si viene anidada
-    const publicUrl = res.data?.publicUrl || res.publicUrl;
+  const { data } = supabaseClient.storage
+    .from("library")
+    .getPublicUrl(filePath);
 
-    if (!publicUrl) {
-        throw new Error("No se pudo generar la URL pública del archivo subido.");
-    }
-
-    return {
-        filePath,
-        fileUrl: publicUrl
-    };
+  return {
+    filePath,
+    fileUrl: data.publicUrl
+  };
 }
 
 async function saveLibraryItemToSupabase({ name, type, blob, transcription = [], metadata = {} }) {
   const mimeType = blob.type || "application/octet-stream";
-  
-  // Detectamos la extensión correcta según el tipo de archivo (MIME)
   const extension = mimeType.includes("wav")
     ? "wav"
-    : mimeType.includes("mpeg") || mimeType.includes("mp3")
+    : mimeType.includes("mpeg")
     ? "mp3"
     : mimeType.includes("webm")
     ? "webm"
@@ -1052,27 +1038,15 @@ async function saveLibraryItemToSupabase({ name, type, blob, transcription = [],
     ? "ogg"
     : "bin";
 
-  // CORRECCIÓN: Limpiamos extensiones previas que puedan venir en la variable 'name' 
-  // para evitar nombres corruptos como "archivo.wav.wav" o "archivo.mp3.wav"
-  const cleanName = name.replace(/\.(wav|mp3|webm|ogg|bin)$/i, "");
-  const fileName = `${cleanName}.${extension}`;
+  const fileName = `${name}.${extension}`;
 
-  // 1. Subida física del archivo binario a Supabase Storage
-  const uploadResult = await uploadFileToSupabase(blob, fileName, mimeType);
-  
-  // CORRECCIÓN: Validamos estrictamente que la subida haya devuelto datos válidos
-  if (!uploadResult || !uploadResult.fileUrl) {
-    throw new Error(`La subida del archivo '${fileName}' al almacenamiento de Supabase falló.`);
-  }
+  const { filePath, fileUrl } = await uploadFileToSupabase(blob, fileName, mimeType);
 
-  const { filePath, fileUrl } = uploadResult;
-
-  // 2. Inserción de metadatos en la tabla SQL
   const { error } = await supabaseClient
     .from("library_items")
     .insert([
       {
-        name: cleanName, // Guardamos el nombre limpio sin extensión para la interfaz
+        name,
         type,
         file_path: filePath,
         file_url: fileUrl,
@@ -1086,6 +1060,7 @@ async function saveLibraryItemToSupabase({ name, type, blob, transcription = [],
     throw error;
   }
 }
+
 async function getAllLibraryItemsFromSupabase() {
   const { data, error } = await supabaseClient
     .from("library_items")
@@ -1150,6 +1125,7 @@ async function deleteLibraryItemFromSupabase(id) {
     throw error;
   }
 }
+
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
 // ==========================================
@@ -2099,79 +2075,23 @@ function syncKaraokeMonitor(currentTime) {
 }
 
 async function mixKaraoke() {
-  const trackEl = document.getElementById("karaokeTrack");
-  const btn = document.getElementById("karaokeMixBtn");
-  const resultDiv = document.getElementById("karaokeMixResult");
+  const trackEl = $("karaokeTrack");
 
-  if ((!karaokeSelectedTrackBlob && (!trackEl || !trackEl.src)) || !karaokeRecordedBlob) {
+  if ((!karaokeSelectedTrackBlob && !trackEl?.src) || !karaokeRecordedBlob) {
     alert("⚠️ Faltan ingredientes: Asegúrate de cargar una pista instrumental y grabar tu voz primero.");
     return;
   }
 
-  try {
-    btn.textContent = "🎧 Mezclando audios... ⏳";
-    btn.disabled = true;
-    resultDiv.innerHTML = "<p style='color: var(--accent);'>Uniendo la pista y tu voz. Esto puede tardar unos segundos...</p>";
+  const btn = $("karaokeMixBtn");
+  const resultDiv = $("karaokeMixResult");
 
+  btn.textContent = "🎧 Mezclando audios... ⏳";
+  btn.disabled = true;
+  resultDiv.innerHTML = "<p style='color: var(--text-muted);'>Uniendo la pista y tu voz. Esto puede tardar unos segundos...</p>";
+
+  try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    // 1. Cargar ambos audios en paralelo
-    const [trackBuffer, voiceBuffer] = await Promise.all([
-      fetch(trackEl.src).then(r => r.arrayBuffer()).then(ab => audioCtx.decodeAudioData(ab)),
-      karaokeRecordedBlob.arrayBuffer().then(ab => audioCtx.decodeAudioData(ab))
-    ]);
-
-    // 2. Crear un buffer para la mezcla (usamos la duración de la pista)
-    const duration = Math.max(trackBuffer.duration, voiceBuffer.duration);
-    const mixedBuffer = audioCtx.createBuffer(2, duration * audioCtx.sampleRate, audioCtx.sampleRate);
-
-    // 3. Mezclar canales (L y R)
-    for (let channel = 0; channel < 2; channel++) {
-      const outputData = mixedBuffer.getChannelData(channel);
-      
-      // Añadir Pista (si es mono, usamos el canal 0 para ambos)
-      const trackData = trackBuffer.getChannelData(channel < trackBuffer.numberOfChannels ? channel : 0);
-      for (let i = 0; i < trackData.length; i++) outputData[i] += trackData[i];
-
-      // Añadir Voz (ajustar volumen de la voz si quieres, ej: trackData[i] + (voiceData[i] * 1.2))
-      const voiceData = voiceBuffer.getChannelData(channel < voiceBuffer.numberOfChannels ? channel : 0);
-      for (let i = 0; i < voiceData.length; i++) outputData[i] += voiceData[i];
-    }
-
-    // 4. Convertir a WAV (usando tu función audioBufferToWav)
-    const mixedBlob = audioBufferToWav(mixedBuffer, 0, mixedBuffer.length);
-    const url = URL.createObjectURL(mixedBlob);
-
-    // 5. Mostrar resultado
-    resultDiv.innerHTML = `
-      <div class="card" style="border: 1px solid var(--accent); margin-top: 15px;">
-        <p>✅ ¡Mezcla lista!</p>
-        <audio src="${url}" controls style="width: 100%;"></audio>
-        <br><br>
-        <a href="${url}" download="mi_karaoke.wav" class="btn-primary" style="text-decoration:none; padding: 10px 20px; display:inline-block;">Descargar Mezcla 📥</a>
-      </div>
-    `;
-  } catch (error) {
-    console.error("Error en la mezcla:", error);
-    alert("❌ No se pudo realizar la mezcla: " + error.message);
-  } finally {
-    btn.textContent = "🎙️ Mezclar Audios";
-    btn.disabled = false;
-  }
-  try {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const trackArrayBuffer = await trackBlob.arrayBuffer();
-    const trackBuffer = await audioCtx.decodeAudioData(trackArrayBuffer);
-    const voiceArrayBuffer = await karaokeRecordedBlob.arrayBuffer();
-    const voiceBuffer = await audioCtx.decodeAudioData(voiceArrayBuffer);
-    const renderedBuffer = await offlineCtx.startRendering();
-
-    const offlineCtx = new OfflineAudioContext(
-      trackBuffer.numberOfChannels,
-      trackBuffer.length,
-      trackBuffer.sampleRate
-    );
-    
     let trackBlob = karaokeSelectedTrackBlob;
     let trackName = karaokeSelectedTrackName || "Karaoke";
 
@@ -2188,8 +2108,20 @@ async function mixKaraoke() {
       throw new Error("No hay pista instrumental disponible para mezclar");
     }
 
+    const trackArrayBuffer = await trackBlob.arrayBuffer();
+    const trackBuffer = await audioCtx.decodeAudioData(trackArrayBuffer);
+
+    const voiceArrayBuffer = await karaokeRecordedBlob.arrayBuffer();
+    const voiceBuffer = await audioCtx.decodeAudioData(voiceArrayBuffer);
+
     const outputLength = Math.max(trackBuffer.length, voiceBuffer.length);
     const outputChannels = Math.max(trackBuffer.numberOfChannels, voiceBuffer.numberOfChannels);
+
+    const offlineCtx = new OfflineAudioContext(
+      outputChannels,
+      outputLength,
+      trackBuffer.sampleRate
+    );
 
     const trackGain = offlineCtx.createGain();
     trackGain.gain.value = 0.4;
@@ -2210,10 +2142,10 @@ async function mixKaraoke() {
     trackSource.start(0);
     voiceSource.start(0);
 
-   
+    const renderedBuffer = await offlineCtx.startRendering();
     const finalWavBlob = exportStereoWav(renderedBuffer);
     const finalUrl = URL.createObjectURL(finalWavBlob);
-    
+
     resultDiv.innerHTML = `
       <h4 style="color: #22c55e;">✅ ¡Mezcla completada!</h4>
       <audio controls src="${finalUrl}" style="width: 100%; margin-bottom: 15px; border-radius: 8px;"></audio>
