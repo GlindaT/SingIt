@@ -2148,12 +2148,15 @@ async function mixKaraoke() {
 }
 
 function exportStereoWav(buffer) {
-  const numOfChan = buffer.numberOfChannels;
+  // CORRECCIÓN: Forzamos que la salida sea estrictamente estéreo (2 canales)
+  const numOfChan = 2; 
   const length = buffer.length * numOfChan * 2 + 44;
   const result = new ArrayBuffer(length);
   const view = new DataView(result);
-  const channels = [];
-  let pos = 0;
+  
+  // Obtenemos los canales de origen. Si solo hay uno, lo duplicamos.
+  const leftChannel = buffer.getChannelData(0);
+  const rightChannel = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : leftChannel;
 
   const writeString = (viewObj, offset, string) => {
     for (let i = 0; i < string.length; i++) {
@@ -2161,32 +2164,35 @@ function exportStereoWav(buffer) {
     }
   };
 
+  // Cabecera RIFF/WAVE
   writeString(view, 0, "RIFF");
   view.setUint32(4, 36 + buffer.length * 2 * numOfChan, true);
   writeString(view, 8, "WAVE");
   writeString(view, 12, "fmt ");
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
+  view.setUint16(20, 1, true); // Formato PCM
   view.setUint16(22, numOfChan, true);
   view.setUint32(24, buffer.sampleRate, true);
   view.setUint32(28, buffer.sampleRate * 2 * numOfChan, true);
   view.setUint16(32, numOfChan * 2, true);
-  view.setUint16(34, 16, true);
+  view.setUint16(34, 16, true); // 16 bits por muestra
   writeString(view, 36, "data");
   view.setUint32(40, buffer.length * 2 * numOfChan, true);
 
-  for (let i = 0; i < buffer.numberOfChannels; i++) {
-    channels.push(buffer.getChannelData(i));
-  }
-
-  pos = 44;
+  // Escritura entrelazada de muestras (L / R / L / R)
+  let pos = 44;
   for (let i = 0; i < buffer.length; i++) {
-    for (let channel = 0; channel < numOfChan; channel++) {
-      let sample = Math.max(-1, Math.min(1, channels[channel][i]));
-      sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-      view.setInt16(pos, sample, true);
-      pos += 2;
-    }
+    // Canal Izquierdo
+    let sampleL = Math.max(-1, Math.min(1, leftChannel[i]));
+    sampleL = sampleL < 0 ? sampleL * 0x8000 : sampleL * 0x7FFF;
+    view.setInt16(pos, sampleL, true);
+    pos += 2;
+
+    // Canal Derecho
+    let sampleR = Math.max(-1, Math.min(1, rightChannel[i]));
+    sampleR = sampleR < 0 ? sampleR * 0x8000 : sampleR * 0x7FFF;
+    view.setInt16(pos, sampleR, true);
+    pos += 2;
   }
 
   return new Blob([result], { type: "audio/wav" });
@@ -3592,8 +3598,10 @@ function parseUltraStarSync(syncContent) {
 async function loadCatalogSong(folder, title, artist) {
     const status = $("karaokeStatus");
     const track = $("karaokeTrack");
+    
     // 1. Limpieza previa inmediata
     if (status) status.textContent = `Estado: Cargando "${title}"...`;
+    
     try {
         // 2. Cargar sincronización (TXT)
         const syncResponse = await fetch(`./karaoke-catalog/${folder}/sync.txt`);
@@ -3602,21 +3610,27 @@ async function loadCatalogSong(folder, title, artist) {
         const syncContent = await syncResponse.text();
         const parsedSegments = parseUltraStarSync(syncContent);
         
-        if (!parsedSegments.length) throw new Error("Formato de sincronización no válido");
-        // 3. Cargar audio (MP3)
-        const audioResponse = await fetch(`./karaoke-catalog/${folder}/audio.mp3`);
+        if (!parsedSegments || !parsedSegments.length) {
+            throw new Error("Formato de sincronización no válido");
+        }
+
+        // 3. Cargar audio (MP3) con Cache Buster en la petición de red si es necesario
+        const audioResponse = await fetch(`./karaoke-catalog/${folder}/audio.mp3?v=${Date.now()}`);
         if (!audioResponse.ok) throw new Error("No se pudo cargar el audio");
         
         const audioBlob = await audioResponse.blob();
+        
         // 4. Configurar el reproductor (Manejo de memoria)
         // Liberamos la URL anterior si existía para evitar fugas de memoria
-        if (track.src && track.src.startsWith("blob:")) {
+        if (track && track.src && track.src.startsWith("blob:")) {
             URL.revokeObjectURL(track.src);
         }
-        const urlConCacheBuster = new URL(item.file_url);
-        urlConCacheBuster.searchParams.append('v', Date.now());
-        track.src = urlConCacheBuster.toString();
-        track.volume = 0.4;
+        
+        // CORRECCIÓN: Creamos la URL del objeto a partir del blob descargado
+        if (track) {
+            track.src = URL.createObjectURL(audioBlob);
+            track.volume = 0.4;
+        }
         
         // 5. Actualizar estado global
         karaokeSelectedTrackBlob = audioBlob;
@@ -3634,6 +3648,7 @@ async function loadCatalogSong(folder, title, artist) {
         if (typeof drawKaraokeMonitor === "function") {
             drawKaraokeMonitor(0);
         }
+        
         if (status) {
             status.textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
         }
@@ -3642,6 +3657,7 @@ async function loadCatalogSong(folder, title, artist) {
         if (canvas) {
             canvas.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+        
     } catch (error) {
         console.error("Error en loadCatalogSong:", error);
         if (status) status.textContent = `Estado: Error al cargar "${title}"`;
