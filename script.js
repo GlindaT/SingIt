@@ -2386,7 +2386,8 @@ function initSettings() {
         karaokeStage: "singIt_stage",
         difficultyLevel: "singIt_difficulty",
         userVoiceType: "singIt_voiceType",
-        appTheme: "singIt_theme"
+        appTheme: "singIt_theme",
+        saveSetting: "singIt_setting"
     };
     // Función interna para guardar (Cerrada correctamente)
     const saveSetting = (key, element) => {
