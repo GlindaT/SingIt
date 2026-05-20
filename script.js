@@ -2396,7 +2396,7 @@ async function splitAudio() {
                         source.start(0);
                     });
                     const renderedBuffer = await offlineCtx.startRendering();
-                    // --- NUEVO SISTEMA DE COMPRESIÓN A WEBM ---
+                    // --- SISTEMA DE COMPRESIÓN A WEBM CORREGIDO ---
                     statusText.textContent = "⚡ Comprimiendo pista instrumental...";
                     detailText.textContent = "Reduciendo tamaño para guardado rápido en la nube...";
                     
@@ -2409,7 +2409,6 @@ async function splitAudio() {
                             const destination = ctx.createMediaStreamDestination();
                             source.connect(destination);
                             
-                            // Configuramos el grabador con una tasa de bits alta para mantener la fidelidad (192kbps)
                             const mediaRecorder = new MediaRecorder(destination.stream, {
                                 mimeType: "audio/webm;codecs=opus",
                                 audioBitsPerSecond: 192000 
@@ -2419,16 +2418,16 @@ async function splitAudio() {
                             mediaRecorder.ondataavailable = (e) => {
                                 if (e.data.size > 0) chunks.push(e.data);
                             };
+                            
                             mediaRecorder.onstop = () => {
                                 const compressedBlob = new Blob(chunks, { type: "audio/webm" });
                                 ctx.close();
                                 resolve(compressedBlob);
                             };
-                            // Ejecutamos la compresión veloz
+                            
                             mediaRecorder.start();
                             source.start(0);
                             
-                            // Detener inmediatamente cuando termine la duración del buffer
                             setTimeout(() => {
                                 mediaRecorder.stop();
                                 source.stop();
@@ -2436,21 +2435,25 @@ async function splitAudio() {
                         });
                     };
                     
-                    // Generamos el archivo comprimido ligero de la pista instrumental
+                    // 1. Generamos el archivo comprimido ligero de la pista instrumental
                     const blobPistaWebM = await compressAudio(renderedBuffer);
                     
-                    // Generamos también el archivo comprimido ligero de la voz original (resVoz ya lo tenías arriba)
                     statusText.textContent = "⚡ Comprimiendo pista de voz...";
-                    const audioBufferVoz = await audioCtx.decodeAudioData(await resVoz.arrayBuffer());
+                    
+                    // 2. CORRECCIÓN CRÍTICA: Leemos el arrayBuffer desde el 'blobVoz' que ya consumimos localmente,
+                    // en lugar de intentar leer el 'resVoz' de la red por segunda vez.
+                    const arrayBufferVozLocal = await blobVoz.arrayBuffer();
+                    const audioBufferVoz = await audioCtx.decodeAudioData(arrayBufferVozLocal);
                     const blobVozWebM = await compressAudio(audioBufferVoz);
                     
-                    // Nombres con extensión .webm correctos
+                    // 3. Definición de nombres limpios con extensión .webm
                     const nombrePista = `Pista - ${originalName.replace(/\.[^/.]+$/, "")}.webm`;
                     const nombreVoz = `Voz - ${originalName.replace(/\.[^/.]+$/, "")}.webm`;
                     
                     statusText.textContent = "☁️ Guardando en la nube...";
                     detailText.textContent = "Subiendo pistas ultra ligeras a tu biblioteca...";
                     
+                    // 4. Subida paralela asegurada a Supabase
                     await Promise.all([
                         saveToLibrary(blobPistaWebM, { 
                             name: nombrePista, 
