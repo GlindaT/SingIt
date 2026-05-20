@@ -933,54 +933,40 @@ async function loadSelectedVoiceFromLibrary() {
       return;
     }
 
-    // 1. Descarga del Blob en segundo plano (Requerido para procesos de transcripción locales)
     const response = await fetch(item.file_url);
-    window.selectedVoiceBlob = await response.blob();
-    window.selectedVoiceId = item.id;
-      
-    // 2. Liberación de memoria y asignación del reproductor
-    if (player.src && player.src.startsWith("blob:")) {
-        URL.revokeObjectURL(player.src);
-    }
-    player.src = `${item.file_url}?v=${Date.now()}`;
-    player.load();
-      
+    selectedVoiceBlob = await response.blob();
+    selectedVoiceId = item.id;
+
+    player.src = item.file_url;
     status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-      
-    // CORRECCIÓN: Estructura condicional if/else restaurada correctamente
+
     if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-        
-        // Mapeamos los segmentos usando tu función constructora de tiempos
-        window.baseTranscriptionSegments = item.transcription.map(seg =>
-            typeof buildWordTimingFromSegment === "function" ? buildWordTimingFromSegment(seg) : seg
-        );
+      baseTranscriptionSegments = item.transcription.map(seg =>
+        buildWordTimingFromSegment(seg)
+      );
 
-        // CORRECCIÓN: Clonación profunda (Deep Copy) para evitar mutación cruzada en memoria
-        window.transcriptionSegments = window.baseTranscriptionSegments.map(seg => ({ ...seg }));
+      transcriptionSegments = [...baseTranscriptionSegments];
 
-        // Renderizado visual en las diferentes pantallas
-        if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(window.transcriptionSegments);
-        cargarLetrasEnMonitor();
+      renderKaraokeLyrics(transcriptionSegments);
+      cargarLetrasEnMonitor();
 
-        if (lyricsText) {
-          lyricsText.value = window.transcriptionSegments
-            .map(seg => seg.text || "")
-            .join("\n")
-            .trim();
-        }
+      if (lyricsText) {
+        lyricsText.value = transcriptionSegments
+          .map(seg => seg.text || "")
+          .join("\n")
+          .trim();
+      }
 
-        status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
-        
+      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
     } else {
-        // Bloque else recuperado: Se ejecuta si el objeto no tiene transcripción
-        window.baseTranscriptionSegments = [];
-        window.transcriptionSegments = [];
+      baseTranscriptionSegments = [];
+      transcriptionSegments = [];
 
-        if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics([]);
-        cargarLetrasEnMonitor();
+      renderKaraokeLyrics([]);
+      cargarLetrasEnMonitor();
 
-        if (lyricsText) lyricsText.value = "";
-        status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+      if (lyricsText) lyricsText.value = "";
+      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
     }
   } catch (error) {
     console.error(error);
