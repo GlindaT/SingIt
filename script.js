@@ -2964,9 +2964,9 @@ if (typeof document !== 'undefined') {
       
           // 2. Temas y Configuración Visual
           function applyKaraokeTheme() {
-            const theme = localStorage.getItem("singIt_stage") || "clasico";
-            const monitor = $("karaokeLiveLyrics");
-            if (monitor) {
+              const theme = localStorage.getItem("singIt_stage") || "clasico";
+              const monitor = $("karaokeLiveLyrics");
+              if (monitor) {
               monitor.className = "karaoke-lyrics theme-" + theme;
             }
           }
@@ -2975,10 +2975,14 @@ if (typeof document !== 'undefined') {
           // 3. Navegación Principal
           const tabs = ["Afinador", "Estudio", "Biblioteca", "Karaoke", "Splitter", "Config"];
           tabs.forEach(tab => {
-            safeAdd(`btn${tab}`, "click", () => showTab(tab.toLowerCase()));
+              safeAdd(`btn${tab}`, "click", () => showTab(tab.toLowerCase()));
           });
 
           // 4. Asignación de Eventos (Botones)
+          function saveSetting(key, element) {
+              const setting = localStorage.setItem(key, value);
+          }
+            
           safeAdd("karaokeStage", "change", (e) => {
             saveSetting("singIt_stage", e.target);
             applyKaraokeTheme();
