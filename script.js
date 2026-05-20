@@ -748,38 +748,55 @@ async function saveManualFileToLibrary() {
     const fileInput = $("libraryFileInput");
     const typeSelect = $("libraryFileType");
     const nameInput = $("libraryFileName");
-    
-    const file = fileInput.files[0];
-    if (!file) {
-        alert("⚠️ Por favor, selecciona un archivo de audio primero.");
-        return;
-    }
-    
-    if (file.size > 20 * 1024 * 1024) {
-        alert("⚠️ El archivo es muy grande (máx 20MB).");
-        return;
-    }
-    
-    const name = nameInput.value.trim() || file.name;
-    const type = typeSelect.value;
-    
+    const file = fileInput?.files[0];
+
+    if (!file) return alert("⚠️ Selecciona un archivo.");
+
     try {
+        // --- CAMBIO AQUÍ: Verificamos si el elemento existe antes de usarlo ---
+        const progress = $("uploadProgress");
+        if (progress) progress.style.display = "block";
+        
         await saveLibraryItemToSupabase({
-            name,
-            type,
+            name: nameInput.value.trim() || file.name,
+            type: typeSelect.value,
             blob: file,
-            transcription: [],
+            transcription: []
         });
-        
-        fileInput.value = "";
-        nameInput.value = "";
-        
-        await renderLibrary("todos");
-        alert("✅ ¡Archivo subido y guardado en la nube!");
-    
+
+        alert("✅ ¡Archivo guardado en la nube!");
+        await renderLibrary('todos');
     } catch (error) {
         console.error(error);
-        alert("❌ Error al guardar el archivo en Supabase.");
+        alert("❌ Error al guardar: " + error.message);
+    } finally {
+        // --- CAMBIO AQUÍ: Verificamos de nuevo ---
+        const progress = $("uploadProgress");
+        if (progress) progress.style.display = "none";
+        
+        if (fileInput) fileInput.value = "";
+    }
+}
+
+function cargarArchivoVoz() {
+    const voiceFileInput = document.getElementById("voiceFileInput");
+    if (voiceFileInput) {
+        voiceFileInput.addEventListener("change", function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Cargar en el reproductor de voz de la interfaz (voicePlayer)
+            const voicePlayer = document.getElementById("voicePlayer"); // Asegúrate que este sea el ID de tu audio
+            if (voicePlayer) {
+                if (voicePlayer.src && voicePlayer.src.startsWith("blob:")) {
+                    URL.revokeObjectURL(voicePlayer.src);
+                }
+                voicePlayer.src = URL.createObjectURL(file);
+            }
+            // Guardar referencia para que el botón "Transcribir con Whisper" la encuentre
+            selectedVoiceBlob = file; 
+            document.getElementById("selectedVoiceStatus").textContent = `Estado: Voz subida (${file.name})`;
+        });
     }
 }
 
@@ -2986,6 +3003,7 @@ if (typeof document !== 'undefined') {
           safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
           safeAdd("uploadLyricsBtn", "click", handleLyricsUpload);
           safeAdd("sendToKaraokeBtn", "click", sendVoiceToKaraoke);
+          safeAdd("uploadVoiceBtn", "click", cargarArchivoVoz);
 
           // Sincronización Manual (Tap)
           safeAdd("startTapSyncBtn", "click", startTapSync);
