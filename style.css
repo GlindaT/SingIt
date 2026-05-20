@@ -211,22 +211,6 @@ audio {
   margin-bottom: 10px;
 }
 
-progress {
-  height: 10px;
-  border-radius: 5px;
-  overflow: hidden;
-  border: none;
-}
-
-progress::-webkit-progress-bar {
-  background-color: var(--bg-main);
-}
-
-progress::-webkit-progress-value {
-  background-color: var(--accent);
-  transition: width 0.3s ease;
-}
-
 /* ==========================================
    SCROLL PERSONALIZADO (OPCIONAL)
 ========================================== */
@@ -320,21 +304,6 @@ input[type="text"] {
   margin: 0;
 }
 
-/* --- ESTILOS DE LAS LÍNEAS DE LETRA --- */
-.karaoke-line {
-    font-size: 24px;
-    margin: 15px 0;
-    opacity: 0.4;
-    transition: all 0.3s ease;
-    text-align: center;
-}
-
-.karaoke-line.active {
-    opacity: 1;
-    font-weight: bold;
-    font-size: 32px;
-}
-
 .karaoke-line {
   font-size: 22px;
   line-height: 1.6;
@@ -380,9 +349,11 @@ input[type="text"] {
 .save-notification.show {
   opacity: 1; /* Se hace visible cuando JS le pone esta clase */
 }
-
-
-
+.karaoke-line.active {
+  color: #22c55e;
+  font-weight: bold;
+  transform: scale(1.05);
+}
 
 /* ==========================================
    RESALTADO POR PALABRA
@@ -433,12 +404,6 @@ input[type="text"] {
   color: #ffffff; /* Blanco para las que ya pasaron */
   opacity: 0.8;
   font-size: 26px;
-}
-
-/* --- ESTILOS PARA EL CANVAS (PENTAGRAMA/NOTAS) --- */
-#karaokeCanvas {
-    background-color: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(5px);
 }
 
 /* ==========================================
@@ -579,12 +544,6 @@ input[type="text"] {
     height: 300px;
     border-radius: 8px;
     border: 2px solid #3b82f6;
-}
-
-/* Aseguramos que el contenido general scrollee si hay muchas canciones */
-.content {
-    overflow-y: auto !important;
-    padding-bottom: 100px;
 }
 /* ==========================================
    SISTEMA DE TEMAS GLOBALES
@@ -831,30 +790,6 @@ input[type="text"] {
   font-size: 13px;
 }
 
-
-/* Estilos por Pestaña */
-#afinador { font-family: 'Comfortaa', cursive; }
-#estudio { font-family: 'Spectral', cursive; }
-#karaoke { font-family: 'Comfortaa', cursive; }
-#splitter { font-family: 'Comfortaa', cursive; }
-#config { font-family: 'Spectral', serif; }
-
-progress {
-  height: 10px;
-  border-radius: 5px;
-  overflow: hidden;
-  border: none;
-}
-
-progress::-webkit-progress-bar {
-  background-color: var(--bg-main);
-}
-
-progress::-webkit-progress-value {
-  background-color: var(--accent);
-  transition: width 0.3s ease;
-}
-
 /* Modal */
 #ultrastarModal .settings-group {
   margin-bottom: 15px;
@@ -862,27 +797,4 @@ progress::-webkit-progress-value {
 
 #ultrastarModal input[type="file"] {
   margin-top: 8px;
-}
-
-/* Quita la flecha fea por defecto en navegadores como Chrome, Safari y Firefox */
-details.card summary {
-  list-style: none;
-}
-details.card summary::-webkit-details-marker {
-  display: none;
-}
-
-/* Agrega una flecha personalizada a la derecha del título */
-details.card summary::after {
-  content: "▼";
-  float: right;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  transition: transform 0.2s ease;
-}
-
-/* Hace que la flecha gire hacia arriba cuando el contenedor esté abierto */
-details[open].card summary::after {
-  transform: rotate(180deg);
-  color: var(--accent); /* Cambia al color de acento de tu app */
 }
