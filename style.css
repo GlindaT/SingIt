@@ -321,12 +321,12 @@ input[type="text"] {
   color: var(--text-muted);
 }
 
-/* Ocultar las secciones colapsadas */
+/* Oculta por completo la sección si tiene la clase .oculto */
 .contenido-desplegable.oculto {
     display: none !important;
 }
 
-/* Rotar la flecha hacia abajo cuando esté activo */
+/* Rota la flecha 90 grados apuntando abajo cuando el menú esté desplegado */
 .flecha.rotada {
     transform: rotate(90deg);
 }
