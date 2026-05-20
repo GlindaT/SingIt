@@ -2396,23 +2396,72 @@ async function splitAudio() {
                         source.start(0);
                     });
                     const renderedBuffer = await offlineCtx.startRendering();
-                    const blobPistaWav = exportStereoWav(renderedBuffer); 
-                    // CORRECCIÓN: Generar los nombres exactos en constantes seguras ANTES de subir
-                    const nombrePista = `Pista - ${originalName.replace('.mp3', '')}.wav`;
-                    const nombreVoz = `Voz - ${originalName}`;
+                    // --- NUEVO SISTEMA DE COMPRESIÓN A WEBM ---
+                    statusText.textContent = "⚡ Comprimiendo pista instrumental...";
+                    detailText.textContent = "Reduciendo tamaño para guardado rápido en la nube...";
+                    
+                    const compressAudio = async (audioBuffer) => {
+                        return new Promise((resolve) => {
+                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            const source = ctx.createBufferSource();
+                            source.buffer = audioBuffer;
+                            
+                            const destination = ctx.createMediaStreamDestination();
+                            source.connect(destination);
+                            
+                            // Configuramos el grabador con una tasa de bits alta para mantener la fidelidad (192kbps)
+                            const mediaRecorder = new MediaRecorder(destination.stream, {
+                                mimeType: "audio/webm;codecs=opus",
+                                audioBitsPerSecond: 192000 
+                            });
+                            
+                            const chunks = [];
+                            mediaRecorder.ondataavailable = (e) => {
+                                if (e.data.size > 0) chunks.push(e.data);
+                            };
+                            mediaRecorder.onstop = () => {
+                                const compressedBlob = new Blob(chunks, { type: "audio/webm" });
+                                ctx.close();
+                                resolve(compressedBlob);
+                            };
+                            // Ejecutamos la compresión veloz
+                            mediaRecorder.start();
+                            source.start(0);
+                            
+                            // Detener inmediatamente cuando termine la duración del buffer
+                            setTimeout(() => {
+                                mediaRecorder.stop();
+                                source.stop();
+                            }, (audioBuffer.duration * 1000) + 200);
+                        });
+                    };
+                    
+                    // Generamos el archivo comprimido ligero de la pista instrumental
+                    const blobPistaWebM = await compressAudio(renderedBuffer);
+                    
+                    // Generamos también el archivo comprimido ligero de la voz original (resVoz ya lo tenías arriba)
+                    statusText.textContent = "⚡ Comprimiendo pista de voz...";
+                    const audioBufferVoz = await audioCtx.decodeAudioData(await resVoz.arrayBuffer());
+                    const blobVozWebM = await compressAudio(audioBufferVoz);
+                    
+                    // Nombres con extensión .webm correctos
+                    const nombrePista = `Pista - ${originalName.replace(/\.[^/.]+$/, "")}.webm`;
+                    const nombreVoz = `Voz - ${originalName.replace(/\.[^/.]+$/, "")}.webm`;
+                    
                     statusText.textContent = "☁️ Guardando en la nube...";
-                    detailText.textContent = "Subiendo pistas de voz e instrumental a tu biblioteca...";
-                    // CORRECCIÓN: Ejecutar ambas subidas simultáneamente y asegurar su resolución con Promise.all
+                    detailText.textContent = "Subiendo pistas ultra ligeras a tu biblioteca...";
+                    
                     await Promise.all([
-                        saveToLibrary(blobPistaWav, { 
+                        saveToLibrary(blobPistaWebM, { 
                             name: nombrePista, 
                             type: "pista" 
                         }),
-                        saveToLibrary(blobVoz, {
+                        saveToLibrary(blobVozWebM, {
                             name: nombreVoz,
                             type: "voz"
                         })
                     ]);
+                    
                     statusText.textContent = "🎉 ¡Separación perfecta!";
                     detailText.textContent = "Voz pura y Pista Instrumental guardadas en Biblioteca.";
                     btn.disabled = false;
@@ -2444,23 +2493,73 @@ function handleSplitError(err, statusText, detailText, btn) {
     btn.textContent = "✨ Separar Audio con IA";
 }
 
-function showResult(url) {
+async function showResult(url) {
+    const parentContainer = document.getElementById("splitter");
+    if (!parentContainer) {
+        console.error("Error: El contenedor principal '#splitter' no existe en el DOM.");
+        return;
+    }
+
     let container = document.getElementById("splitResult");
-    
     if (!container) {
         container = document.createElement("div");
         container.id = "splitResult";
         container.style.marginTop = "20px";
-        document.getElementById("splitter").appendChild(container);
+        parentContainer.appendChild(container);
     }
+
+    // 1. Estructura HTML limpia y segura
     container.innerHTML = `
-    <p>✅ API respondió correctamente</p>
-    <audio controls src="${url}"></audio>
-    <br><br>
-    <a href="${url}" download="resultado.mp3">
-      <button>Descargar</button>
-    </a>
-  `;
+        <p>✅ API respondió correctamente</p>
+        <audio controls class="karaoke-result-player" style="width:100%; margin-bottom:10px;"></audio>
+        <br>
+        <button type="button" class="download-result-btn" style="padding: 8px 16px; cursor: pointer;">
+            📥 Descargar Canción
+        </button>
+    `;
+
+    // 2. Asignación segura del origen del reproductor
+    const audioPlayer = container.querySelector(".karaoke-result-player");
+    if (audioPlayer) audioPlayer.src = url;
+
+    // 3. CORRECCIÓN: Forzar descarga real sorteando el bloqueo de CORS del navegador
+    const downloadBtn = container.querySelector(".download-result-btn");
+    if (downloadBtn) {
+        downloadBtn.addEventListener("click", async () => {
+            try {
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = "⏳ Preparando archivo...";
+
+                // Descargamos el archivo en segundo plano para convertirlo en un objeto local
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("No se pudo obtener el archivo del servidor");
+                
+                const blob = await response.blob();
+                const localBlobUrl = URL.createObjectURL(blob);
+
+                // Creamos un enlace invisible para disparar la descarga real en el disco duro
+                const tempLink = document.createElement("a");
+                tempLink.href = localBlobUrl;
+                
+                // Detectamos la extensión real del archivo de la URL original
+                const isWebM = url.toLowerCase().includes(".webm");
+                tempLink.download = isWebM ? "resultado.webm" : "resultado.mp3";
+                
+                document.body.appendChild(tempLink);
+                tempLink.click();
+
+                // Limpieza de memoria
+                document.body.removeChild(tempLink);
+                URL.revokeObjectURL(localBlobUrl);
+            } catch (err) {
+                console.error("Fallo al descargar el archivo:", err);
+                alert("❌ No se pudo descargar directamente. Prueba haciendo clic derecho en el reproductor.");
+            } finally {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = "📥 Descargar Canción";
+            }
+        });
+    }
 }
 
 // ==========================================
