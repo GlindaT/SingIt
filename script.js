@@ -983,13 +983,13 @@ async function handleLyricsUpload() {
         if (selectedVoiceId) {
             await updateLibraryItemInSupabase(selectedVoiceId, { transcription:""})
                 transcription: parsedSegments
+                    $("lyricsStatus").textContent = "✅ ¡Letras guardadas!";
+            renderKaraokeLyrics(parsedSegments);
+        } else {
+            alert("⚠️ Selecciona primero una voz en la biblioteca para asociar la letra");
         }
-        $("lyricsStatus").textContent = "✅ ¡Letras guardadas!";
-        renderKaraokeLyrics(parsedSegments);
-    } else {
-        alert("⚠️ Selecciona primero una voz en la biblioteca para asociar la letra");
+        reader.readAsText(file);
     }
-    reader.readAsText(file);
 }
 
 async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
