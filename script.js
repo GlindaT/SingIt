@@ -669,20 +669,42 @@ function saveStudioRecording() {
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
   try {
+    const fileName = options.name || `audio_${Date.now()}.wav`;
+    const fileType = options.type || "audio";
+
+    // 1. Subir el archivo binario al Bucket de Supabase Storage
+    // Asegúrate de cambiar 'mi_bucket_de_audios' por el nombre real de tu bucket
+    const { data: storageData, error: storageError } = await supabase.storage
+      .from('library') 
+      .upload(`biblioteca/${Date.now()}_${fileName}`, blob, {
+        contentType: blob.type,
+        cacheControl: '3600'
+      });
+
+    if (storageError) throw storageError;
+
+    // 2. Obtener la URL pública del archivo que acabamos de subir
+    const { data: { publicUrl } } = supabase.storage
+      .from('library')
+      .getPublicUrl(storageData.path);
+
+    // 3. Insertar el registro en la base de datos de Supabase usando la URL pública
     await saveLibraryItemToSupabase({
-      name: options.name || "Audio",
-      type: options.type || "audio",
-      blob,
+      name: fileName,
+      type: fileType,
+      file_url: publicUrl, // Guardamos la URL de internet, NO el blob
       transcription: options.transcription || [],
     });
 
+    // 4. Actualizar la interfaz de usuario
     await renderLibrary();
+
   } catch (error) {
-    console.error(error);
+    console.error("Error detallado en saveToLibrary:", error);
     alert("❌ No se pudo guardar en la nube");
+    throw error; // CORRECCIÓN: Informa a splitAudio que la subida realmente falló
   }
 }
-
 async function renderLibrary(filter = "todos") {
     const container = $("libraryList");
     if (!container) return;
@@ -967,32 +989,53 @@ async function handleLyricsUpload() {
 }
 
 async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
-    const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
+    // CORRECCIÓN: Eliminamos caracteres especiales, acentos y símbolos raros del nombre
+    const cleanFileName = fileName
+        .normalize("NFD") // Separa los acentos de las letras
+        .replace(/[\u0300-\u036f]/g, "") // Remueve los acentos completamente
+        .replace(/[^a-zA-Z0-9._-]/g, "_"); // Reemplaza cualquier símbolo raro por un guion bajo
+
+    const safeName = `${Date.now()}_${cleanFileName}`;
     const filePath = safeName;
     
+    // 1. Subir el archivo físico al bucket "library"
     const { error: uploadError } = await supabaseClient.storage
         .from("library")
         .upload(filePath, fileOrBlob, {
             contentType: mimeType,
             upsert: false
         });
-        if (uploadError) {
-            throw uploadError;
-        }
-    const { data } = supabaseClient.storage
+
+    if (uploadError) {
+        console.error("Error directo de Supabase Storage:", uploadError);
+        throw uploadError;
+    }
+
+    // 2. CORRECCIÓN: Obtención segura de la URL pública compatible con Supabase v2
+    const res = supabaseClient.storage
         .from("library")
         .getPublicUrl(filePath);
+        
+    // Validamos la estructura de respuesta para evitar crashes si viene anidada
+    const publicUrl = res.data?.publicUrl || res.publicUrl;
+
+    if (!publicUrl) {
+        throw new Error("No se pudo generar la URL pública del archivo subido.");
+    }
+
     return {
         filePath,
-        fileUrl: data.publicUrl
+        fileUrl: publicUrl
     };
 }
 
 async function saveLibraryItemToSupabase({ name, type, blob, transcription = [], metadata = {} }) {
   const mimeType = blob.type || "application/octet-stream";
+  
+  // Detectamos la extensión correcta según el tipo de archivo (MIME)
   const extension = mimeType.includes("wav")
     ? "wav"
-    : mimeType.includes("mpeg")
+    : mimeType.includes("mpeg") || mimeType.includes("mp3")
     ? "mp3"
     : mimeType.includes("webm")
     ? "webm"
@@ -1000,15 +1043,27 @@ async function saveLibraryItemToSupabase({ name, type, blob, transcription = [],
     ? "ogg"
     : "bin";
 
-  const fileName = `${name}.${extension}`;
+  // CORRECCIÓN: Limpiamos extensiones previas que puedan venir en la variable 'name' 
+  // para evitar nombres corruptos como "archivo.wav.wav" o "archivo.mp3.wav"
+  const cleanName = name.replace(/\.(wav|mp3|webm|ogg|bin)$/i, "");
+  const fileName = `${cleanName}.${extension}`;
 
-  const { filePath, fileUrl } = await uploadFileToSupabase(blob, fileName, mimeType);
+  // 1. Subida física del archivo binario a Supabase Storage
+  const uploadResult = await uploadFileToSupabase(blob, fileName, mimeType);
+  
+  // CORRECCIÓN: Validamos estrictamente que la subida haya devuelto datos válidos
+  if (!uploadResult || !uploadResult.fileUrl) {
+    throw new Error(`La subida del archivo '${fileName}' al almacenamiento de Supabase falló.`);
+  }
 
+  const { filePath, fileUrl } = uploadResult;
+
+  // 2. Inserción de metadatos en la tabla SQL
   const { error } = await supabaseClient
     .from("library_items")
     .insert([
       {
-        name,
+        name: cleanName, // Guardamos el nombre limpio sin extensión para la interfaz
         type,
         file_path: filePath,
         file_url: fileUrl,
@@ -1022,7 +1077,6 @@ async function saveLibraryItemToSupabase({ name, type, blob, transcription = [],
     throw error;
   }
 }
-
 async function getAllLibraryItemsFromSupabase() {
   const { data, error } = await supabaseClient
     .from("library_items")
@@ -2344,26 +2398,28 @@ async function splitAudio() {
                         source.connect(offlineCtx.destination);
                         source.start(0);
                     });
-                    
                     const renderedBuffer = await offlineCtx.startRendering();
-                    const blobPistaWav = exportStereoWav(renderedBuffer); // Asegúrate de que exista esta función
-
-                    // CORRECCIÓN: Se cambió blobPista por blobPistaWav
-                    await saveToLibrary(blobPistaWav, { 
-                        name: `Pista - ${file.name.replace('.mp3', '.webm')}`, 
-                        type: "pista" 
-                    });
-        
-                    await saveToLibrary(blobVoz, {
-                        name: `Voz - ${originalName}`,
-                        type: "voz"
-                    });
-                    
+                    const blobPistaWav = exportStereoWav(renderedBuffer); 
+                    // CORRECCIÓN: Generar los nombres exactos en constantes seguras ANTES de subir
+                    const nombrePista = `Pista - ${originalName.replace('.mp3', '')}.wav`;
+                    const nombreVoz = `Voz - ${originalName}`;
+                    statusText.textContent = "☁️ Guardando en la nube...";
+                    detailText.textContent = "Subiendo pistas de voz e instrumental a tu biblioteca...";
+                    // CORRECCIÓN: Ejecutar ambas subidas simultáneamente y asegurar su resolución con Promise.all
+                    await Promise.all([
+                        saveToLibrary(blobPistaWav, { 
+                            name: nombrePista, 
+                            type: "pista" 
+                        }),
+                        saveToLibrary(blobVoz, {
+                            name: nombreVoz,
+                            type: "voz"
+                        })
+                    ]);
                     statusText.textContent = "🎉 ¡Separación perfecta!";
                     detailText.textContent = "Voz pura y Pista Instrumental guardadas en Biblioteca.";
                     btn.disabled = false;
                     btn.textContent = "✨ Separar Otra Canción";
-                    
                 } else if (statusData.status === "failed" || statusData.status === "canceled") {
                     clearInterval(interval);
                     throw new Error("La IA falló o canceló el procesamiento del audio.");
@@ -2375,7 +2431,7 @@ async function splitAudio() {
                 handleSplitError(err, statusText, detailText, btn);
             }
         }, 3000);
-
+    
     } catch (err) {
         // CORRECCIÓN: Cierre de catch principal de la función async
         handleSplitError(err, statusText, detailText, btn);
