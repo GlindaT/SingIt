@@ -2313,8 +2313,6 @@ async function splitAudio() {
                     // NOTA: Asegúrate de tener implementada la función exportStereoWav en tu proyecto
                     const blobPistaWav = exportStereoWav(renderedBuffer);
 
-                    const recorder = new MediaRecorder(new MediaStream([new AudioCtx().createMediaStreamSource()]));
-                    
                     // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
                     await saveToLibrary(blobPista, { 
                         name: `Pista - ${file.name.replace('.mp3', '.webm')}`, 
@@ -3667,7 +3665,7 @@ async function loadMyKaraokeSongs() {
     const voces = await getLibraryItemsByTypeFromSupabase("voz");
     
     const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
-    const allSongs = [...karaokeSongs, ...vocesConSync];
+    const allSongs = [...karaokeSongs];
 
     if (allSongs.length === 0) {
       container.innerHTML = `
