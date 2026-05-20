@@ -324,23 +324,15 @@ function getNoteFromFrequency(freq) {
 }
 
 function getNoteFrequency(note) {
-    const notes = {
-        "C": -9,
-        "C#": -8,
-        "D": -7,
-        "D#": -6,
-        "E": -5,
-        "F": -4,
-        "F#": -3,
-        "G": -2,
-        "G#": -1,
-        "A": 0,
-        "A#": 1,
-        "B": 2
-    };
-    const match = note.match(/^([A-G]#?)(\d)$/);
+    // Si 'note' es un objeto, un número o no existe, lo manejamos de forma segura
+    if (!note) return 0;
     
-    if (!match) return 440;
+    // Si por error pasaste un objeto nota completo (ej: { name: "A4", freq: 440 })
+    let noteString = typeof note === 'object' ? (note.name || note.note || "") : String(note);
+
+    // Ejecutamos el match de forma segura
+    const matches = noteString.match(/^([A-G]#?)(-?\d+)$/);
+    if (!matches) return 0;
     
     const [, noteName, octaveStr] = match;
     
