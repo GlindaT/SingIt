@@ -1692,37 +1692,73 @@ function cargarLetrasEnMonitor() {
   if (!container) return;
 
   console.log("cargarLetrasEnMonitor -> transcriptionSegments:", transcriptionSegments);
-
   container.innerHTML = "";
 
   if (!Array.isArray(transcriptionSegments) || transcriptionSegments.length === 0) {
-    container.innerHTML = `<p class="karaoke-placeholder" style="font-size:18px;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz y vuelve aquí para ver la letra.</p>`;
+    container.innerHTML = `<p class="karaoke-placeholder" style="font-size:18px;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz o carga un catálogo para ver la letra.</p>`;
     return;
   }
 
-  transcriptionSegments.forEach((seg) => {
-    const p = document.createElement("p");
-    p.className = "karaoke-live-line";
-    p.dataset.start = Number(seg.start || 0);
-    p.dataset.end = Number(seg.end || 0);
+  // Detectar si es formato UltraStar (plano sin sub-arreglos de palabras)
+  const isUltraStar = transcriptionSegments.every(seg => !seg.words);
 
-    const words = Array.isArray(seg.words) ? seg.words : [];
+  if (isUltraStar) {
+    // LÓGICA ULTRASTAR: Agrupar sílabas en líneas coherentes (ej: pausas mayores a 2 segundos crean nueva línea)
+    let currentLine = document.createElement("p");
+    currentLine.className = "karaoke-live-line";
+    
+    transcriptionSegments.forEach((seg, index) => {
+      const span = document.createElement("span");
+      span.className = "karaoke-live-word";
+      span.dataset.start = Number(seg.start || 0);
+      span.dataset.end = Number(seg.end || 0);
+      span.textContent = seg.text || ""; // CORRECCIÓN: Sin .trim() para respetar espacios de UltraStar
+      
+      currentLine.appendChild(span);
 
-    if (words.length) {
-      words.forEach((wordObj, index) => {
-        const span = document.createElement("span");
-        span.className = "karaoke-live-word";
-        span.dataset.start = Number(wordObj.start || 0);
-        span.dataset.end = Number(wordObj.end || 0);
-        span.textContent = (wordObj.word || "") + (index < words.length - 1 ? " " : "");
-        p.appendChild(span);
-      });
-    } else {
-      p.textContent = (seg.text || "").trim();
-    }
+      // Si la siguiente sílaba tarda más de 2.5 segundos en iniciar, o es el final, cerramos la línea de la canción
+      const nextSeg = transcriptionSegments[index + 1];
+      if (!nextSeg || (nextSeg.start - seg.end > 2.5)) {
+        // Guardamos los tiempos totales de la línea basados en su primera y última sílaba
+        const firstSpan = currentLine.querySelector(".karaoke-live-word");
+        currentLine.dataset.start = firstSpan ? firstSpan.dataset.start : 0;
+        currentLine.dataset.end = span.dataset.end;
+        
+        container.appendChild(currentLine);
+        
+        if (nextSeg) {
+          currentLine = document.createElement("p");
+          currentLine.className = "karaoke-live-line";
+        }
+      }
+    });
 
-    container.appendChild(p);
-  });
+  } else {
+    // LÓGICA WHISPER / IA (Tu código original optimizado)
+    transcriptionSegments.forEach((seg) => {
+      const p = document.createElement("p");
+      p.className = "karaoke-live-line";
+      p.dataset.start = Number(seg.start || 0);
+      p.dataset.end = Number(seg.end || 0);
+
+      const words = Array.isArray(seg.words) ? seg.words : [];
+
+      if (words.length) {
+        words.forEach((wordObj, index) => {
+          const span = document.createElement("span");
+          span.className = "karaoke-live-word";
+          span.dataset.start = Number(wordObj.start || 0);
+          span.dataset.end = Number(wordObj.end || 0);
+          span.textContent = (wordObj.word || "") + (index < words.length - 1 ? " " : "");
+          p.appendChild(span);
+        });
+      } else {
+        p.textContent = (seg.text || "");
+      }
+
+      container.appendChild(p);
+    });
+  }
 }
 
 async function startKaraokeRecording() {
@@ -3559,36 +3595,48 @@ async function loadKaraokeCatalog() {
 function parseUltraStarSync(syncContent) {
     if (!syncContent || typeof syncContent !== "string") return [];
 
-    const lines = syncContent.split("\n").map(line => line.trim()).filter(Boolean);
+    // Dividimos por saltos de línea (Windows/Mac/Linux) sin alterar los espacios internos aún
+    const lines = syncContent.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     let bpm = 120, gap = 0;
     const noteLines = [];
 
     for (const line of lines) {
-        if (line.startsWith("#BPM:")) bpm = parseFloat(line.replace("#BPM:", "")) || 120;
-        else if (line.startsWith("#GAP:")) gap = parseInt(line.replace("#GAP:", "")) || 0;
-        else if (/^[:*FR]/.test(line)) noteLines.push(line);
+        // CORRECCIÓN: Expresiones regulares para tolerar espacios en las cabeceras
+        if (/^#BPM:/i.test(line)) {
+            bpm = parseFloat(line.split(":")[1]) || 120;
+        } else if (/^#GAP:/i.test(line)) {
+            gap = parseInt(line.split(":")[1], 10) || 0;
+        } else if (/^[:*FR]/i.test(line)) {
+            noteLines.push(line);
+        }
     }
 
+    // Fórmula estándar de UltraStar: Cada negra (beat) son 4 ticks (4 notas de un cuarto)
     const secondsPerTick = (60 / bpm) / 4;
 
     const parsedSegments = noteLines.map(line => {
-        const match = line.match(/^[:*FR]\s+(-?\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
+        // Expresión regular para extraer: Tipo, Start, Duration, Pitch, Texto
+        const match = line.match(/^([:*FR])\s+(-?\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
         if (!match) return null;
 
-        const startTick = parseInt(match[1], 10);
-        const durationTick = parseInt(match[2], 10);
-        const midiValue = parseInt(match[3], 10);
-        const text = match[4] || "";
+        const startTick = parseInt(match[2], 10);
+        const durationTick = parseInt(match[3], 10);
+        const relativePitch = parseInt(match[4], 10);
+        const text = match[5] || ""; // CORRECCIÓN: No aplicar .trim() aquí para mantener espacios entre palabras
 
         const start = (gap / 1000) + (startTick * secondsPerTick);
         const end = start + (durationTick * secondsPerTick);
 
+        // CORRECCIÓN: Nota MIDI estándar absoluta (UltraStar usa típicamente C4/Línea base en 60 o similar)
+        const absoluteMidi = relativePitch + 60; 
+
         return {
             start, 
             end, 
-            text: text.trim(),
-            midi: midiValue + 60, // Ajuste típico de UltraStar a MIDI estándar
-            pitch: midiValue > 0 ? 440 * Math.pow(2, (midiValue - 69) / 12) : -1
+            text: text, // Conserva espacios cruciales para el formateo visual
+            midi: absoluteMidi,
+            // CORRECCIÓN: Cálculo de frecuencia basado en la nota MIDI absoluta real calculada
+            pitch: relativePitch !== 0 ? 440 * Math.pow(2, (absoluteMidi - 69) / 12) : -1
         };
     }).filter(Boolean);
 
@@ -3614,33 +3662,35 @@ async function loadCatalogSong(folder, title, artist) {
             throw new Error("Formato de sincronización no válido");
         }
 
-        // 3. Cargar audio (MP3) con Cache Buster en la petición de red si es necesario
+        // 3. Cargar audio (MP3) con Cache Buster en la petición de red
         const audioResponse = await fetch(`./karaoke-catalog/${folder}/audio.mp3?v=${Date.now()}`);
         if (!audioResponse.ok) throw new Error("No se pudo cargar el audio");
         
         const audioBlob = await audioResponse.blob();
         
         // 4. Configurar el reproductor (Manejo de memoria)
-        // Liberamos la URL anterior si existía para evitar fugas de memoria
         if (track && track.src && track.src.startsWith("blob:")) {
             URL.revokeObjectURL(track.src);
         }
         
-        // CORRECCIÓN: Creamos la URL del objeto a partir del blob descargado
         if (track) {
             track.src = URL.createObjectURL(audioBlob);
             track.volume = 0.4;
         }
         
-        // 5. Actualizar estado global
-        karaokeSelectedTrackBlob = audioBlob;
-        karaokeSelectedTrackName = `${title} - ${artist}`;
-        transcriptionSegments = parsedSegments;
-        baseTranscriptionSegments = [...parsedSegments];
+        // 5. Actualizar estado global (Garantizando declaración o alcance en window)
+        window.karaokeSelectedTrackBlob = audioBlob;
+        window.karaokeSelectedTrackName = `${title} - ${artist}`;
+        window.transcriptionSegments = parsedSegments;
+        
+        // CORRECCIÓN: Clonación profunda (Deep Copy) para evitar mutación cruzada de objetos internos
+        window.baseTranscriptionSegments = parsedSegments.map(segment => ({ ...segment }));
         
         // Reiniciar variables de seguimiento
-        currentTime = 0; 
-        if (typeof pitchHistory !== 'undefined') pitchHistory = [];
+        window.currentTime = 0; 
+        if (typeof pitchHistory !== 'undefined') {
+            window.pitchHistory = [];
+        }
         
         // 6. UI y Feedback
         cargarLetrasEnMonitor();
