@@ -3594,11 +3594,10 @@ function parseUltraStarSync(syncContent) {
 }
 
 async function loadCatalogSong(folder, title, artist) {
-  const status = $("karaokeStatus");
-  const track = $("karaokeTrack");
+    const status = $("karaokeStatus");
+    const track = $("karaokeTrack");
     // 1. Limpieza previa inmediata
     if (status) status.textContent = `Estado: Cargando "${title}"...`;
-    
     try {
         // 2. Cargar sincronización (TXT)
         const syncResponse = await fetch(`./karaoke-catalog/${folder}/sync.txt`);
@@ -3614,19 +3613,16 @@ async function loadCatalogSong(folder, title, artist) {
         
         const audioBlob = await audioResponse.blob();
         // 4. Configurar el reproductor (Manejo de memoria)
-        if (track) {
-            
-            // Liberamos la URL anterior si existía para evitar fugas de memoria
-            if (track.src && track.src.startsWith("blob:")) {
-                URL.revokeObjectURL(track.src);
-            }
-            const urlConCacheBuster = new URL(item.file_url);
-            urlConCacheBuster.searchParams.append('v', Date.now());
-            track.src = urlConCacheBuster.toString();
-            track.volume = 0.4;
+        // Liberamos la URL anterior si existía para evitar fugas de memoria
+        if (track.src && track.src.startsWith("blob:")) {
+            URL.revokeObjectURL(track.src);
         }
-        // 5. Actualizar estado global
+        const urlConCacheBuster = new URL(item.file_url);
+        urlConCacheBuster.searchParams.append('v', Date.now());
+        track.src = urlConCacheBuster.toString();
+        track.volume = 0.4;
         
+        // 5. Actualizar estado global
         karaokeSelectedTrackBlob = audioBlob;
         karaokeSelectedTrackName = `${title} - ${artist}`;
         transcriptionSegments = parsedSegments;
@@ -3650,7 +3646,6 @@ async function loadCatalogSong(folder, title, artist) {
         if (canvas) {
             canvas.scrollIntoView({ behavior: "smooth", block: "center" });
         }
-    
     } catch (error) {
         console.error("Error en loadCatalogSong:", error);
         if (status) status.textContent = `Estado: Error al cargar "${title}"`;
