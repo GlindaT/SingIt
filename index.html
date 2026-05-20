@@ -252,39 +252,42 @@
         <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
       </div>
 
-      <!-- CATÁLOGO DE CANCIONES LISTAS -->
+<!-- CATÁLOGO DE CANCIONES LISTAS -->
       <div class="card">
-        <h3>🎤 Canciones Listas para Cantar</h3>
-        <div class="seccion-desplegable">
-          <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-canciones', 'flecha-canciones')">
-            <h2>🎤 Canciones Listas para Cantar</h2>
-            <span id="flecha-canciones" class="flecha">▶</span>
-          </div>
-          <div id="contenido-canciones" class="contenido-desplegable oculto">
-            <!-- Catálogo pre-cargado -->
-            <div id="catalogSection">
-          <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
-          <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
-            <p style="color: var(--text-muted);">Cargando catálogo...</p>
-          </div>
+        <!-- Reemplazamos el h3 por un contenedor con flecha -->
+        <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-catalogo', 'flecha-catalogo')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+          <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
+          <span id="flecha-catalogo" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
-        
-        <!-- Mis canciones importadas/creadas -->
-        <div id="myKaraokeSongs" style="margin-top: 20px;">
-          <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
-          <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
-            <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
+
+        <!-- Envolvemos todo el contenido interior aquí -->
+        <div id="contenido-catalogo" class="contenido-desplegable" style="margin-top: 15px;">
+          <!-- Catálogo pre-cargado -->
+          <div id="catalogSection">
+            <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
+            <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
+              <p style="color: var(--text-muted);">Cargando catálogo...</p>
+            </div>
           </div>
-        </div>
-       
-        <!-- Botones de acción -->
-        <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
-          <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar UltraStar</button>
-          <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
+          
+          <!-- Mis canciones importadas/creadas -->
+          <div id="myKaraokeSongs" style="margin-top: 20px;">
+            <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
+            <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
+              <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
+            </div>
+          </div>
+         
+          <!-- Botones de acción -->
+          <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+            <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar UltraStar</button>
+            <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
+          </div>
         </div>
       </div>
       
       <!-- MODAL IMPORTAR ULTRASTAR -->
+      <!-- El modal lo dejas exactamente igual que antes -->
       <div id="ultrastarModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
         <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
           <h3 style="margin-top: 0; color: var(--accent);">📥 Importar Canción UltraStar</h3>
@@ -294,7 +297,6 @@
               <strong>¿Dónde conseguir canciones?</strong>
             </p>
             <a href="https://usdb.animux.de/" target="_blank" style="color: #3b82f6; text-decoration: none;">
-              
               🔗 USDB (UltraStar Database) - Miles de canciones gratis
             </a>
             <p style="margin: 10px 0 0 0; font-size: 12px; color: var(--text-muted);">
@@ -336,43 +338,33 @@
       </div>
 
       <!-- Paso 1: Pista -->
-          <div class="seccion-desplegable">
-            <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-pista', 'flecha-pista')">
-        <h2>1. Cargar Pista (Instrumental)</h2>
-        <span id="flecha-pista" class="flecha">▶</span>
-    </div>
-    <div id="contenido-pista" class="contenido-desplegable oculto">
-
       <div class="card">
-        <h3>1. Cargar Pista (Instrumental)</h3>
-        
-        <!-- Opción A: Desde la Biblioteca -->
-        <div class="studio-controls">
-          <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
+        <!-- Reemplazamos el h3 por un contenedor con flecha -->
+        <div class="encabezado-desplegable" onclick="toggleSeccion('contenido-pista', 'flecha-pista')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+          <h3 style="margin: 0;">1. Cargar Pista (Instrumental)</h3>
+          <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
-        <select id="karaokeTrackSelect">
-          <option value="">Selecciona una pista desde tu Biblioteca</option>
-        </select>
-        <div class="studio-controls" style="margin-bottom: 15px;">
-          <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
-        </div>
-
-        <!-- Opción B: Desde la PC -->
-        <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
-        <input type="file" id="karaokeTrackFile" accept="audio/*">
         
-        <audio id="karaokeTrack" controls style="margin-top: 15px;"></audio>
-      </div>
-    </div>
+        <!-- Envolvemos todo el contenido interior aquí -->
+        <div id="contenido-pista" class="contenido-desplegable" style="margin-top: 15px;">
+          <!-- Opción A: Desde la Biblioteca -->
+          <div class="studio-controls">
+            <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
+          </div>
+          <select id="karaokeTrackSelect" style="width: 100%; margin: 10px 0;">
+            <option value="">Selecciona una pista desde tu Biblioteca</option>
+          </select>
+          <div class="studio-controls" style="margin-bottom: 15px;">
+            <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
+          </div>
 
-      <!-- MONITOR ESTILO ULTRASTAR -->
-      <div class="card" style="background: black; border: 2px solid var(--border);">
-        <h3 style="color: var(--accent); text-align: center; margin-top: 0;">Monitor de Letras</h3>
-        <div id="karaokeLiveLyrics" class="karaoke-lyrics" style="display: none; height: 250px; overflow-y: auto; padding: 20px; background: transparent; border: none; scroll-behavior: smooth;">
-          <p class="karaoke-placeholder" style="font-size: 20px; text-align: center;">Las letras sincronizadas aparecerán aquí...</p>
+          <!-- Opción B: Desde la PC -->
+          <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+          <input type="file" id="karaokeTrackFile" accept="audio/*">
+          
+          <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
         </div>
       </div>
-
       <!-- Paso 2: Grabación -->
       <div class="card">
         <h3>2. Grabación Sincronizada</h3>
