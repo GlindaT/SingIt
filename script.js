@@ -1124,7 +1124,6 @@ async function deleteLibraryItemFromSupabase(id) {
     throw error;
   }
 }
-
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
 // ==========================================
