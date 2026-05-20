@@ -2669,7 +2669,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("btnConfig", "click", () => showTab("config"));
 
     // afinador
-    safeAdd("recordBtn", "click", startRecording);
+    safeAdd("recordBtn", "click", toggleAfinadorBtn);
 
     // estudio
     safeAdd("audioFile", "change", cargarAudioEstudio);
