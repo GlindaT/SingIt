@@ -2158,11 +2158,13 @@ function exportStereoWav(buffer) {
 async function splitAudio() {
     const fileInput = $("splitterFile");
     const file = fileInput?.files[0];
+    console.log("Archivo detectado:", file);
     
     if (!file) {
         alert("⚠️ Selecciona una canción primero.");
         return;
     }
+    
     const originalName = file.name; // SOLUCIÓN: Definir nombre original
     const btn = $("splitBtn");
     const statusBox = $("splitterStatusBox");
@@ -2317,16 +2319,15 @@ function handleSplitError(err, statusText, detailText, btn) {
 }
 
 function showResult(url) {
-  let container = document.getElementById("splitResult");
-
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "splitResult";
-    container.style.marginTop = "20px";
-    document.getElementById("splitter").appendChild(container);
-  }
-
-  container.innerHTML = `
+    let container = document.getElementById("splitResult");
+    
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "splitResult";
+        container.style.marginTop = "20px";
+        document.getElementById("splitter").appendChild(container);
+    }
+    container.innerHTML = `
     <p>✅ API respondió correctamente</p>
     <audio controls src="${url}"></audio>
     <br><br>
