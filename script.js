@@ -2246,8 +2246,10 @@ async function splitAudio() {
         return;
     }
     
-    const btn = ("splitBtn");conststatusBox=("splitterStatusBox");
-    const statusText = ("splitterStatusText");constdetailText=("splitterDetailText");
+    const btn = $("splitBtn");
+    const statusBox = $("splitterStatusBox");
+    const statusText = $("splitterStatusText");
+    const detailText = $("splitterDetailText");
     
     btn.disabled = true;
     
