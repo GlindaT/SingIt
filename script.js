@@ -703,6 +703,7 @@ async function renderLibrary(filter = "todos") {
         }
         
         container.innerHTML = "";
+        
         if (filteredItems.length === 0) {
             container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
         } else {
@@ -710,32 +711,45 @@ async function renderLibrary(filter = "todos") {
                 const div = document.createElement("div");
                 div.className = "library-item card";
                 div.style.marginBottom = "10px";
+                
+                // Estructura base segura
                 div.innerHTML = `
-                    <p><strong>${item.name}</strong></p>
+                    <p><strong class="item-title"></strong></p>
                     <small>Tipo: ${item.type.toUpperCase()} | ${new Date(item.created_at).toLocaleString("es-ES")}</small>
                     <audio controls src="${item.file_url}" style="width:100%; margin: 10px 0;"></audio>
                     <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
                 `;
+                
+                // CORRECCIÓN: Inyección segura de texto para evitar vulnerabilidades XSS
+                div.querySelector(".item-title").textContent = item.name;
+                
                 container.appendChild(div);
             });
         }
+        
+        // Asignación de eventos de eliminación
         document.querySelectorAll(".delete-library-btn").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 const id = btn.dataset.id;
-                await deleteLibraryItem(id);
-                renderLibrary(filter);
+                if (confirm("¿Estás seguro de que deseas eliminar este archivo?")) {
+                    await deleteLibraryItem(id);
+                    renderLibrary(filter);
+                }
             });
         });
-        await loadVoiceOptionsInStudio();
-        await loadTrackOptionsInStudio();
-        await loadTrackOptionsInKaraoke();
+        
+        // CORRECCIÓN: Ejecución en paralelo y sin bloquear el hilo principal de la UI
+        Promise.all([
+            loadVoiceOptionsInStudio(),
+            loadTrackOptionsInStudio(),
+            loadTrackOptionsInKaraoke()
+        ]).catch(err => console.error("Error actualizando selectores externos:", err));
     
     } catch (error) {
         console.error(error);
         container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
     }
 }
-
 
 async function deleteLibraryItem(id) {
     try {
