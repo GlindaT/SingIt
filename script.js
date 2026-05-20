@@ -2273,7 +2273,8 @@ async function splitAudio() {
                     const renderedBuffer = await offlineCtx.startRendering();
                     
                     // NOTA: Asegúrate de tener implementada la función exportStereoWav en tu proyecto
-                    const blobPista = exportStereoWav(renderedBuffer); 
+                    const blobPistaWav = exportStereoWav(renderedBuffer); 
+
                     
                     // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
                     await saveToLibrary(blobPista, {
