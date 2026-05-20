@@ -3588,98 +3588,65 @@ async function loadKaraokeCatalog() {
 }
 
 function parseUltraStarSync(syncContent) {
-    if (!syncContent || typeof syncContent !== "string") return [];
-
-    // Dividimos por saltos de línea (Windows/Mac/Linux) sin alterar los espacios internos aún
-    const lines = syncContent.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    let bpm = 120, gap = 0;
-    const noteLines = [];
-
-    for (const line of lines) {
-        // CORRECCIÓN: Expresiones regulares para tolerar espacios en las cabeceras
-        if (/^#BPM:/i.test(line)) {
-            bpm = parseFloat(line.split(":")[1]) || 120;
-        } else if (/^#GAP:/i.test(line)) {
-            gap = parseInt(line.split(":")[1], 10) || 0;
-        } else if (/^[:*FR]/i.test(line)) {
-            noteLines.push(line);
-        }
-    }
-
-    // Fórmula estándar de UltraStar: Cada negra (beat) son 4 ticks (4 notas de un cuarto)
-    const secondsPerTick = (60 / bpm) / 4;
-
-    const parsedSegments = noteLines.map(line => {
-        // Expresión regular para extraer: Tipo, Start, Duration, Pitch, Texto
-        const match = line.match(/^([:*FR])\s+(-?\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
-        if (!match) return null;
-
-        const startTick = parseInt(match[2], 10);
-        const durationTick = parseInt(match[3], 10);
-        const relativePitch = parseInt(match[4], 10);
-        const text = match[5] || ""; // CORRECCIÓN: No aplicar .trim() aquí para mantener espacios entre palabras
-
-        const start = (gap / 1000) + (startTick * secondsPerTick);
-        const end = start + (durationTick * secondsPerTick);
-
-        // CORRECCIÓN: Nota MIDI estándar absoluta (UltraStar usa típicamente C4/Línea base en 60 o similar)
-        const absoluteMidi = relativePitch + 60; 
-
-        return {
-            start, 
-            end, 
-            text: text, // Conserva espacios cruciales para el formateo visual
-            midi: absoluteMidi,
-            // CORRECCIÓN: Cálculo de frecuencia basado en la nota MIDI absoluta real calculada
-            pitch: relativePitch !== 0 ? 440 * Math.pow(2, (absoluteMidi - 69) / 12) : -1
-        };
-    }).filter(Boolean);
-
-    return parsedSegments;
-}
-
-function parseSyncLine(line) {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-
-  // Formato esperado:
-  // inicio|fin|midi|texto
-  // Ejemplo:
-  // 0.50|1.20|60|Ho
-  // 1.21|2.10|62|la
-
-  const parts = trimmed.split("|");
-  if (parts.length < 4) return null;
-
-  const start = parseFloat(parts[0]);
-  const end = parseFloat(parts[1]);
-  const midi = parseInt(parts[2], 10);
-  const text = parts.slice(3).join("|").trim();
-
-  if (isNaN(start) || isNaN(end)) return null;
-
-  return {
-    start,
-    end,
-    text,
-    words: [
-      {
-        word: text,
-        start,
-        end,
-        midi: isNaN(midi) ? 60 : midi
-      }
-    ]
-  };
-}
-
-function parseSyncContent(syncContent) {
   if (!syncContent || typeof syncContent !== "string") return [];
 
-  return syncContent
-    .split("\n")
-    .map(parseSyncLine)
-    .filter(Boolean);
+  const lines = syncContent.split("\n").map(line => line.trim()).filter(Boolean);
+
+  let bpm = 120;
+  let gap = 0;
+  const noteLines = [];
+
+  for (const line of lines) {
+    if (line.startsWith("#BPM:")) {
+      bpm = parseFloat(line.replace("#BPM:", "").trim()) || 120;
+      continue;
+    }
+
+    if (line.startsWith("#GAP:")) {
+      gap = parseInt(line.replace("#GAP:", "").trim(), 10) || 0;
+      continue;
+    }
+
+    if (line.startsWith(":") || line.startsWith("*") || line.startsWith("F") || line.startsWith("R")) {
+      noteLines.push(line);
+    }
+  }
+
+  // Conversión de ticks UltraStar a segundos
+  // Fórmula práctica habitual:
+  // secondsPerBeat = 60 / BPM
+  // si el archivo usa resolución típica por negras/fracciones, esta aproximación suele funcionar:
+  const secondsPerBeat = 60 / bpm;
+  const secondsPerTick = secondsPerBeat / 4;
+
+  const parsedWords = noteLines.map(line => {
+    const match = line.match(/^[:*FR]\s+(\d+)\s+(\d+)\s+(-?\d+)\s+(.+)$/);
+    if (!match) return null;
+
+    const startTick = parseInt(match[1], 10);
+    const durationTick = parseInt(match[2], 10);
+    const pitch = parseInt(match[3], 10);
+    const text = match[4] || "";
+
+    const start = gap / 1000 + startTick * secondsPerTick;
+    const end = gap / 1000 + (startTick + durationTick) * secondsPerTick;
+
+    return {
+      start,
+      end,
+      text: text.trim(),
+      words: [
+        {
+          word: text.trim(),
+          start,
+          end,
+          midi: 60 + pitch
+        }
+      ]
+    };
+  }).filter(Boolean);
+
+  return parsedWords;
 }
 
 async function loadCatalogSong(folder, title, artist) {
@@ -3695,11 +3662,11 @@ async function loadCatalogSong(folder, title, artist) {
     }
     const syncContent = await syncResponse.text();
 
-    // Parsear sincronización a segmentos compatibles con el karaoke
-    const parsedSegments = parseSyncContent(syncContent);
+    // Parsear formato UltraStar
+    const parsedSegments = parseUltraStarSync(syncContent);
 
     if (!parsedSegments.length) {
-      console.warn("⚠️ sync.txt cargado pero no se pudieron generar segmentos");
+      throw new Error("La sincronización está vacía o tiene un formato no válido");
     }
 
     // Cargar audio
@@ -3719,15 +3686,15 @@ async function loadCatalogSong(folder, title, artist) {
     karaokeSelectedTrackBlob = audioBlob;
     karaokeSelectedTrackName = `${title} - ${artist}`;
 
-    // IMPORTANTE: actualizar variables globales, no crear const locales
+    // Actualizar variables globales
     transcriptionSegments = parsedSegments;
     baseTranscriptionSegments = [...parsedSegments];
     segments = [...parsedSegments];
 
-    // Refrescar monitor de letras
+    // Render letras
     cargarLetrasEnMonitor();
 
-    // Forzar redibujado inicial del canvas
+    // Redibujo inicial del canvas
     if (typeof drawKaraokeMonitor === "function") {
       drawKaraokeMonitor(0, 0);
     }
@@ -3741,7 +3708,11 @@ async function loadCatalogSong(folder, title, artist) {
       canvas.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
-    console.log("✅ Canción del catálogo cargada:", title, parsedSegments);
+    console.log("✅ Canción del catálogo cargada:", {
+      title,
+      artist,
+      parsedSegments
+    });
 
   } catch (error) {
     console.error("Error cargando canción del catálogo:", error);
@@ -3749,6 +3720,7 @@ async function loadCatalogSong(folder, title, artist) {
     alert(`❌ Error al cargar la canción: ${error.message}`);
   }
 }
+
 
 async function loadMyKaraokeSongs() {
   const container = $("myKaraokeList");
