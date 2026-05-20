@@ -4,7 +4,7 @@
   <link rel="icon" href="data:,">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎤 VocalApp</title>
+  <title>🎤 SingIt</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
 
   <!-- SIDEBAR -->
   <nav class="sidebar">
-    <h2>🎤 VocalApp</h2>
+    <h2>🎤 SingIt</h2>
 
     <button id="btnAfinador" type="button">Afinador</button>
     <button id="btnEstudio" type="button">Estudio</button>
@@ -101,13 +101,7 @@
   <input type="file" id="audioFile" accept="audio/*">
 
   <audio id="player" controls></audio>
-
-  <div class="studio-controls">
-    <button id="playTrackBtn" type="button">▶️ Reproducir</button>
-    <button id="pauseTrackBtn" type="button">⏸️ Pausar</button>
-    <button id="stopTrackBtn" type="button">⏹️ Detener</button>
   </div>
-</div>
 
   <div class="card">
   <h3>Voz desde Biblioteca</h3>
@@ -235,6 +229,7 @@
     <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
     <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
     <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
+    <button class="folder-btn" onclick="renderLibrary('karaoke')">🎙️ Karaoke</button>
   </div>
 
   <div class="card">
@@ -331,15 +326,11 @@
       <div class="card">
         <h3>Separar Voz e Instrumental</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">
-          Sube una canción (MP3 de máximo 3.5 MB). La Inteligencia Artificial la separará y la guardará en tu Biblioteca.
-        </p>
-
-        <input type="file" id="splitterFile" accept="audio/*">
-        
+          Sube una canción. La Inteligencia Artificial la separará y la guardará en tu Biblioteca.</p>
+          <input type="file" id="splitterFile" accept="audio/*">
         <div class="studio-controls">
           <button id="splitBtn" type="button" style="background: #3b82f6; color: white;">✨ Separar Audio con IA</button>
         </div>
-
         <div id="splitterStatusBox" style="margin-top: 20px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border); display: none;">
           <h4 id="splitterStatusText" style="color: var(--accent); margin: 0;">Iniciando IA...</h4>
           <p id="splitterDetailText" style="color: var(--text-muted); font-size: 14px;">Esto puede tardar un poco.</p>
