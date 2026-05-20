@@ -210,137 +210,151 @@ function showTab(tabId) {
 // ==========================================
 let audioContext, analyser, stream;
 
-async function toggleAfinadorBtn() {
-    const btn = $("recordBtn");
-    
-    // 1. Si ya se estaba intentando conectar, salimos para evitar doble ejecución
-    if (state.isConnecting) return; 
+async function toggleRecording() {
+  const btn = $("recordBtn");
 
-    if (!state.isRecording) {
-        state.isRecording = true;
-        state.isConnecting = true; // Bloqueo de seguridad
-        if (btn) btn.textContent = "🛑 Detener Afinador";
-        
-        try {
-            const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            // 2. Verificación: Si el usuario canceló mientras esperaba el micrófono, detenemos todo
-            if (!state.isRecording) {
-                mediaStream.getTracks().forEach(t => t.stop());
-                return;
-            }
+  if (!state.isRecording) {
+    state.isRecording = true;
+    btn.textContent = "Detener";
+    btn.classList.add("recording");
+    await startAfinador();
+  } else {
+    state.isRecording = false;
+    btn.textContent = "Iniciar";
+    btn.classList.remove("recording");
+    stopAfinador();
 
-            stream = mediaStream;
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            const source = audioContext.createMediaStreamSource(stream);
-            analyser = audioContext.createAnalyser();
-            analyser.fftSize = 2048;
-            source.connect(analyser);
-            
-            bucleDeteccionPitch();
-        } catch (err) {
-            console.error(err);
-            state.isRecording = false;
-            if (btn) btn.textContent = "Iniciar";
-        } finally {
-            state.isConnecting = false; // Liberamos el bloqueo
-        }
-    } else {
-        state.isRecording = false;
-        state.isConnecting = false;
-        if (btn) btn.textContent = "Iniciar";
-        if (stream) {
-            stream.getTracks().forEach(t => t.stop());
-            stream = null;
-        }
-        if (audioContext) {
-            if (audioContext.state !== "closed") {
-                await audioContext.close();
-            }
-            audioContext = null;
-        }
-    }
+    if ($("noteDisplay")) $("noteDisplay").textContent = "--";
+    if ($("guideText")) $("guideText").textContent = "";
+  }
 }
-function bucleDeteccionPitch() {
-    if (!state.isRecording || !analyser) return;
-    analyser.getFloatTimeDomainData(pitchBuffer);
-    const pitch = autoCorrelateMath(pitchBuffer, audioContext.sampleRate);
-    
-    const noteDisplay = $("noteDisplay");
-    const guideText = $("guideText");
-    const targetSelect = $("targetNote");
-    
-    if (pitch !== -1 && targetSelect) {
-        const targetFrequency = getNoteFromFrequency(targetSelect.value);
-        const currentNoteName = getNoteFrequency(pitch);
-        if (noteDisplay) noteDisplay.textContent = currentNoteName;
+
+async function startAfinador() {
+    audioContext = new AudioContext();
+    stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+        }
+    });
+    const mic = audioContext.createMediaStreamSource(stream);
+    function aplicarFiltrosLimpieza(audioCtx, source) {
+        // Filtro de paso alto (Corta graves innecesarios)
+        const highPass = audioCtx.createBiquadFilter();
+        highPass.type = "highpass";
+        highPass.frequency.value = 80;
         
-        const centsDeviation = 1200 * Math.log2(pitch / targetFrequency);
-        drawKaraokeMonitor(pitch, targetFrequency);
+        // Filtro de paso bajo (Corta siseos de alta frecuencia)
+        const lowPass = audioCtx.createBiquadFilter();
+        lowPass.type = "lowpass";
+        lowPass.frequency.value = 1000; // Ajusta según qué tan brillante quieras la voz
+        source.connect(highPass);
+        highPass.connect(lowPass);
+        return lowPass; // Regresamos el final de la cadena
+    }
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    mic.connect(analyser);
+    
+    setTimeout(() => {
+        detectPitch();
+    }, 300);
+}
+
+function stopAfinador() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (audioContext) audioContext.close();
+}
+
+function detectPitch() {
+  if (!state.isRecording || !analyser) return;
+
+  // Usamos el buffer global en lugar de crear uno nuevo cada 16ms
+  analyser.getFloatTimeDomainData(pitchBuffer);
+  const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
+  
+  if (document.getElementById("karaokeCanvas")) {
+    // Asegúrate de que esta función esté definida o comentada para evitar errores
+    if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(0, pitch); 
+  }
+
+  const display = $("noteDisplay");
+  const guide = $("guideText");
+  const targetNoteEl = $("targetNote");
+  const targetNote = targetNoteEl ? targetNoteEl.value : "E2";
+
+  if (display && guide) {
+    if (pitch !== -1) {
+      const noteFull = getNoteFromFrequency(pitch);
+      const targetFreq = getNoteFrequency(targetNote);
+      // Evitar logaritmo de 0 o infinito
+      const cents = 1200 * Math.log2(pitch / targetFreq);
+
+      display.textContent = noteFull;
+
+      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
+      let maxDesviation = 30;
+        if (dificultad === "facil") maxDesviation = 50;
+        else if (dificultad === "dificil") maxDesviation = 15;
+        else if (dificultad === "experto") maxDesviation = 5;
         
-        if (Math.abs(centsDeviation) < 25) {
-            if (noteDisplay) noteDisplay.style.color = "#22c55e"; 
-            if (guideText) { guideText.textContent = "🎯 ¡Perfecto! En la nota."; guideText.style.color = "#22c55e"; }
-        } else if (centsDeviation > 0) {
-            if (noteDisplay) noteDisplay.style.color = "#eab308";
-            if (guideText) { guideText.textContent = `⬇️ Alto (+${Math.round(centsDeviation)} cents). Baja el tono.`; guideText.style.color = "#facc15"; }
+        // Asegúrate de que las llaves envuelven correctamente cada bloque
+        if (Math.abs(cents) <= maxDesviation) {
+            display.style.color = "#22c55e"; 
+            guide.textContent = `🎯 ¡En la nota! (${targetNote})`;
+            guide.style.color = "#22c55e";
+        } else if (cents < 0) {
+            display.style.color = "#f59e0b";
+            guide.textContent = `⬆️ Estás grave. Sube a ${targetNote}`;
+            guide.style.color = "#f59e0b";
         } else {
-            if (noteDisplay) noteDisplay.style.color = "#eab308";
-            if (guideText) { guideText.textContent = `⬆️ Bajo (${Math.round(centsDeviation)} cents). Sube el tono.`; guideText.style.color = "#facc15"; }
+            display.style.color = "#f59e0b";
+            guide.textContent = `⬇️ Estás agudo. Baja a ${targetNote}`;
+            guide.style.color = "#f59e0b";
         }
     } else {
-        if (noteDisplay) noteDisplay.style.color = "white";
-        drawKaraokeMonitor(-1, targetSelect ? getNoteFrequency(targetSelect.value) : 440);
+      display.textContent = "--";
+      display.style.color = "white";
+      guide.textContent = "🎤 Esperando voz...";
     }
-    requestAnimationFrame(bucleDeteccionPitch);
-}
-function autoCorrelateMath(buf, sampleRate) {
-    let rms = 0; for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
-    if (Math.sqrt(rms / buf.length) < 0.015) return -1; 
-    let r1 = 0, r2 = buf.length - 1, thres = 0.2;
-    for (let i = 0; i < buf.length / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
-    for (let i = buf.length - 1; i >= buf.length / 2; i--) { if (Math.abs(buf[i]) < thres) { r2 = i; break; } }
-    const bufSlice = buf.subarray(r1, r2);
-    const c = new Float32Array(bufSlice.length);
-    for (let i = 0; i < bufSlice.length; i++) {
-        for (let j = 0; j < bufSlice.length - i; j++) c[i] += bufSlice[j] * bufSlice[j + i];
-    }
-    let d = 0; while (c[d] > c[d + 1]) d++;
-    let maxval = -1, maxpos = -1;
-    for (let i = d; i < c.length; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i; } }
-    let T0 = maxpos;
-    if (maxpos !== -1) { const frequency = sampleRate / T0; if (frequency > 65 && frequency < 1000) return frequency; }
-    return -1;
+  }
+  requestAnimationFrame(detectPitch);
 }
 
 function getNoteFromFrequency(freq) {
-    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const A4 = 440;
-    const n = Math.round(12 * Math.log2(freq / A4));
-    const index = (n + 9) % 12;
-    const octave = 4 + Math.floor((n + 9) / 12);
-    return notes[(index + 12) % 12] + octave;
+  const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const A4 = 440;
+  const n = Math.round(12 * Math.log2(freq / A4));
+  const index = (n + 9) % 12;
+  const octave = 4 + Math.floor((n + 9) / 12);
+  return notes[(index + 12) % 12] + octave;
 }
 
 function getNoteFrequency(note) {
-    // Si 'note' es un objeto, un número o no existe, lo manejamos de forma segura
-    if (!note) return 0;
-    
-    // Si por error pasaste un objeto nota completo (ej: { name: "A4", freq: 440 })
-    let noteString = typeof note === 'object' ? (note.name || note.note || "") : String(note);
+  const notes = {
+    "C": -9,
+    "C#": -8,
+    "D": -7,
+    "D#": -6,
+    "E": -5,
+    "F": -4,
+    "F#": -3,
+    "G": -2,
+    "G#": -1,
+    "A": 0,
+    "A#": 1,
+    "B": 2
+  };
 
-    // Ejecutamos el match de forma segura
-    const matches = noteString.match(/^([A-G]#?)(-?\d+)$/);
-    if (!matches) return 0;
-    
-    const [, noteName, octaveStr] = match;
-    
-    const octave = parseInt(octaveStr, 10);
-    
-    const semitoneOffset = notes[noteName] + (octave - 4) * 12;
-    
-    return 440 * Math.pow(2, semitoneOffset / 12);
+  const match = note.match(/^([A-G]#?)(\d)$/);
+  if (!match) return 440;
+
+  const [, noteName, octaveStr] = match;
+  const octave = parseInt(octaveStr, 10);
+
+  const semitoneOffset = notes[noteName] + (octave - 4) * 12;
+  return 440 * Math.pow(2, semitoneOffset / 12);
 }
 
 function autoCorrelate(buf, sampleRate) {
@@ -380,6 +394,7 @@ function autoCorrelate(buf, sampleRate) {
 
   return frequency;
 }
+
 // ==========================================
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
