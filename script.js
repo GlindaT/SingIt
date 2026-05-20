@@ -989,7 +989,6 @@ async function handleLyricsUpload() {
     } else {
         alert("⚠️ Selecciona primero una voz en la biblioteca para asociar la letra");
     }
-}
     reader.readAsText(file);
 }
 
