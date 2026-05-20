@@ -1,37 +1,43 @@
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '10mb',
+      // CORRECCIÓN: Ampliamos el límite de tamaño a 100MB para evitar bloqueos con canciones largas
+      sizeLimit: '100mb', 
     },
   },
 };
 
 export default async function handler(req, res) {
-  // 1. Configurar cabeceras CORS obligatorias
-  res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST,GET'); // 💡 Agregamos GET aquí
+  // CORRECCIÓN: Leer dinámicamente el origen del cliente para no romper Localhost ni Dominios Personalizados
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST,GET');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  // 2. Responder con éxito inmediato al Preflight (OPTIONS)
+  // Responder de inmediato al Preflight (OPTIONS)
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) {
+    return res.status(500).json({ error: "Falta configurar la variable REPLICATE_API_TOKEN en el servidor." });
+  }
 
   // ==========================================
   // 🔀 FLUJO 1: CONSULTAR ESTADO (MÉTODO GET)
   // ==========================================
   if (req.method === 'GET') {
     try {
-      // Obtenemos el ID de la predicción desde la URL (/api/split?id=...)
       const { id } = req.query;
 
       if (!id) {
         return res.status(400).json({ error: "Falta el ID de la predicción" });
       }
 
-      // Consultamos directamente el estado de esa predicción en Replicate
       const response = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
         method: "GET",
         headers: {
@@ -46,7 +52,6 @@ export default async function handler(req, res) {
         return res.status(response.status).json({ error: data.detail || "Error al consultar Replicate" });
       }
 
-      // Devolvemos el estado al frontend (succeeded, processing, failed, etc.)
       return res.status(200).json(data);
 
     } catch (e) {
@@ -60,12 +65,19 @@ export default async function handler(req, res) {
   // ==========================================
   if (req.method === 'POST') {
     try {
-      const { fileUrl } = req.body || {};
+      // CORRECCIÓN: Parseo seguro del cuerpo JSON para evitar fallas si req.body no es un objeto válido
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch { body = {}; }
+      }
+      
+      const { fileUrl } = body || {};
       
       if (!fileUrl) {
         return res.status(400).json({ error: "Falta la URL del archivo de audio (fileUrl)" });
       }
 
+      // El modelo lucataco/mvsep-mdx23-music-separation procesa audio y devuelve las pistas separadas
       const response = await fetch("https://api.replicate.com/v1/predictions", {
         method: "POST",
         headers: {
@@ -91,6 +103,5 @@ export default async function handler(req, res) {
     }
   }
 
-  // Si envían un método no soportado (ej. PUT, DELETE)
   return res.status(405).json({ error: 'Método no permitido' });
 }
