@@ -2276,7 +2276,7 @@ async function splitAudio() {
                     const blobPistaWav = exportStereoWav(renderedBuffer);
 
                     const recorder = new MediaRecorder(new MediaStream([new AudioContext().createMediaStreamSource(
-                        ]));
+                        )]));
 
                     // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
                     await saveToLibrary(blobPista, { name: `Pista - ${file.name.replace('.mp3', '.webm')}`, type: "pista" });
