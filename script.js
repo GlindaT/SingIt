@@ -652,12 +652,13 @@ function saveStudioRecording() {
     const baseName = studioTrackFileName
     ? `Voz - ${studioTrackFileName}`
     : "Grabación de voz";
-saveToLibrary(studioRecordedBlob, {
+    
+    saveToLibrary(studioRecordedBlob, {
     name: baseName,
     type: "voz"
-});
-
-$("studioStatus").textContent = "Estado: grabación guardada en Biblioteca";
+    });
+    
+    $("studioStatus").textContent = "Estado: grabación guardada en Biblioteca";
 }
 
 // ==========================================
@@ -744,44 +745,43 @@ async function deleteLibraryItem(id) {
 }
 
 async function saveManualFileToLibrary() {
-  const fileInput = $("libraryFileInput");
-  const typeSelect = $("libraryFileType");
-  const nameInput = $("libraryFileName");
-
-  const file = fileInput.files[0];
-  if (!file) {
-    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
-    return;
-  }
-
-  if (file.size > 20 * 1024 * 1024) {
-    alert("⚠️ El archivo es muy grande (máx 20MB).");
-    return;
-  }
-
-  const name = nameInput.value.trim() || file.name;
-  const type = typeSelect.value;
-
-  try {
-    await saveLibraryItemToSupabase({
-      name,
-      type,
-      blob: file,
-      transcription: [],
-    });
-
-    fileInput.value = "";
-    nameInput.value = "";
-
-    await renderLibrary("todos");
-
-    alert("✅ ¡Archivo subido y guardado en la nube!");
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al guardar el archivo en Supabase.");
-  }
+    const fileInput = $("libraryFileInput");
+    const typeSelect = $("libraryFileType");
+    const nameInput = $("libraryFileName");
+    
+    const file = fileInput.files[0];
+    if (!file) {
+        alert("⚠️ Por favor, selecciona un archivo de audio primero.");
+        return;
+    }
+    
+    if (file.size > 20 * 1024 * 1024) {
+        alert("⚠️ El archivo es muy grande (máx 20MB).");
+        return;
+    }
+    
+    const name = nameInput.value.trim() || file.name;
+    const type = typeSelect.value;
+    
+    try {
+        await saveLibraryItemToSupabase({
+            name,
+            type,
+            blob: file,
+            transcription: [],
+        });
+        
+        fileInput.value = "";
+        nameInput.value = "";
+        
+        await renderLibrary("todos");
+        alert("✅ ¡Archivo subido y guardado en la nube!");
+    
+    } catch (error) {
+        console.error(error);
+        alert("❌ Error al guardar el archivo en Supabase.");
+    }
 }
-
 
 async function loadTrackOptionsInStudio() {
   const select = $("studioTrackSelect");
@@ -2273,7 +2273,7 @@ async function splitAudio() {
                     const renderedBuffer = await offlineCtx.startRendering();
                     
                     // NOTA: Asegúrate de tener implementada la función exportStereoWav en tu proyecto
-                    const blobPistaWav = exportStereoWav(renderedBuffer); 
+                    const blobPista = exportStereoWav(renderedBuffer); 
 
                     
                     // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
