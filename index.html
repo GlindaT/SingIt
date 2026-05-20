@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--suppress ALL -->
 <html lang="es">
 <head>
   <link rel="icon" href="data:,">
@@ -6,22 +7,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🎤 SingIt</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .studio-controls {
+      margin-bottom: 15px;
+    }
+  </style>
 </head>
 <body>
 
 <div class="app">
 
   <!-- SIDEBAR -->
-  <nav class="sidebar">
-    <h2>🎤 SingIt</h2>
+  <h2>🎤 SingIt</h2>
 
-    <button id="btnAfinador" type="button">Afinador</button>
-    <button id="btnEstudio" type="button">Estudio</button>
-    <button id="btnBiblioteca" type="button">Biblioteca</button>
-    <button id="btnKaraoke" type="button">Karaoke</button>
-    <button id="btnSplitter" type="button">Splitter</button>
-    <button id="btnConfig" type="button">Configuración</button>
-  </nav>
+  <button id="btnAfinador" type="button">Afinador</button>
+  <button id="btnEstudio" type="button">Estudio</button>
+  <button id="btnBiblioteca" type="button">Biblioteca</button>
+  <button id="btnKaraoke" type="button">Karaoke</button>
+  <button id="btnSplitter" type="button">Splitter</button>
+  <button id="btnConfig" type="button">Configuración</button>
 
   <!-- CONTENIDO -->
   <main class="content">
@@ -423,11 +427,11 @@
     <!-- CONFIG -->
     <section id="config" class="tab">
       <h1>⚙️ Configuración</h1>
-      
+
       <div class="card">
         <h3>Preferencias de la App</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">Los cambios se guardan automáticamente.</p>
-        
+
         <div class="settings-group">
           <label for="userVoiceType">👤 Tipo de voz</label>
           <select id="userVoiceType">
@@ -437,7 +441,7 @@
             <option value="todas">Todas</option>
           </select>
         </div>
-        
+
         <div class="settings-group">
           <label for="micCount">🔊 Cantidad de micrófonos</label>
           <select id="micCount">
@@ -445,39 +449,44 @@
             <option value="2">2 Micrófonos (Dúo)</option>
           </select>
         </div>
-        
+
         <div class="settings-group">
           <label>🎙️ Micrófono Principal</label>
           <select id="mic1Select">
             <option value="">Cargando dispositivos...</option>
           </select>
           <button type="button" id="testMic1Btn" style="margin-top: 10px; background: #3b82f6;">🔊 Probar Mic 1</button>
-          <div id="mic1Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
+          <div id="mic1Level" class="mic-level-bar">
+            <div class="mic-level-fill"></div>
+          </div>
         </div>
-        
+
         <div class="settings-group" id="mic2Group" style="display: none;">
           <label>🎙️ Micrófono Secundario (Dúo)</label>
           <select id="mic2Select">
             <option value="">Cargando dispositivos...</option>
           </select>
           <button type="button" id="testMic2Btn" style="margin-top: 10px; background: #3b82f6;">🔊 Probar Mic 2</button>
-          <div id="mic2Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
+          <div id="mic2Level" class="mic-level-bar">
+            <div class="mic-level-fill"></div>
+          </div>
         </div>
-        
+
         <div class="settings-group">
-          <button type="button" id="refreshMicsBtn" style="background: #6b7280;">🔄 Actualizar lista de micrófonos</button>
+          <button type="button" id="refreshMicsBtn" style="background: #6b7280;">🔄 Actualizar lista de micrófonos
+          </button>
         </div>
-        
+
         <div class="settings-group">
           <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
           <select id="difficultyLevel">
             <option value="facil">Fácil</option>
-            <option value="medio">Medio</option>
+            Medio
             <option value="dificil">Difícil</option>
             <option value="experto">Experto</option>
           </select>
         </div>
-        
+
         <div class="settings-group">
           <label for="difficultyLevel">📊 Dificultad para el Pentagrama</label>
           <select id="difficultyLevel">
@@ -485,27 +494,25 @@
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
           </select>
-        </div>
-        <div class="settings-group">
+
           <label for="appTheme">🎨 Tema de la App</label>
-          <select id="appTheme">
-            <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
-            <option value="claro">☀️ Claro</option>
-            <option value="rock">🎸 Rock</option>
-            <option value="pop">🎤 Pop</option>
-            <option value="neon">💜 Neón</option>
-            <option value="naturaleza">🌿 Naturaleza</option>
-          </select>
+          <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
+          <option value="claro">☀️ Claro</option>
+          <option value="rock">🎸 Rock</option>
+          <option value="pop">🎤 Pop</option>
         </div>
-        <div class="settings-group">
-          <label for="karaokeStage">🎭 Escenario de Karaoke</label>
-          <select id="karaokeStage">
-            <option value="clasico">Clásico</option>
-            <option value="neon">Neón Retro</option>
-            <option value="concierto">Gran Estadio</option>
-          </select>
-        </div>
-        <p id="saveNotification" class="save-notification" style="opacity:0; transition: opacity 0.5s;">✅ Configuración guardada</p>
+        <div class="settings-group"></div>
+        💜 Neón
+        <option value="naturaleza">🌿 Naturaleza</option>
+
+        <label for="karaokeStage">🎭 Escenario de Karaoke</label>
+        <select id="karaokeStage">
+          <option value="clasico">Clásico</option>
+          <option value="neon">Neón Retro</option>
+          <option value="concierto">Gran Estadio</option>
+        </select>
+        <p id="saveNotification" class="save-notification" style="opacity:0; transition: opacity 0.5s;">✅ Configuración
+          guardada</p>
       </div>
     </section>
   </main>
