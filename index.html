@@ -254,11 +254,24 @@
       <section id="splitter" class="tab">
         <h1>✂️ Splitter IA</h1>
         <div class="card">
-          <input type="file" id="splitterFile" accept="audio/*">
-          <button id="splitBtn" type="button">✨ Separar Audio con IA</button>
-          <div id="splitterStatusBox" style="display:none;">
-            <p id="splitterStatusText"></p>
-            <p id="splitterDetailText"></p>
+          <!-- MEJORA: Título descriptivo para guiar al usuario -->
+          <h3>Separación de Pistas con Inteligencia Artificial</h3>
+          
+          <!-- MEJORA: Caja contenedora para alinear los controles correctamente -->
+          <div class="studio-controls" style="margin-bottom: 20px;">
+            <!-- MEJORA: Label de accesibilidad ligado al input de archivo -->
+            <label for="splitterFile" style="color: var(--text-muted); font-size: 16px; display: block; margin-bottom: 8px;">
+              Selecciona el archivo de audio que deseas dividir:
+            </label>
+            <input type="file" id="splitterFile" accept="audio/*" style="display: block; margin-bottom: 15px; width: 100%;">
+            
+            <button id="splitBtn" type="button">✨ Separar Audio con IA</button>
+          </div>
+
+          <!-- MEJORA: Diseño visual de alerta para la caja de estado del proceso -->
+          <div id="splitterStatusBox" style="display: none; padding: 15px; background: rgba(255, 255, 255, 0.05); border-left: 4px solid var(--accent); border-radius: 4px; margin-top: 15px;">
+            <p id="splitterStatusText" style="font-weight: bold; margin: 0 0 5px 0; color: #ffffff;"></p>
+            <p id="splitterDetailText" style="margin: 0; color: var(--text-muted); font-size: 14px;"></p>
           </div>
         </div>
       </section>
