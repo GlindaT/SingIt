@@ -981,15 +981,15 @@ async function handleLyricsUpload() {
         
         // Guardamos esto en el objeto que está seleccionado en el Estudio
         if (selectedVoiceId) {
-            await updateLibraryItemInSupabase(selectedVoiceId, { transcription})
+            await updateLibraryItemInSupabase(selectedVoiceId, { transcription:""})
                 transcription: parsedSegments
-            });
-            $("lyricsStatus").textContent = "✅ ¡Letras guardadas!";
-            renderKaraokeLyrics(parsedSegments);
-        } else {
-            alert("⚠️ Selecciona primero una voz en la biblioteca para asociar la letra");
         }
-    };
+        $("lyricsStatus").textContent = "✅ ¡Letras guardadas!";
+        renderKaraokeLyrics(parsedSegments);
+    } else {
+        alert("⚠️ Selecciona primero una voz en la biblioteca para asociar la letra");
+    }
+}
     reader.readAsText(file);
 }
 
