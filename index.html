@@ -91,6 +91,7 @@
             <!-- MEJORA: Uso de label para mejor accesibilidad -->
             <label for="audioFile" style="color: var(--text-muted); font-size: 20px; display: block; margin-top: 10px;">O sube un archivo nuevo:</label>
             <input type="file" id="audioFile" accept="audio/*">
+            <button type="button" id="uploadTrackBtn">📂 Cargar Pista</button>
             <audio id="player" controls></audio>
           </div>
         </div>
@@ -104,10 +105,10 @@
           <select id="voiceLibrarySelect">
             <option value="">Selecciona una voz guardada</option>
           </select>
-          <div class="upload-section" style="margin-top: 15px; margin-bottom: 15px;">
-            <!-- MEJORA: Uso de label -->
-            <label for="voiceFileInput" style="display: block; margin-bottom: 5px;">O sube una voz nueva:</label>
+          <div class="upload-section">
+            <label>Subir archivo de voz:</label>
             <input type="file" id="voiceFileInput" accept="audio/*">
+            <button type="button" id="uploadVoiceBtn">📂 Cargar Voz</button>
           </div>
           <div class="studio-controls">
             <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
