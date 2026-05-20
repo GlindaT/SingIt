@@ -5,6 +5,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.log("Database Ready");
         // Cargar vistas iniciales
         renderLibrary();
+        const encabezados = document.querySelectorAll('.encabezado-desplegable');
+        encabezados.forEach(encabezado => {
+            encabezado.addEventListener('click', () => {
+                const targetId = encabezado.getAttribute('data-target');
+                const arrowId = encabezado.getAttribute('data-arrow');
+                
+                const contenido = document.getElementById(targetId);
+                const flecha = document.getElementById(arrowId);
+                
+                if (contenido && flecha) {
+                    contenido.classList.toggle('oculto');
+                    flecha.classList.toggle('rotada');
+                }
+            });
+        });
     } catch (err) {
         console.error(err);
     }
