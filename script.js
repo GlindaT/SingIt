@@ -2679,6 +2679,41 @@ async function applyCorrectedLyrics() {
   }
 }
 
+async function sendVoiceToKaraoke() {
+    // 1. Verificamos qué audio tenemos (si es el grabado o el subido desde PC)
+    let audioBlob = studioRecordedBlob; // Si es grabado
+    let fileName = studioTrackFileName;
+
+    if (!audioBlob) {
+        // Si no grabó, intentamos ver si hay un archivo cargado en el player
+        const player = $("player");
+        if (!player.src) return alert("⚠️ No hay voz cargada o grabada");
+        
+        // Convertimos el src (si es un blob) a un archivo listo para guardar
+        const response = await fetch(player.src);
+        audioBlob = await response.blob();
+        fileName = "Voz_Estudio.webm";
+    }
+
+    // 2. Guardamos en Supabase con tipo "karaoke" para que aparezca en el catálogo
+    try {
+        $("studioStatus").textContent = "⏳ Enviando al Karaoke...";
+        
+        await saveLibraryItemToSupabase({
+            name: fileName,
+            type: "karaoke", // Importante: tipo karaoke
+            blob: audioBlob,
+            transcription: [] // Vacío por ahora, para sincronizar después
+        });
+
+        alert("✅ ¡Voz enviada al Karaoke! Ahora puedes ir a la pestaña Karaoke y sincronizarla.");
+        $("studioStatus").textContent = "Estado: Voz enviada al catálogo de Karaoke.";
+    } catch (error) {
+        console.error(error);
+        alert("❌ Error al enviar al Karaoke");
+    }
+}
+
 // ==========================================
 // SINCRONIZACIÓN MANUAL CON TAPS
 // ==========================================
@@ -2950,6 +2985,7 @@ if (typeof document !== 'undefined') {
           safeAdd("transcribeVoiceBtn", "click", transcribeSelectedVoice);
           safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
           safeAdd("uploadLyricsBtn", "click", handleLyricsUpload);
+          safeAdd("sendToKaraokeBtn", "click", sendVoiceToKaraoke);
 
           // Sincronización Manual (Tap)
           safeAdd("startTapSyncBtn", "click", startTapSync);
@@ -2972,41 +3008,41 @@ if (typeof document !== 'undefined') {
           // 5. Sincronización de Reproductores (Loop de Dibujo)
           const kTrack = $("karaokeTrack");
           if (kTrack) {
-            kTrack.addEventListener("timeupdate", () => {
-              const currentTime = kTrack.currentTime;
-              // Esto actualiza las letras de texto
-              if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
-              // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
-              if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(currentTime, 0);
-            });
+              kTrack.addEventListener("timeupdate", () => {
+                  const currentTime = kTrack.currentTime;
+                  // Esto actualiza las letras de texto
+                  if (typeof syncKaraokeMonitor === "function") syncKaraokeMonitor(currentTime);
+                  // Esto actualiza el canvas con las notas (frecuencia actual 0 si no se detecta)
+                  if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(currentTime, 0);
+              });
           }
-            // Toggle auto-scroll
-            safeAdd("toggleAutoScrollBtn", "click", () => {
-                autoScrollEnabled = !autoScrollEnabled;
-                const btn = $("toggleAutoScrollBtn");
-                if (btn) {
-                    btn.textContent = autoScrollEnabled ? "🔒 Auto-scroll: ON" : "🔓 Auto-scroll: OFF";
-                    btn.style.background = autoScrollEnabled ? "#f59e0b" : "#6b7280";
-                }
-            });
-            const player = $("player");
-            if (player) {
-                player.addEventListener("timeupdate", () => {
-                    if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
-                });
-            }
-            // 6. Micrófonos y Configuración final
-            safeAdd("refreshMicsBtn", "click", loadAvailableMics);
-            safeAdd("testMic1Btn", "click", () => testMicrophone(1));
-            safeAdd("testMic2Btn", "click", () => testMicrophone(2));
-            safeAdd("mic1Select", "change", () => saveMicSelection(1));
-            safeAdd("mic2Select", "change", () => saveMicSelection(2));
-            safeAdd("micCount", "change", toggleMic2Visibility);
-            // Cargas iniciales
-            loadAvailableMics();
-            toggleMic2Visibility();
-            loadKaraokeCatalog();
-            loadMyKaraokeSongs();
+          // Toggle auto-scroll
+          safeAdd("toggleAutoScrollBtn", "click", () => {
+              autoScrollEnabled = !autoScrollEnabled;
+              const btn = $("toggleAutoScrollBtn");
+              if (btn) {
+                  btn.textContent = autoScrollEnabled ? "🔒 Auto-scroll: ON" : "🔓 Auto-scroll: OFF";
+                  btn.style.background = autoScrollEnabled ? "#f59e0b" : "#6b7280";
+              }
+          });
+          const player = $("player");
+          if (player) {
+              player.addEventListener("timeupdate", () => {
+                  if (typeof updateKaraokeHighlight === "function") updateKaraokeHighlight(player.currentTime);
+              });
+          }
+          // 6. Micrófonos y Configuración final
+          safeAdd("refreshMicsBtn", "click", loadAvailableMics);
+          safeAdd("testMic1Btn", "click", () => testMicrophone(1));
+          safeAdd("testMic2Btn", "click", () => testMicrophone(2));
+          safeAdd("mic1Select", "change", () => saveMicSelection(1));
+          safeAdd("mic2Select", "change", () => saveMicSelection(2));
+          safeAdd("micCount", "change", toggleMic2Visibility);
+          // Cargas iniciales
+          loadAvailableMics();
+          toggleMic2Visibility();
+          loadKaraokeCatalog();
+          loadMyKaraokeSongs();
         } catch (error) {
             console.error("Error en la inicialización:", error);
         }
