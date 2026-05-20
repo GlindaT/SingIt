@@ -272,8 +272,8 @@ function bucleDeteccionPitch() {
     const targetSelect = $("targetNote");
     
     if (pitch !== -1 && targetSelect) {
-        const targetFrequency = getNoteFromFreq(targetSelect.value);
-        const currentNoteName = getNoteFreq(pitch);
+        const targetFrequency = getNoteFromFrequency(targetSelect.value);
+        const currentNoteName = getNoteFrequency(pitch);
         if (noteDisplay) noteDisplay.textContent = currentNoteName;
         
         const centsDeviation = 1200 * Math.log2(pitch / targetFrequency);
@@ -291,7 +291,7 @@ function bucleDeteccionPitch() {
         }
     } else {
         if (noteDisplay) noteDisplay.style.color = "white";
-        drawKaraokeMonitor(-1, targetSelect ? getNoteFreq(targetSelect.value) : 440);
+        drawKaraokeMonitor(-1, targetSelect ? getNoteFrequency(targetSelect.value) : 440);
     }
     requestAnimationFrame(bucleDeteccionPitch);
 }
