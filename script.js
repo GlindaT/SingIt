@@ -210,104 +210,65 @@ function showTab(tabId) {
 // ==========================================
 let audioContext, analyser, stream;
 
-async function toggleRecording() {
-  const btn = $("recordBtn");
-
-  if (!state.isRecording) {
-    state.isRecording = true;
-    btn.textContent = "Detener";
-    btn.classList.add("recording");
-    await startAfinador();
-  } else {
-    state.isRecording = false;
-    btn.textContent = "Iniciar";
-    btn.classList.remove("recording");
-    stopAfinador();
-
-    if ($("noteDisplay")) $("noteDisplay").textContent = "--";
-    if ($("guideText")) $("guideText").textContent = "";
-  }
-}
-
-async function startAfinador() {
-  audioContext = new AudioContext();
-
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false
-    }
-  });
-
-  const mic = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
-  mic.connect(analyser);
-
-  setTimeout(() => {
-    detectPitch();
-  }, 300);
-}
-
-function stopAfinador() {
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  if (audioContext) audioContext.close();
-}
-
-function detectPitch() {
-  if (!state.isRecording || !analyser) return;
-
-  // Usamos el buffer global en lugar de crear uno nuevo cada 16ms
-  analyser.getFloatTimeDomainData(pitchBuffer);
-  const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
-  
-  if (document.getElementById("karaokeCanvas")) {
-    // Asegúrate de que esta función esté definida o comentada para evitar errores
-    if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(0, pitch); 
-  }
-
-  const display = $("noteDisplay");
-  const guide = $("guideText");
-  const targetNoteEl = $("targetNote");
-  const targetNote = targetNoteEl ? targetNoteEl.value : "E2";
-
-  if (display && guide) {
-    if (pitch !== -1) {
-      const noteFull = getNoteFromFrequency(pitch);
-      const targetFreq = getNoteFrequency(targetNote);
-      // Evitar logaritmo de 0 o infinito
-      const cents = 1200 * Math.log2(pitch / targetFreq);
-
-      display.textContent = noteFull;
-
-      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
-      let maxDesviation = 30;
-        if (dificultad === "facil") maxDesviation = 50;
-        else if (dificultad === "dificil") maxDesviation = 15;
-        else if (dificultad === "experto") maxDesviation = 5;
+async function toggleAfinadorBtn() {
+    const btn = $("recordBtn");
+    if (!state.isRecording) {
+        state.isRecording = true;
+        if (btn) btn.textContent = "🛑 Detener Afinador";
         
-        // Asegúrate de que las llaves envuelven correctamente cada bloque
-        if (Math.abs(cents) <= maxDesviation) {
-            display.style.color = "#22c55e"; 
-            guide.textContent = `🎯 ¡En la nota! (${targetNote})`;
-            guide.style.color = "#22c55e";
-        } else if (cents < 0) {
-            display.style.color = "#f59e0b";
-            guide.textContent = `⬆️ Estás grave. Sube a ${targetNote}`;
-            guide.style.color = "#f59e0b";
-        } else {
-            display.style.color = "#f59e0b";
-            guide.textContent = `⬇️ Estás agudo. Baja a ${targetNote}`;
-            guide.style.color = "#f59e0b";
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioContext.createMediaStreamSource(stream);
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+            bucleDeteccionPitch();
+        } catch (err) {
+            console.error(err);
+            state.isRecording = false;
+            if (btn) btn.textContent = "Iniciar";
         }
     } else {
-      display.textContent = "--";
-      display.style.color = "white";
-      guide.textContent = "🎤 Esperando voz...";
+        state.isRecording = false;
+        if (btn) btn.textContent = "Iniciar";
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (audioContext) audioContext.close();
     }
-  }
-  requestAnimationFrame(detectPitch);
+}
+
+function bucleDeteccionPitch() {
+    if (!state.isRecording || !analyser) return;
+    analyser.getFloatTimeDomainData(pitchBuffer);
+    const pitch = autoCorrelateMath(pitchBuffer, audioContext.sampleRate);
+    
+    const noteDisplay = $("noteDisplay");
+    const guideText = $("guideText");
+    const targetSelect = $("targetNote");
+    
+    if (pitch !== -1 && targetSelect) {
+        const targetFrequency = getFreqFromNoteName(targetSelect.value);
+        const currentNoteName = getNoteNameFromFreq(pitch);
+        if (noteDisplay) noteDisplay.textContent = currentNoteName;
+        
+        const centsDeviation = 1200 * Math.log2(pitch / targetFrequency);
+        drawKaraokeMonitor(pitch, targetFrequency);
+        
+        if (Math.abs(centsDeviation) < 25) {
+            if (noteDisplay) noteDisplay.style.color = "#22c55e"; 
+            if (guideText) { guideText.textContent = "🎯 ¡Perfecto! En la nota."; guideText.style.color = "#22c55e"; }
+        } else if (centsDeviation > 0) {
+            if (noteDisplay) noteDisplay.style.color = "#eab308";
+            if (guideText) { guideText.textContent = `⬇️ Alto (+${Math.round(centsDeviation)} cents). Baja el tono.`; guideText.style.color = "#facc15"; }
+        } else {
+            if (noteDisplay) noteDisplay.style.color = "#eab308";
+            if (guideText) { guideText.textContent = `⬆️ Bajo (${Math.round(centsDeviation)} cents). Sube el tono.`; guideText.style.color = "#facc15"; }
+        }
+    } else {
+        if (noteDisplay) noteDisplay.style.color = "white";
+        drawKaraokeMonitor(-1, targetSelect ? getFreqFromNoteName(targetSelect.value) : 440);
+    }
+    requestAnimationFrame(bucleDeteccionPitch);
 }
 
 function getNoteFromFrequency(freq) {
