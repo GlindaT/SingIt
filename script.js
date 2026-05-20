@@ -870,82 +870,103 @@ async function loadVoiceOptionsInStudio() {
 }
 
 async function loadSelectedVoiceFromLibrary() {
-  const select = $("voiceLibrarySelect");
-  const player = $("selectedVoicePlayer");
-  const status = $("selectedVoiceStatus");
-  const lyricsText = $("lyricsText");
-
-  if (!select || !player || !status) return;
-  const selectedId = select.value;
-  if (!selectedId) {
-    alert("⚠️ Selecciona una voz");
-    return;
-  }
-  try {
-    const item = await getLibraryItemByIdFromSupabase(selectedId);
-    if (!item) {
-      alert("⚠️ No se encontró el archivo");
-      return;
+    const select = $("voiceLibrarySelect");
+    const player = $("selectedVoicePlayer");
+    const status = $("selectedVoiceStatus");
+    const lyricsText = $("lyricsText");
+    
+    if (!select || !player || !status) return;
+    const selectedId = select.value;
+    if (!selectedId) {
+        alert("⚠️ Selecciona una voz");
+        return;
     }
-    const response = await fetch(item.file_url);
-    selectedVoiceBlob = await response.blob();
-    selectedVoiceId = item.id;
-    
-    player.src = item.file_url;
-    status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-    
-    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-      baseTranscriptionSegments = item.transcription.map(seg =>
-        buildWordTimingFromSegment(seg)
-    );
-    transcriptionSegments = [...baseTranscriptionSegments];
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
+    try {
+        const item = await getLibraryItemByIdFromSupabase(selectedId);
+        if (!item) {
+            alert("⚠️ No se encontró el archivo");
+            return;
+        }
+        const response = await fetch(item.file_url);
+        selectedVoiceBlob = await response.blob();
+        selectedVoiceId = item.id;
+        player.src = item.file_url;
+        status.textContent = `Estado: voz seleccionada -> ${item.name}`;
+        
+        if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+            baseTranscriptionSegments = item.transcription.map(seg =>
+            buildWordTimingFromSegment(seg)
+        );
+        transcriptionSegments = [...baseTranscriptionSegments];
+        renderKaraokeLyrics(transcriptionSegments);
+        cargarLetrasEnMonitor();
       
-    if (lyricsText) {
-      lyricsText.value = transcriptionSegments
-        .map(seg => seg.text || "")
-        .join("\n")
-        .trim();
+        if (lyricsText) {
+            lyricsText.value = transcriptionSegments
+                .map(seg => seg.text || "")
+                .join("\n")
+                .trim();
+        }
+        status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+        } else {
+            baseTranscriptionSegments = [];
+            transcriptionSegments = [];
+            renderKaraokeLyrics([]);
+            cargarLetrasEnMonitor();
+            if (lyricsText) lyricsText.value = "";
+            status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+        }
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo cargar la voz seleccionada");
     }
-      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
-    } else {
-      baseTranscriptionSegments = [];
-      transcriptionSegments = [];
-      renderKaraokeLyrics([]);
-      cargarLetrasEnMonitor();
-      if (lyricsText) lyricsText.value = "";
-      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
-    }
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la voz seleccionada");
-  }
+}
+
+async function handleLyricsUpload() {
+    const input = $("lrcFileInput");
+    const file = input.files[0];
+    if (!file) return alert("⚠️ Selecciona un archivo .lrc o .txt");
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const text = e.target.result;
+        // Usamos tu función parseLRC que ya tienes en el archivo
+        const parsedSegments = parseLRC(text); 
+        
+        // Guardamos esto en el objeto que está seleccionado en el Estudio
+        if (selectedVoiceId) {
+            await updateLibraryItem(selectedVoiceId, {
+                transcription: parsedSegments
+            });
+            $("lyricsStatus").textContent = "✅ ¡Letras guardadas!";
+            renderKaraokeLyrics(parsedSegments);
+        } else {
+            alert("⚠️ Selecciona primero una voz en la biblioteca para asociar la letra");
+        }
+    };
+    reader.readAsText(file);
 }
 
 async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
-  const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
-  const filePath = safeName;
-
-  const { error: uploadError } = await supabaseClient.storage
-    .from("library")
-    .upload(filePath, fileOrBlob, {
-      contentType: mimeType,
-      upsert: false
-    });
-
-  if (uploadError) {
-    throw uploadError;
-  }
-
-  const { data } = supabaseClient.storage
-    .from("library")
-    .getPublicUrl(filePath);
-
-  return {
-    filePath,
-    fileUrl: data.publicUrl
-  };
+    const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
+    const filePath = safeName;
+    
+    const { error: uploadError } = await supabaseClient.storage
+        .from("library")
+        .upload(filePath, fileOrBlob, {
+            contentType: mimeType,
+            upsert: false
+        });
+        if (uploadError) {
+            throw uploadError;
+        }
+    const { data } = supabaseClient.storage
+        .from("library")
+        .getPublicUrl(filePath);
+    return {
+        filePath,
+        fileUrl: data.publicUrl
+    };
 }
 
 async function saveLibraryItemToSupabase({ name, type, blob, transcription = [], metadata = {} }) {
@@ -2928,6 +2949,7 @@ if (typeof document !== 'undefined') {
           safeAdd("loadSelectedVoiceBtn", "click", loadSelectedVoiceFromLibrary);
           safeAdd("transcribeVoiceBtn", "click", transcribeSelectedVoice);
           safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
+          safeAdd("uploadLyricsBtn", "click", handleLyricsUpload);
 
           // Sincronización Manual (Tap)
           safeAdd("startTapSyncBtn", "click", startTapSync);
