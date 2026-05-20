@@ -860,20 +860,18 @@ async function loadSelectedTrackFromLibraryStudio() {
         alert("⚠️ Selecciona una pista");
         return;
     }
-    
     try {
         const item = await getLibraryItemByIdFromSupabase(selectedId);
-        
         if (!item) {
             alert("⚠️ No se encontró la pista");
             return;
         }
-        studioSelectedTrackBlob = item.audioBlob;
+        studioSelectedTrackBlob = item.audioFile;
         studioSelectedTrackId = item.id;
         studioSelectedTrackName = item.name;
         
         studioTrackFileName = item.name;
-        player.src = URL.createObjectURL(item.audioBlob);
+        player.src = URL.createObjectURL(item.audioFile);
         status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
     } catch (error) {
         console.error(error);
