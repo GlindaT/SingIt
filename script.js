@@ -669,42 +669,25 @@ function saveStudioRecording() {
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
   try {
-    const fileName = options.name || `audio_${Date.now()}.wav`;
-    const fileType = options.type || "audio";
-
-    // 1. Subir el archivo binario al Bucket de Supabase Storage
-    // Asegúrate de cambiar 'mi_bucket_de_audios' por el nombre real de tu bucket
-    const { data: storageData, error: storageError } = await supabase.storage
-      .from('library') 
-      .upload(`biblioteca/${Date.now()}_${fileName}`, blob, {
-        contentType: blob.type,
-        cacheControl: '3600'
-      });
-
-    if (storageError) throw storageError;
-
-    // 2. Obtener la URL pública del archivo que acabamos de subir
-    const { data: { publicUrl } } = supabase.storage
-      .from('library')
-      .getPublicUrl(storageData.path);
-
-    // 3. Insertar el registro en la base de datos de Supabase usando la URL pública
+    // 1. Llamamos directamente a la función encargada que ya procesa la subida y la base de datos
     await saveLibraryItemToSupabase({
-      name: fileName,
-      type: fileType,
-      file_url: publicUrl, // Guardamos la URL de internet, NO el blob
+      name: options.name || "Audio",
+      type: options.type || "audio",
+      blob: blob, // Le pasamos el archivo binario crudo
       transcription: options.transcription || [],
+      metadata: options.metadata || {}
     });
 
-    // 4. Actualizar la interfaz de usuario
-    await renderLibrary();
-
+    // 2. Si la base de datos se actualizó correctamente, refrescamos la vista
+    await renderLibrary('todos');
+    
   } catch (error) {
-    console.error("Error detallado en saveToLibrary:", error);
-    alert("❌ No se pudo guardar en la nube");
-    throw error; // CORRECCIÓN: Informa a splitAudio que la subida realmente falló
+    console.error("Error real capturado en saveToLibrary:", error);
+    alert(`❌ No se pudo guardar en la nube: ${error.message || error}`);
+    throw error; // Lanza el error hacia arriba para que Promise.all en splitAudio se entere del fallo
   }
 }
+
 async function renderLibrary(filter = "todos") {
     const container = $("libraryList");
     if (!container) return;
