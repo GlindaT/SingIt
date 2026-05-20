@@ -116,6 +116,11 @@
           <audio id="selectedVoicePlayer" controls></audio>
           <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
         </div>
+        <div class="lyrics-upload-section">
+          <input type="file" id="lrcFileInput" accept=".lrc,.txt">
+          <button type="button" id="uploadLyricsBtn">📂 Cargar Letras (.lrc)</button>
+          <p id="lyricsStatus"></p>
+        </div>
 
         <!-- Monitor Letras (Se sugiere pasar los estilos a tu archivo CSS) -->
         <div class="card" style="background: #000000; border: 2px solid var(--border);">
