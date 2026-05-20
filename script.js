@@ -295,6 +295,24 @@ function bucleDeteccionPitch() {
     }
     requestAnimationFrame(bucleDeteccionPitch);
 }
+function autoCorrelateMath(buf, sampleRate) {
+    let rms = 0; for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+    if (Math.sqrt(rms / buf.length) < 0.015) return -1; 
+    let r1 = 0, r2 = buf.length - 1, thres = 0.2;
+    for (let i = 0; i < buf.length / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
+    for (let i = buf.length - 1; i >= buf.length / 2; i--) { if (Math.abs(buf[i]) < thres) { r2 = i; break; } }
+    const bufSlice = buf.subarray(r1, r2);
+    const c = new Float32Array(bufSlice.length);
+    for (let i = 0; i < bufSlice.length; i++) {
+        for (let j = 0; j < bufSlice.length - i; j++) c[i] += bufSlice[j] * bufSlice[j + i];
+    }
+    let d = 0; while (c[d] > c[d + 1]) d++;
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < c.length; i++) { if (c[i] > maxval) { maxval = c[i]; maxpos = i; } }
+    let T0 = maxpos;
+    if (maxpos !== -1) { const frequency = sampleRate / T0; if (frequency > 65 && frequency < 1000) return frequency; }
+    return -1;
+}
 
 function getNoteFromFrequency(freq) {
   const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
