@@ -1,215 +1,259 @@
-// ==========================================
-// BLOQUE 1: VARIABLES GLOBALES Y ESTADO
-// ==========================================
-const state = {
-    isRecording: false,
-    transcriptionSegments: [],
-    studioChunks: [],
-    studioRecordedBlob: null
-};
-
-// Variables para flujos de audio y reconocimiento de voz
-let studioStream = null;
-let studioMediaRecorder = null;
-let recognition = null;
-
-// Funciones de ayuda (Selectors y Eventos seguros)
-function $(id) { return document.getElementById(id); }
-
-function safeAdd(id, event, handler) {
-    const el = $(id);
-    if (el) el.addEventListener(event, handler);
-}
-
-// ==========================================
-// BLOQUE 2: ARRANQUE AL CARGAR LA PÁGINA
-// ==========================================
+// Añadir al inicio del archivo para asegurar que la DB cargue
 window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Conectar botones de Grabación
-    safeAdd("startStudioRecBtn", "click", startStudioRecording);
-    safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
-    safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
-    safeAdd("redoStudioRecBtn", "click", () => {
-        if(confirm("¿Borrar grabación actual y repetir?")) location.reload();
-    });
-
-    // 2. Conectar botones de Sincronización (TapSync)
-    safeAdd("applyTapSyncBtn", "click", () => alert("Tiempos aplicados"));
-    safeAdd("redoTapSyncBtn", "click", () => location.reload());
-
-    console.log("🚀 App SingIt lista y conectada al HTML");
+    try {
+        await initDB();
+        console.log("Database Ready");
+        // Cargar vistas iniciales
+        renderLibrary();
+    } catch (err) {
+        console.error(err);
+    }
 });
 
+// Reutilizar el buffer para el afinador
+const pitchBuffer = new Float32Array(2048);
+
 // ==========================================
-// BLOQUE 3: MÓDULO DE GRABACIÓN DE VOZ
+// CONFIG GLOBAL
 // ==========================================
-async function startStudioRecording() {
-    try {
-        state.studioChunks = [];
-        state.transcriptionSegments = [];
-        
-        // 1. Pedir permiso para el micrófono
-        studioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // 2. Configurar el grabador de Audio
-        studioMediaRecorder = new MediaRecorder(studioStream);
-        studioMediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) state.studioChunks.push(e.data);
-        };
+const state = {
+  instrumentalUrl: null,
+  letraLrc: "",
+  isRecording: false
+};
 
-        // 3. Configurar el motor de Voz a Texto (Transcripción)
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'es-ES';
-            recognition.continuous = true;
-            recognition.interimResults = true;
+let db = null;
+let pitchHistory = [];
+let transcriptionSegments = [];
+let baseTranscriptionSegments = [];
+let autoScrollEnabled = true; // Control de auto-scroll
 
-            recognition.onresult = (event) => {
-                let textoIntermedio = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        state.transcriptionSegments.push({
-                            text: transcript,
-                            time: Date.now()
-                        });
-                    } else {
-                        textoIntermedio += transcript;
-                    }
-                }
-                // Actualizar el estado en el HTML que me pasaste
-                if ($("studioStatus")) {
-                    $("studioStatus").innerHTML = `🎤 <span style="color: #22c55e;">${textoIntermedio}</span>`;
-                }
-            };
-            recognition.start();
-        }
+// Variables para sincronización con Taps
+let tapSyncMode = false;
+let tapSyncLines = [];
+let tapSyncTimestamps = [];
+let tapSyncCurrentIndex = 0;
+let studioSelectedTrackBlob = null;
+let studioSelectedTrackId = null;
+let studioSelectedTrackName = "Pista";
 
-        // 4. Iniciar todo
-        studioMediaRecorder.start();
-        $("startStudioRecBtn").disabled = true;
-        $("stopStudioRecBtn").disabled = false;
-        $("studioStatus").textContent = "🎙️ Grabando voz y transcribiendo...";
-
-    } catch (err) {
-        console.error("Error al grabar:", err);
-        alert("No se pudo acceder al micrófono.");
-    }
+function $(id) {
+  return document.getElementById(id);
 }
 
-function stopStudioRecording() {
-    if (studioMediaRecorder) studioMediaRecorder.stop();
-    if (recognition) recognition.stop();
-    if (studioStream) studioStream.getTracks().forEach(t => t.stop());
+function safeAdd(id, event, handler) {
+  const el = $(id);
+  if (el) el.addEventListener(event, handler);
+}
 
-    studioMediaRecorder.onstop = () => {
-        state.studioRecordedBlob = new Blob(state.studioChunks, { type: 'audio/webm' });
-        // Poner el audio en el reproductor que tienes en el HTML
-        if ($("voicePlayer")) {
-            $("voicePlayer").src = URL.createObjectURL(state.studioRecordedBlob);
-        }
-        $("studioStatus").textContent = "✅ Grabación finalizada. Escúchala abajo.";
+// ==========================================
+// INDEXED DB - BIBLIOTECA
+// ==========================================
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("SingItDB", 1);
+
+    request.onupgradeneeded = function (event) {
+      const database = event.target.result;
+
+      if (!database.objectStoreNames.contains("library")) {
+        const store = database.createObjectStore("library", {
+          keyPath: "id",
+          autoIncrement: true
+        });
+
+        store.createIndex("type", "type", { unique: false });
+        store.createIndex("date", "date", { unique: false });
+      }
     };
 
-    $("startStudioRecBtn").disabled = false;
-    $("stopStudioRecBtn").disabled = true;
+    request.onsuccess = function (event) {
+      db = event.target.result;
+      resolve(db);
+    };
+
+    request.onerror = function () {
+      reject("❌ Error al abrir IndexedDB");
+    };
+  });
+}
+
+function addLibraryItem(item) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["library"], "readwrite");
+    const store = transaction.objectStore("library");
+    const request = store.add(item);
+
+    request.onsuccess = function () {
+      resolve();
+    };
+
+    request.onerror = function () {
+      reject("❌ Error al guardar en IndexedDB");
+    };
+  });
+}
+
+function getAllLibraryItems() {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(["library"], "readonly");
+        const store = transaction.objectStore("library");
+        const request = store.getAll();
+        
+        request.onsuccess = function () {
+            resolve(request.result);
+        };
+        
+        request.onerror = function () {
+            reject("❌ Error al leer Biblioteca");
+    };
+  });
+}
+
+async function updateLibraryItem(id, changes) {
+  const { error } = await supabaseClient
+    .from("library_items")
+    .update(changes)
+    .eq("id", id);
+  
+  if (error) {
+    throw new Error(error.message || "Error al actualizar en Supabase");
+  }
+}
+  
+function deleteLibraryItemFromDB(id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["library"], "readwrite");
+    const store = transaction.objectStore("library");
+    const request = store.delete(id);
+
+    request.onsuccess = function () {
+      resolve();
+    };
+
+    request.onerror = function () {
+      reject("❌ Error al eliminar archivo");
+    };
+  });
+}
+
+function getLibraryItemsByType(type) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["library"], "readonly");
+    const store = transaction.objectStore("library");
+    const index = store.index("type");
+    const request = index.getAll(type);
+
+    request.onsuccess = function () {
+      resolve(request.result);
+    };
+
+    request.onerror = function () {
+      reject("❌ Error al filtrar archivos por tipo");
+    };
+  });
+}
+
+function getLibraryItemById(id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["library"], "readonly");
+    const store = transaction.objectStore("library");
+    const request = store.get(id);
+
+    request.onsuccess = function () {
+      resolve(request.result);
+    };
+
+    request.onerror = function () {
+      reject("❌ Error al obtener archivo");
+    };
+  });
 }
 
 // ==========================================
-// BLOQUE 4: GUARDADO EN SUPABASE
+// NAVEGACIÓN
 // ==========================================
-async function saveStudioRecording() {
-    if (!state.studioRecordedBlob) return alert("Primero debes grabar algo.");
+function showTab(tabId) {
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.classList.remove("active");
+  });
 
-    const nombre = prompt("Dale un nombre a tu grabación:", "Mi voz");
-    if (!nombre) return;
+  const target = $(tabId);
+  if (target) target.classList.add("active");
 
-    try {
-        $("studioStatus").textContent = "⏳ Subiendo a la nube...";
-        const fileName = `voice_${Date.now()}.webm`;
+  document.querySelectorAll(".sidebar button").forEach(btn => {
+    btn.classList.remove("active");
+  });
 
-        // 1. Subir el archivo de audio al Storage
-        const { data: storageData, error: sErr } = await supabaseClient.storage
-            .from("library")
-            .upload(fileName, state.studioRecordedBlob);
+  const btnMap = {
+    afinador: "btnAfinador",
+    estudio: "btnEstudio",
+    biblioteca: "btnBiblioteca",
+    karaoke: "btnKaraoke",
+    splitter: "btnSplitter",
+    config: "btnConfig"
+  };
 
-        if (sErr) throw sErr;
-
-        // 2. Obtener URL pública
-        const { data: urlData } = supabaseClient.storage.from("library").getPublicUrl(fileName);
-
-        // 3. Guardar en la tabla de la base de datos (con transcripción)
-        const { error: dbErr } = await supabaseClient.from("library_items").insert([{
-            name: nombre,
-            type: 'vocal',
-            file_url: urlData.publicUrl,
-            file_path: fileName,
-            transcription: state.transcriptionSegments // El texto que se generó
-        }]);
-
-        if (dbErr) throw dbErr;
-
-        alert("¡Grabación guardada con éxito!");
-        $("studioStatus").textContent = "✅ Guardado en biblioteca.";
-
-    } catch (err) {
-        console.error("Error al guardar:", err);
-        alert("Hubo un error al subir a Supabase.");
-    }
+  const activeBtn = $(btnMap[tabId]);
+  if (activeBtn) activeBtn.classList.add("active");
 }
 
 // ==========================================
-// BLOQUE 5: EL AFINADOR (PITCH DETECTION)
+// AFINADOR
 // ==========================================
+let audioContext, analyser, stream;
+
 async function toggleRecording() {
-    const btn = $("recordBtn");
-    if (!state.isRecording) {
-        state.isRecording = true;
-        btn.textContent = "Detener";
-        btn.classList.add("recording");
-        await startAfinador();
-    } else {
-        state.isRecording = false;
-        btn.textContent = "Iniciar";
-        btn.classList.remove("recording");
-        stopAfinador();
-    }
-}
+  const btn = $("recordBtn");
 
-function crearCadenaLimpieza(audioCtx) {
-    const hp = audioCtx.createBiquadFilter();
-    hp.type = "highpass"; hp.frequency.value = 80;
-    const lp = audioCtx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 1000;
-    hp.connect(lp);
-    return { entrada: hp, salida: lp };
+  if (!state.isRecording) {
+    state.isRecording = true;
+    btn.textContent = "Detener";
+    btn.classList.add("recording");
+    await startAfinador();
+  } else {
+    state.isRecording = false;
+    btn.textContent = "Iniciar";
+    btn.classList.remove("recording");
+    stopAfinador();
+
+    if ($("noteDisplay")) $("noteDisplay").textContent = "--";
+    if ($("guideText")) $("guideText").textContent = "";
+  }
 }
 
 async function startAfinador() {
     audioContext = new AudioContext();
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+        }
+    });
     const mic = audioContext.createMediaStreamSource(stream);
-    
+    function aplicarFiltrosLimpieza(audioCtx, source) {
+        // Filtro de paso alto (Corta graves innecesarios)
+        const highPass = audioCtx.createBiquadFilter();
+        highPass.type = "highpass";
+        highPass.frequency.value = 80;
+        
+        // Filtro de paso bajo (Corta siseos de alta frecuencia)
+        const lowPass = audioCtx.createBiquadFilter();
+        lowPass.type = "lowpass";
+        lowPass.frequency.value = 1000; // Ajusta según qué tan brillante quieras la voz
+        source.connect(highPass);
+        highPass.connect(lowPass);
+        return lowPass; // Regresamos el final de la cadena
+    }
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
     mic.connect(analyser);
     
-    detectPitch();
+    setTimeout(() => {
+        detectPitch();
+    }, 300);
 }
-
-function detectPitch() {
-    if (!state.isRecording || !analyser) return;
-    analyser.getFloatTimeDomainData(pitchBuffer);
-    const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
-    
-    const display = $("noteDisplay");
-    if (display && pitch !== -1) {
-        display.textContent = getNoteFromFrequency(pitch);
-    }
-    requestAnimationFrame(detectPitch);
-}
-
 
 function stopAfinador() {
   if (stream) stream.getTracks().forEach(t => t.stop());
@@ -346,153 +390,15 @@ function autoCorrelate(buf, sampleRate) {
 // ==========================================
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
+let studioMediaRecorder = null;
+let studioStream = null;
 let studioChunks = [];
 let studioRecordedBlob = null;
 let studioTrackFileName = "";
 let selectedVoiceBlob = null;
 let selectedVoiceId = null;
 
-async function loadTrackOptionsInStudio() {
-    const tracks = await getLibraryItems('vocal'); // O el tipo que definas para pistas
-    const select = $("studioTrackSelect");
-    if (!select) return;
-    select.innerHTML = '<option value="">Seleccionar pista...</option>';
-    tracks.forEach(track => {
-        const opt = document.createElement("option");
-        opt.value = track.file_url;
-        opt.textContent = track.name;
-        select.appendChild(opt);
-    });
-}
 
-// --- LÓGICA DE GRABACIÓN ---
-async function startStudioRecording() {
-    try {
-        studioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        studioChunks = [];
-        
-        studioMediaRecorder = new MediaRecorder(studioStream);
-        studioMediaRecorder.ondataavailable = (e) => studioChunks.push(e.data);
-        
-        studioMediaRecorder.onstop = async () => {
-            studioRecordedBlob = new Blob(studioChunks, { type: 'audio/webm' });
-            $("studioStatus").textContent = "Grabación finalizada. Lista para guardar.";
-        };
-
-        studioMediaRecorder.start();
-        $("btnStartStudio").disabled = true;
-        $("btnStopStudio").disabled = false;
-        $("studioStatus").textContent = "🔴 Grabando...";
-    } catch (err) {
-        console.error("Error en estudio:", err);
-    }
-}
-
-function stopStudioRecording() {
-    // Detener audio
-    if (studioMediaRecorder && studioMediaRecorder.state !== "inactive") {
-        studioMediaRecorder.stop();
-    }
-    if (studioStream) {
-        studioStream.getTracks().forEach(track => track.stop());
-    }
-
-    // Detener motor de texto
-    if (recognition) {
-        recognition.stop();
-    }
-    
-    if ($("btnStartStudio")) $("btnStartStudio").disabled = false;
-    if ($("btnStopStudio")) $("btnStopStudio").disabled = true;
-}
-
-async function renderLibrary() {
-    const container = $("libraryContainer");
-    if (!container) return;
-    
-    container.innerHTML = "<p>Cargando biblioteca...</p>";
-    const items = await getLibraryItems();
-    
-    container.innerHTML = ""; // Limpiamos
-    
-    if (items.length === 0) {
-        container.innerHTML = "<p>No hay elementos en tu biblioteca.</p>";
-        return;
-    }
-
-    items.forEach(item => {
-        const card = document.createElement("div");
-        card.className = "library-card";
-        card.innerHTML = `
-            <h4>${item.name}</h4>
-            <p>Tipo: ${item.type}</p>
-            <div class="actions">
-                <button onclick="playPreview('${item.file_url}')">Reproducir</button>
-                <button class="btn-delete" onclick="deleteLibraryItem('${item.id}', '${item.file_path}')">Eliminar</button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function playPreview(url) {
-    const audio = new Audio(url);
-    audio.play();
-}
-
-async function loadTrackOptionsInKaraoke() {
-    const tracks = await getLibraryItems('karaoke');
-    const select = $("karaokeTrackSelect");
-    if (!select) return;
-    select.innerHTML = '<option value="">Selecciona una canción</option>';
-    tracks.forEach(t => {
-        const opt = document.createElement("option");
-        opt.value = JSON.stringify(t);
-        opt.textContent = t.name;
-        select.appendChild(opt);
-    });
-}
-
-function cargarCancionKaraoke(event) {
-    const song = JSON.parse(event.target.value);
-    const player = $("karaokePlayer");
-    player.src = song.file_url;
-    
-    // Si la canción tiene letra guardada en la base de datos
-    if (song.transcription) {
-        transcriptionSegments = song.transcription;
-        renderLetrasKaraoke();
-    }
-}
-
-function renderLetrasKaraoke() {
-    const display = $("lyricsDisplay");
-    if (!display) return;
-    display.innerHTML = transcriptionSegments.map(s => `<span>${s.text}</span>`).join(" ");
-}
-
-// --- FUNCIONES DE APOYO FINALES ---
-
-// Carga las opciones de voz en los selects del estudio
-async function loadVoiceOptionsInStudio() {
-    const voices = await getLibraryItems('vocal');
-    const select = $("studioVoiceSelect");
-    if (select) {
-        select.innerHTML = '<option value="">Voces grabadas...</option>';
-        voices.forEach(v => {
-            const opt = document.createElement("option");
-            opt.value = v.file_url;
-            opt.textContent = v.name;
-            select.appendChild(opt);
-        });
-    }
-}
-
-// Configuración inicial de volumen o efectos
-function aplicarConfiguracionInicial() {
-    const vol = localStorage.getItem("singIt_volume") || 0.5;
-    if ($("masterVolume")) $("masterVolume").value = vol;
-}
 // ==========================================
 // ESTUDIO
 // ==========================================
@@ -541,54 +447,139 @@ let duoAnalyser2 = null;
 let duoAnimationId = null;
 
 async function startStudioRecording() {
-    try {
-        const isDuo = $("micCount")?.value === "2";
-        studioChunks = [];
+  try {
+    const player = $("player");
+    const micCount = $("micCount");
+    const isDuo = micCount && micCount.value === "2";
 
-        // 1. Obtener el primer micrófono (Siempre necesario)
-        studioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const tracks = [...studioStream.getAudioTracks()];
+    studioChunks = [];
+    studioRecordedBlob = null;
+    $("voicePlayer").src = "";
+    $("studioStatus").textContent = "Estado: preparando grabación...";
 
-        // 2. Si es Dúo, intentamos obtener el segundo micrófono
-        let studioStream2 = null;
-        if (isDuo) {
-            try {
-                // Aquí podrías especificar un ID de dispositivo diferente si lo tienes en la configuración
-                studioStream2 = await navigator.mediaDevices.getUserMedia({ audio: true });
-                tracks.push(...studioStream2.getAudioTracks());
-            } catch (err2) {
-                console.warn("No se pudo conectar el segundo micrófono, grabando con uno.");
-            }
-        }
+    // Obtener micrófonos seleccionados
+    const mic1Id = getSelectedMicId(1);
+    const mic2Id = getSelectedMicId(2);
 
-        // 3. Combinar todos los canales en un solo flujo
-        const combinedStream = new MediaStream(tracks);
+    const audioConstraints1 = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
+      sampleRate: 48000
+    };
 
-        // 4. Configurar el grabador con el flujo combinado
-        studioMediaRecorder = new MediaRecorder(combinedStream, {
-            mimeType: "audio/webm;codecs=opus"
-        });
-
-        studioMediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) studioChunks.push(e.data);
-        };
-
-        studioMediaRecorder.onstop = () => {
-            studioRecordedBlob = new Blob(studioChunks, { type: 'audio/webm' });
-            if ($("studioStatus")) $("studioStatus").textContent = "Grabación lista para guardar ✅";
-        };
-
-        // 5. Iniciar grabación y actualizar botones
-        studioMediaRecorder.start();
-        
-        if ($("btnStartStudio")) $("btnStartStudio").disabled = true;
-        if ($("btnStopStudio")) $("btnStopStudio").disabled = false;
-        if ($("studioStatus")) $("studioStatus").textContent = "🔴 Grabando (Modo: " + (isDuo ? "Dúo" : "Solo") + ")...";
-
-    } catch (err) {
-        console.error("Error al iniciar grabación en estudio:", err);
-        alert("Asegúrate de dar permisos al micrófono.");
+    if (mic1Id) {
+      audioConstraints1.deviceId = { exact: mic1Id };
     }
+
+    // Obtener stream del Mic 1
+    studioStream = await navigator.mediaDevices.getUserMedia({
+      audio: audioConstraints1
+    });
+
+    let finalStream = studioStream;
+
+    // Si es DÚO, obtener y mezclar Mic 2
+    if (isDuo && mic2Id) {
+      const audioConstraints2 = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+        sampleRate: 48000,
+        deviceId: { exact: mic2Id }
+      };
+
+      studioStream2 = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints2
+      });
+
+      // Crear contexto de audio para mezclar
+      duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      const source1 = duoAudioContext.createMediaStreamSource(studioStream);
+      const source2 = duoAudioContext.createMediaStreamSource(studioStream2);
+      
+      // Crear analizadores para visualización
+      duoAnalyser1 = duoAudioContext.createAnalyser();
+      duoAnalyser2 = duoAudioContext.createAnalyser();
+      duoAnalyser1.fftSize = 256;
+      duoAnalyser2.fftSize = 256;
+      
+      // Crear mezclador
+      const merger = duoAudioContext.createChannelMerger(2);
+      const destination = duoAudioContext.createMediaStreamDestination();
+      
+      // Conectar: fuentes -> analizadores -> mezclador -> destino
+      source1.connect(duoAnalyser1);
+      source2.connect(duoAnalyser2);
+      duoAnalyser1.connect(merger, 0, 0);
+      duoAnalyser2.connect(merger, 0, 1);
+      merger.connect(destination);
+      
+      finalStream = destination.stream;
+
+      // Mostrar indicador de dúo
+      const duoIndicator = $("duoIndicator");
+      if (duoIndicator) {
+        duoIndicator.style.display = "block";
+      }
+
+      // Iniciar visualización de niveles
+      startDuoLevelMonitor();
+    }
+
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? { mimeType: "audio/webm;codecs=opus" }
+      : {};
+    
+    studioMediaRecorder = new MediaRecorder(finalStream, options);
+
+    studioMediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        studioChunks.push(event.data);
+      }
+    };
+
+    studioMediaRecorder.onstop = () => {
+      studioRecordedBlob = new Blob(studioChunks, { type: "audio/webm" });
+      const audioURL = URL.createObjectURL(studioRecordedBlob);
+      $("voicePlayer").src = audioURL;
+      $("studioStatus").textContent = "Estado: grabación lista para escuchar o guardar";
+      
+      // Ocultar indicador dúo
+      const duoIndicator = $("duoIndicator");
+      if (duoIndicator) {
+        duoIndicator.style.display = "none";
+      }
+      
+      stopDuoLevelMonitor();
+    };
+
+    studioMediaRecorder.start();
+    
+    // Mostrar estado
+    const mic1Select = $("mic1Select");
+    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
+    
+    if (isDuo && mic2Id) {
+      const mic2Select = $("mic2Select");
+      const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
+      $("studioStatus").textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
+    } else {
+      $("studioStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
+    }
+
+    if (player && player.src) {
+      player.currentTime = 0;
+      player.play();
+    }
+  } catch (error) {
+    console.error(error);
+    $("studioStatus").textContent = "Estado: error al acceder al micrófono";
+    alert("❌ No se pudo acceder al micrófono. Verifica en Configuración.");
+  }
 }
 
 function startDuoLevelMonitor() {
@@ -631,6 +622,44 @@ function stopDuoLevelMonitor() {
   if (level2) level2.style.width = "0%";
 }
 
+function stopStudioRecording() {
+  if (studioMediaRecorder && studioMediaRecorder.state !== "inactive") {
+    studioMediaRecorder.stop();
+  }
+
+  // Detener Mic 1
+  if (studioStream) {
+    studioStream.getTracks().forEach(track => track.stop());
+  }
+
+  // Detener Mic 2 (si existe)
+  if (studioStream2) {
+    studioStream2.getTracks().forEach(track => track.stop());
+    studioStream2 = null;
+  }
+
+  // Cerrar contexto de audio dúo
+  if (duoAudioContext) {
+    duoAudioContext.close();
+    duoAudioContext = null;
+  }
+
+  duoAnalyser1 = null;
+  duoAnalyser2 = null;
+
+  stopDuoLevelMonitor();
+
+  // Ocultar indicador
+  const duoIndicator = $("duoIndicator");
+  if (duoIndicator) {
+    duoIndicator.style.display = "none";
+  }
+
+  const player = $("player");
+  if (player) {
+    player.pause();
+  }
+}
 
 function redoStudioRecording() {
   studioChunks = [];
@@ -639,6 +668,43 @@ function redoStudioRecording() {
   $("studioStatus").textContent = "Estado: grabación eliminada. Lista para volver a grabar.";
 }
 
+function saveStudioRecording() {
+  if (!studioRecordedBlob) {
+    alert("⚠️ No hay grabación para guardar");
+    return;
+  }
+
+  const baseName = studioTrackFileName
+    ? `Voz - ${studioTrackFileName}`
+    : "Grabación de voz";
+
+  saveToLibrary(studioRecordedBlob, {
+    name: baseName,
+    type: "voz"
+  });
+
+  $("studioStatus").textContent = "Estado: grabación guardada en Biblioteca";
+}
+
+// ==========================================
+// BIBLIOTECA
+// ==========================================
+async function saveToLibrary(blob, options = {}) {
+  try {
+    await saveLibraryItemToSupabase({
+      name: options.name || "Audio",
+      type: options.type || "audio",
+      blob,
+      transcription: options.transcription || [],
+      metadata: options.metadata || {}
+    });
+
+    await renderLibrary();
+  } catch (error) {
+    console.error(error);
+    alert("❌ No se pudo guardar en la nube");
+  }
+}
 
 async function renderLibrary(filter = "todos") {
   const container = $("libraryList");
@@ -693,6 +759,17 @@ async function renderLibrary(filter = "todos") {
 }
 
 
+async function deleteLibraryItem(id) {
+  try {
+    await deleteLibraryItemFromSupabase(id);
+    await renderLibrary();
+    alert("✅ Archivo eliminado");
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al eliminar el archivo");
+  }
+}
+
 async function saveManualFileToLibrary() {
   const fileInput = $("libraryFileInput");
   const typeSelect = $("libraryFileType");
@@ -734,10 +811,91 @@ async function saveManualFileToLibrary() {
 }
 
 
+async function loadTrackOptionsInStudio() {
+  const select = $("studioTrackSelect");
+  if (!select) return;
 
+  select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
 
+  try {
+    const tracks = await getLibraryItemsByTypeFromSupabase("pista");
 
+    if (!tracks.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No hay pistas guardadas";
+      select.appendChild(option);
+      return;
+    }
 
+    tracks.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = `${item.name}`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadSelectedTrackFromLibraryStudio() {
+  const select = $("studioTrackSelect");
+  const player = $("player");
+  const status = $("studioStatus");
+
+  if (!select || !player || !status) return;
+
+  const selectedId = select.value;
+
+  if (!selectedId) {
+    alert("⚠️ Selecciona una pista");
+    return;
+  }
+
+  try {
+    const item = await getLibraryItemByIdFromSupabase(selectedId);
+
+    if (!item) {
+      alert("⚠️ No se encontró la pista");
+      return;
+    }
+
+    studioTrackFileName = item.name;
+    player.src = item.file_url;
+    status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+  } catch (error) {
+    console.error(error);
+    alert("❌ No se pudo cargar la pista seleccionada");
+  }
+}
+
+async function loadVoiceOptionsInStudio() {
+  const select = $("voiceLibrarySelect");
+  if (!select) return;
+  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+  
+  try {
+    const voces = await getLibraryItemsByTypeFromSupabase("voz");
+    const grabaciones = await getLibraryItemsByTypeFromSupabase("grabacion");
+    const merged = [...voces, ...grabaciones];
+    if (!merged.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No hay voces guardadas";
+      select.appendChild(option);
+      return;
+    }
+    merged.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = `${item.name} (${new Date(item.created_at).toLocaleString("es-ES")})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
 
 async function loadSelectedVoiceFromLibrary() {
   const select = $("voiceLibrarySelect");
@@ -793,6 +951,247 @@ async function loadSelectedVoiceFromLibrary() {
   }
 }
 
+async function uploadFileToSupabase(fileOrBlob, fileName, mimeType = "application/octet-stream") {
+  const safeName = `${Date.now()}_${fileName.replace(/\s+/g, "_")}`;
+  const filePath = safeName;
+
+  const { error: uploadError } = await supabaseClient.storage
+    .from("library")
+    .upload(filePath, fileOrBlob, {
+      contentType: mimeType,
+      upsert: false
+    });
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data } = supabaseClient.storage
+    .from("library")
+    .getPublicUrl(filePath);
+
+  return {
+    filePath,
+    fileUrl: data.publicUrl
+  };
+}
+
+async function saveLibraryItemToSupabase({ name, type, blob, transcription = [], metadata = {} }) {
+  const mimeType = blob.type || "application/octet-stream";
+  const extension = mimeType.includes("wav")
+    ? "wav"
+    : mimeType.includes("mpeg")
+    ? "mp3"
+    : mimeType.includes("webm")
+    ? "webm"
+    : mimeType.includes("ogg")
+    ? "ogg"
+    : "bin";
+
+  const fileName = `${name}.${extension}`;
+
+  const { filePath, fileUrl } = await uploadFileToSupabase(blob, fileName, mimeType);
+
+  const { error } = await supabaseClient
+    .from("library_items")
+    .insert([
+      {
+        name,
+        type,
+        file_path: filePath,
+        file_url: fileUrl,
+        mime_type: mimeType,
+        transcription,
+        metadata
+      }
+    ]);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function getAllLibraryItemsFromSupabase() {
+  const { data, error } = await supabaseClient
+    .from("library_items")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+async function getLibraryItemsByTypeFromSupabase(type) {
+  const { data, error } = await supabaseClient
+    .from("library_items")
+    .select("*")
+    .eq("type", type)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+async function getLibraryItemByIdFromSupabase(id) {
+  const { data, error } = await supabaseClient
+    .from("library_items")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+async function deleteLibraryItemFromSupabase(id) {
+  // primero buscamos el item para saber qué archivo borrar
+  const item = await getLibraryItemByIdFromSupabase(id);
+
+  if (item?.file_path) {
+    const { error: storageError } = await supabaseClient.storage
+      .from("library")
+      .remove([item.file_path]);
+
+    if (storageError) {
+      console.warn("No se pudo borrar el archivo del storage:", storageError.message);
+    }
+  }
+
+  const { error } = await supabaseClient
+    .from("library_items")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+// ==========================================
+// TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
+// ==========================================
+async function transcribeSelectedVoice() {
+  if (!selectedVoiceBlob) {
+    alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
+    return;
+  }
+
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  try {
+    if (status) {
+      status.textContent = "Estado: Preparando audio (cortando en porciones)...";
+    }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    const CHUNK_SECONDS = 25;
+    const sampleRate = audioBuffer.sampleRate;
+    const totalSamples = audioBuffer.length;
+    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
+
+    let fullSegments = [];
+
+    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
+      const end = Math.min(start + samplesPerChunk, totalSamples);
+      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
+      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
+
+      if (status) {
+        status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+      }
+
+      const wavBlob = audioBufferToWav(audioBuffer, start, end);
+      const base64Audio = await blobToBase64(wavBlob);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioBase64: base64Audio })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      const palabrasProhibidas = [
+        "Amara",
+        "Subtítulos",
+        "subtítulos",
+        "Almorzo",
+        "Suscribete",
+        "comunidad"
+      ];
+
+      const timeOffset = start / sampleRate;
+
+      (result.segments || []).forEach((seg) => {
+        const segText = (seg?.text || "").trim();
+
+        if (!segText) return;
+
+        const esFantasma = palabrasProhibidas.some((palabra) =>
+          segText.toLowerCase().includes(palabra.toLowerCase())
+        );
+
+        if (esFantasma) return;
+
+        const segmentWithOffset = {
+          start: Number(seg.start || 0) + timeOffset,
+          end: Number(seg.end || 0) + timeOffset,
+          text: segText
+        };
+
+        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+      });
+    }
+
+    baseTranscriptionSegments = fullSegments;
+    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
+
+    if (lyricsText) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    }
+
+     // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
+    if (selectedVoiceId) {
+      try {
+        await updateLibraryItem(selectedVoiceId, {
+          transcription: baseTranscriptionSegments // Guardamos los tiempos y textos
+        });
+        console.log("✅ Transcripción guardada en Biblioteca");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en BD:", err);
+      }
+    }
+
+    if (status) {
+      status.textContent = "Estado: Transcripción completada y guardada ✅";
+    }
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al transcribir el audio.");
+    if (status) status.textContent = "Estado: Error en la transcripción";
+  }
+}
 
 // ==========================================
 // FUNCIONES AUXILIARES AUDIO
@@ -977,7 +1376,49 @@ async function analyzePitchForSegments(audioBlob, segments) {
   }
 }
 
-
+function detectPitchFromSamples(samples, sampleRate) {
+  if (!samples || samples.length < 256) return -1;
+  
+  // Calcular RMS para verificar si hay señal
+  let rms = 0;
+  for (let i = 0; i < samples.length; i++) {
+    rms += samples[i] * samples[i];
+  }
+  rms = Math.sqrt(rms / samples.length);
+  
+  if (rms < 0.01) return -1; // Silencio
+  
+  // Autocorrelación simplificada
+  const bufferSize = Math.min(2048, samples.length);
+  const buffer = samples.slice(0, bufferSize);
+  
+  let bestOffset = -1;
+  let bestCorrelation = 0;
+  
+  for (let offset = 8; offset < bufferSize / 2; offset++) {
+    let correlation = 0;
+    
+    for (let i = 0; i < bufferSize - offset; i++) {
+      correlation += Math.abs(buffer[i] - buffer[i + offset]);
+    }
+    
+    correlation = 1 - (correlation / (bufferSize - offset));
+    
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestOffset = offset;
+    }
+  }
+  
+  if (bestCorrelation < 0.8 || bestOffset === -1) return -1;
+  
+  const frequency = sampleRate / bestOffset;
+  
+  // Filtrar frecuencias fuera del rango vocal
+  if (frequency < 80 || frequency > 1000) return -1;
+  
+  return frequency;
+}
 
 function frequencyToMidi(freq) {
   if (freq <= 0) return 0;
