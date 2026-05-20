@@ -540,7 +540,7 @@ let duoAnalyser1 = null;
 let duoAnalyser2 = null;
 let duoAnimationId = null;
 
-aasync function startStudioRecording() {
+async function startStudioRecording() {
     try {
         const isDuo = $("micCount")?.value === "2";
         studioChunks = [];
