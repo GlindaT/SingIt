@@ -2205,7 +2205,7 @@ async function splitAudio() {
         return;
     }
     
-    const originalName = file.name; // SOLUCIÓN: Definir nombre original
+    const originalName = file.name;
     const btn = $("splitBtn");
     const statusBox = $("splitterStatusBox");
     const statusText = $("splitterStatusText");
@@ -2247,37 +2247,30 @@ async function splitAudio() {
         
         statusText.textContent = "3/4 ⏳ IA separando pistas...";
         
-        // Guardamos el ID del intervalo para poder limpiarlo en cualquier momento
         const interval = setInterval(async () => {
             try {
                 const checkResponse = await fetch(`/api/split?id=${prediction.id}`);
                 const statusData = await checkResponse.json();
                 
                 if (statusData.status === "succeeded") {
-                    clearInterval(interval);
+                    clearInterval(interval); // Detener polling inmediatamente
                     statusText.textContent = "4/4 🎧 Armando la pista final...";
-                    detailText.textContent = "Mezclando bajo, batería y melodía en una sola pista instrumental...";
+                    detailText.textContent = "Mezclando bajo, batería y melodía...";
                     
                     const urls = statusData.output;
                     let vocalUrl = null;
                     let instUrls = [];
                     
-                    // SOLUCIÓN: Lógica limpia para separar voz de instrumentos sin bucles rotos
                     if (Array.isArray(urls)) {
                         urls.forEach(u => {
-                            if (u.toLowerCase().includes("vocal")) {
-                                vocalUrl = u;
-                            } else {
-                                instUrls.push(u);
-                            }
+                            if (u.toLowerCase().includes("vocal")) vocalUrl = u;
+                            else instUrls.push(u);
                         });
-                        // Si no encontró etiqueta "vocal", toma el primero como voz por descarte
                         if (!vocalUrl && urls.length > 0) {
                             vocalUrl = urls[0];
                             instUrls = urls.slice(1);
                         }
                     } else if (urls && typeof urls === "object") {
-                        // Por si Replicate responde con un objeto { vocal: '...', instrumental: '...' }
                         for (const [key, value] of Object.entries(urls)) {
                             if (key.toLowerCase().includes("vocal")) vocalUrl = value;
                             else instUrls.push(value);
@@ -2311,12 +2304,10 @@ async function splitAudio() {
                     });
                     
                     const renderedBuffer = await offlineCtx.startRendering();
-                    
-                    // NOTA: Asegúrate de tener implementada la función exportStereoWav en tu proyecto
-                    const blobPistaWav = exportStereoWav(renderedBuffer);
+                    const blobPistaWav = exportStereoWav(renderedBuffer); // Asegúrate de que exista esta función
 
-                    // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
-                    await saveToLibrary(blobPista, { 
+                    // CORRECCIÓN: Se cambió blobPista por blobPistaWav
+                    await saveToLibrary(blobPistaWav, { 
                         name: `Pista - ${file.name.replace('.mp3', '.webm')}`, 
                         type: "pista" 
                     });
@@ -2333,18 +2324,18 @@ async function splitAudio() {
                     
                 } else if (statusData.status === "failed" || statusData.status === "canceled") {
                     clearInterval(interval);
-                    // SOLUCIÓN: No usar throw aquí, se maneja directo en el catch local del setInterval
-                    handleSplitError(new Error("La IA falló al procesar el audio."), statusText, detailText, btn);
+                    throw new Error("La IA falló o canceló el procesamiento del audio.");
                 } else {
-                    detailText.textContent = `Estado de la IA: ${statusData.status}... por favor espera.`;
+                    detailText.textContent = `Procesando... Estado actual: ${statusData.status}`;
                 }
-            } catch (pollError) {
-                clearInterval(interval);
-                handleSplitError(pollError, statusText, detailText, btn);
+            } catch (err) {
+                clearInterval(interval); // CORRECCIÓN: Evita bucle infinito si falla el fetch interno
+                handleSplitError(err, statusText, detailText, btn);
             }
-        }, 4000);
-        
+        }, 3000);
+
     } catch (err) {
+        // CORRECCIÓN: Cierre de catch principal de la función async
         handleSplitError(err, statusText, detailText, btn);
     }
 }
