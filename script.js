@@ -33,6 +33,7 @@ let tapSyncMode = false;
 let tapSyncLines = [];
 let tapSyncTimestamps = [];
 let tapSyncCurrentIndex = 0;
+let karaokeLyricsOffset = 0;
 
 function $(id) {
   return document.getElementById(id);
@@ -909,69 +910,45 @@ async function loadVoiceOptionsInStudio() {
 
 async function loadSelectedVoiceFromLibrary() {
   const select = $("voiceLibrarySelect");
-  const player = $("selectedVoicePlayer");
+  const playerVoice = $("selectedVoicePlayer"); // Renombrado para no confundir con el player principal
   const status = $("selectedVoiceStatus");
   const lyricsText = $("lyricsText");
 
-  if (!select || !player || !status) return;
-
-  const selectedId = Number(select.value);
-
+  if (!select || !playerVoice || !status) return;
+  const selectedId = select.value;
   if (!selectedId) {
     alert("⚠️ Selecciona una voz");
     return;
   }
-
   try {
-    const item = await getLibraryItemById(selectedId);
-
+    const item = await getLibraryItemByIdFromSupabase(selectedId);
     if (!item) {
       alert("⚠️ No se encontró el archivo");
       return;
     }
-
-    selectedVoiceBlob = item.audioBlob;
+    
+    // Guardamos los datos de la voz de memoria
     selectedVoiceId = item.id;
-
-    const audioURL = URL.createObjectURL(item.audioBlob);
-    player.src = audioURL;
-    status.textContent = `Estado: voz seleccionada -> ${item.name}`;
-
-    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-      baseTranscriptionSegments = item.transcription.map(seg =>
-        buildWordTimingFromSegment(seg)
-      );
-
-      // IMPORTANTE:
-      // aquí respetamos exactamente las líneas guardadas
-      transcriptionSegments = baseTranscriptionSegments;
-
-      renderKaraokeLyrics(transcriptionSegments);
-      cargarLetrasEnMonitor();
-
-      if (lyricsText) {
-        lyricsText.value = transcriptionSegments
-          .map(seg => seg.text || "")
-          .join("\n")
-          .trim();
-      }
-
-      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
-    } else {
-      baseTranscriptionSegments = [];
-      transcriptionSegments = [];
-
-      renderKaraokeLyrics([]);
-      cargarLetrasEnMonitor();
-
-      if (lyricsText) lyricsText.value = "";
-      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+    
+    // Cargamos la voz en su reproductor pequeño por si quieres oírla aislada
+    playerVoice.src = item.file_url;
+    
+    // MODIFICACIÓN CRUCIAL:
+    // Cargamos el audio en el reproductor principal ("player") que se usa para los Taps de Sincronización.
+    // Si el elemento tiene un enlace de pista instrumental o música de fondo, usamos ese. Si no, usamos la voz.
+    const reproductorPrincipal = $("player");
+    if (reproductorPrincipal) {
+        if (item.instrumental_url) {
+            reproductorPrincipal.src = item.instrumental_url;
+            status.textContent = `Estado: ¡Música Instrumental cargada en el Estudio para sincronizar! -> ${item.name}`;
+        } else if (item.original_url) {
+            reproductorPrincipal.src = item.original_url;
+            status.textContent = `Estado: ¡Audio Original cargado en el Estudio para sincronizar! -> ${item.name}`;
+        } else {
+            reproductorPrincipal.src = item.file_url;
+            status.textContent = `Estado: Voz cargada en el Estudio (No se encontró pista instrumental) -> ${item.name}`;
+        }
     }
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo cargar la voz seleccionada");
-  }
-}
 
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
