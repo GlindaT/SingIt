@@ -2277,7 +2277,7 @@ async function splitAudio() {
 
                     
                     // SOLUCIÓN: Nombres de variables corregidos para guardar en biblioteca
-                    await saveToLibrary(blobPista, {
+                    await saveToLibrary(blobPista, { name: `Pista - ${file.name.replace('.mp3', '.webm')}`, type: "pista" });
                         name: `Pista - ${originalName}`,
                         type: "pista"
                     });
