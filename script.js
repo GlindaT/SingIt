@@ -1297,7 +1297,7 @@ function detectPitchFromSamples(samples, sampleRate) {
   
   const frequency = sampleRate / bestOffset;
   
-  // Filtrar frecuencias fuera del rango vocal
+  // Filtrar frecuencias fuera del rango vocal actual
   if (frequency < 80 || frequency > 1000) return -1;
   
   return frequency;
