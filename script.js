@@ -346,7 +346,6 @@ function autoCorrelate(buf, sampleRate) {
 // ==========================================
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
-let studioStream = null;
 let studioChunks = [];
 let studioRecordedBlob = null;
 let studioTrackFileName = "";
