@@ -321,6 +321,16 @@ input[type="text"] {
   color: var(--text-muted);
 }
 
+/* Ocultar las secciones colapsadas */
+.contenido-desplegable.oculto {
+    display: none !important;
+}
+
+/* Rotar la flecha hacia abajo cuando esté activo */
+.flecha.rotada {
+    transform: rotate(90deg);
+}
+
 /* ==========================================
    CONFIGURACIÓN
 ========================================== */
