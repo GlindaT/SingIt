@@ -5,6 +5,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.log("Database Ready");
         // Cargar vistas iniciales
         renderLibrary();
+        
         const saveManualBtn = document.getElementById("saveManualFileBtn");
         if (saveManualBtn) {
             saveManualBtn.addEventListener("click", saveManualFileToLibrary);
@@ -39,7 +40,7 @@ const state = {
   instrumentalUrl: null,
   letraLrc: "",
   isRecording: false
-};
+}
 
 let db = null;
 let pitchHistory = [];
