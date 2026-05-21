@@ -1073,7 +1073,12 @@ async function loadSelectedVoiceFromLibrary() {
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING
 // ==========================================
 async function transcribeSelectedVoice() {
-  if (!selectedVoiceBlob) {
+  // --- SEGURIDAD DE VARIABLES GLOBALES ---
+  // Nos aseguramos de que si no existen globalmente, no rompan la función
+  if (typeof selectedVoiceBlob === 'undefined') window.selectedVoiceBlob = null;
+  if (typeof selectedVoiceId === 'undefined') window.selectedVoiceId = null;
+
+  if (!window.selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
     return;
   }
@@ -1087,7 +1092,7 @@ async function transcribeSelectedVoice() {
     }
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+    const arrayBuffer = await window.selectedVoiceBlob.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
     const CHUNK_SECONDS = 25;
@@ -1123,12 +1128,7 @@ async function transcribeSelectedVoice() {
       const result = await response.json();
 
       const palabrasProhibidas = [
-        "Amara",
-        "Subtítulos",
-        "subtítulos",
-        "Almorzo",
-        "Suscribete",
-        "comunidad"
+        "Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"
       ];
 
       const timeOffset = start / sampleRate;
@@ -1150,20 +1150,30 @@ async function transcribeSelectedVoice() {
           text: segText
         };
 
-        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+        if (typeof buildWordTimingFromSegment === "function") {
+          fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+        } else {
+          fullSegments.push(segmentWithOffset);
+        }
       });
     }
 
     baseTranscriptionSegments = fullSegments;
-    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+    
+    if (typeof splitSegmentsIntoKaraokeLines === "function") {
+      transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+    } else {
+      transcriptionSegments = baseTranscriptionSegments;
+    }
 
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
+    if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
     if (lyricsText) {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
-      
+
+    // --- NUEVO GUARDADO INTELIGENTE VINCULADO A LA PISTA INSTRUMENTAL ---
     const studioTrackSelect = $("studioTrackSelect");
     const selectedTrackId = studioTrackSelect ? Number(studioTrackSelect.value) : null;
 
@@ -1173,16 +1183,16 @@ async function transcribeSelectedVoice() {
           transcription: baseTranscriptionSegments
         });
         console.log(`✅ Sincronización guardada con éxito en la PISTA (ID: ${selectedTrackId})`);
-        alert("🎯 ¡Excelente! La letra se ha guardado en el archivo de la PISTA.");
+        alert("🎯 ¡Excelente! La letra se ha guardado en el archivo de la PISTA. Ya puedes cantarla en el Karaoke.");
       } catch (err) {
         console.error("❌ Error guardando transcripción en la Pista:", err);
       }
-    } else if (selectedVoiceId) {
+    } else if (window.selectedVoiceId) {
       try {
-        await updateLibraryItem(selectedVoiceId, {
+        await updateLibraryItem(window.selectedVoiceId, {
           transcription: baseTranscriptionSegments
         });
-        console.log(`⚠️ Guardado en el archivo de VOZ.`);
+        console.log(`⚠️ Guardado en el archivo de VOZ (ID: ${window.selectedVoiceId}) por no detectar pista.`);
       } catch (err) {
         console.error("❌ Error guardando transcripción en la Voz:", err);
       }
