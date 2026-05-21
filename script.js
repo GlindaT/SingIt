@@ -514,11 +514,29 @@ function getNoteFromFrequency(freq) {
 }
 
 function getNoteFrequency(note) {
-  const notes = { "C": -9, "C#": -8, "D": -7, "D#": -6, "E": -5, "F": -4, "F#": -3, "G": -2, "G#": -1, "A": 0, "A#": 1, "B": 2 };
+  const notes = {
+    "C": -9,
+    "C#": -8,
+    "D": -7,
+    "D#": -6,
+    "E": -5,
+    "F": -4,
+    "F#": -3,
+    "G": -2,
+    "G#": -1,
+    "A": 0,
+    "A#": 1,
+    "B": 2
+  };
+
   const match = note.match(/^([A-G]#?)(\d)$/);
   if (!match) return 440;
+
   const [, noteName, octaveStr] = match;
-  return 440 * Math.pow(2, (notes[noteName] + (parseInt(octaveStr, 10) - 4) * 12) / 12);
+  const octave = parseInt(octaveStr, 10);
+
+  const semitoneOffset = notes[noteName] + (octave - 4) * 12;
+  return 440 * Math.pow(2, semitoneOffset / 12);
 }
 
 function autoCorrelate(buf, sampleRate) {
