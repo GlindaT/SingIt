@@ -200,17 +200,21 @@ function getLibraryItemById(id) {
 // NAVEGACIÓN
 // ==========================================
 function showTab(tabId) {
+  // 1. Ocultar todas las pestañas quitando la clase active
   document.querySelectorAll(".tab").forEach(tab => {
     tab.classList.remove("active");
   });
 
+  // 2. Mostrar la pestaña seleccionada
   const target = $(tabId);
   if (target) target.classList.add("active");
 
+  // 3. Desactivar todos los botones del sidebar
   document.querySelectorAll(".sidebar button").forEach(btn => {
     btn.classList.remove("active");
   });
 
+  // Diccionario de mapeo de botones
   const btnMap = {
     afinador: "btnAfinador",
     estudio: "btnEstudio",
@@ -220,8 +224,46 @@ function showTab(tabId) {
     config: "btnConfig"
   };
 
+  // 4. Activar el botón de la pestaña correspondiente
   const activeBtn = $(btnMap[tabId]);
   if (activeBtn) activeBtn.classList.add("active");
+
+  // ========================================================
+  // 🔥 MEJORA CRÍTICA: REFRESCAR DATOS AUTOMÁTICAMENTE 🔥
+  // ========================================================
+  try {
+    switch (tabId) {
+      case "biblioteca":
+        // Refresca la lista de archivos mostrando "todos" por defecto
+        if (typeof renderLibrary === "function") {
+          renderLibrary("todos");
+        }
+        break;
+
+      case "estudio":
+        // Refresca los selectores de pistas y voces para que aparezca lo último guardado
+        if (typeof loadMyTracksInStudio === "function") {
+          loadMyTracksInStudio();
+        }
+        if (typeof loadMyVoicesInStudio === "function") {
+          loadMyVoicesInStudio();
+        }
+        break;
+
+      case "karaoke":
+        // Refresca el catálogo interno del karaoke con los tracks listos
+        if (typeof loadMyKaraokeSongs === "function") {
+          loadMyKaraokeSongs();
+        }
+        break;
+
+      default:
+        // Pestañas como afinador, splitter o config no requieren recarga de datos de IndexedDB al entrar
+        break;
+    }
+  } catch (error) {
+    console.error(`Error al refrescar los datos de la pestaña ${tabId}:`, error);
+  }
 }
 
 // ==========================================
@@ -888,34 +930,33 @@ async function loadSelectedTrackFromLibraryStudio() {
   }
 }
 
-async function loadVoiceOptionsInStudio() {
-  const select = $("voiceLibrarySelect");
+async function loadMyVoicesInStudio() {
+  // Asegúrate de que el ID coincida con el select de voces en tu HTML
+  const select = document.getElementById("studioVoiceSelect") || document.getElementById("voiceSelect");
   if (!select) return;
 
-  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
-
   try {
-    const voces = await getLibraryItemsByType("voz");
-    const grabaciones = await getLibraryItemsByType("grabacion");
+    const allItems = await getAllLibraryItems();
+    // Filtramos únicamente los archivos que guardamos como 'voz'
+    const voices = allItems.filter(item => item.type === "voz");
 
-    const merged = [...voces, ...grabaciones];
+    select.innerHTML = '<option value="">-- Selecciona una Voz --</option>';
 
-    if (!merged.length) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No hay voces guardadas";
-      select.appendChild(option);
+    if (voices.length === 0) {
+      select.innerHTML += '<option value="" disabled>No hay voces guardadas</option>';
       return;
     }
 
-    merged.forEach((item) => {
+    voices.forEach(voice => {
       const option = document.createElement("option");
-      option.value = item.id;
-      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+      option.value = voice.id;
+      // Mostramos el nombre y la fecha de guardado para distinguirlas
+      option.textContent = `${voice.name} (${voice.date || 'Sin fecha'})`;
       select.appendChild(option);
     });
+
   } catch (error) {
-    console.error(error);
+    console.error("Error al cargar las voces en el Estudio:", error);
   }
 }
 
@@ -3563,6 +3604,8 @@ async function loadMyKaraokeSongs() {
   }
 }
 
+let currentKaraokeObjectURL = null;
+
 async function loadKaraokeSong(id) {
   try {
     const song = await getLibraryItemById(id);
@@ -3571,10 +3614,17 @@ async function loadKaraokeSong(id) {
       return;
     }
     
-    // Cargar pista
     const track = $("karaokeTrack");
     if (track && song.audioBlob) {
-      track.src = URL.createObjectURL(song.audioBlob);
+      // --- MEJORA DE MEMORIA: Liberamos la URL anterior si existía ---
+      if (currentKaraokeObjectURL) {
+        URL.revokeObjectURL(currentKaraokeObjectURL);
+      }
+      
+      // Creamos la nueva URL y la guardamos en la variable de control
+      currentKaraokeObjectURL = URL.createObjectURL(song.audioBlob);
+      track.src = currentKaraokeObjectURL;
+      
       track.volume = 0.4;
       karaokeSelectedTrackBlob = song.audioBlob;
       karaokeSelectedTrackName = song.name;
