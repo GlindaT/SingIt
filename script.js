@@ -252,6 +252,13 @@ function showTab(tabId) {
     // ========================================================
     try {
         switch (tabId) {
+
+            case "config":
+                if (typeof cargarSelectorDeMicrofonos === "function") {
+                    cargarSelectorDeMicrofonos();
+                }
+                break;
+                
             case "biblioteca":
                 // Refresca la lista de archivos mostrando "todos" por defecto
                 if (typeof renderLibrary === "function") {
@@ -282,6 +289,45 @@ function showTab(tabId) {
     }
 }
 
+async function cargarSelectorDeMicrofonos() {
+  // Buscamos el selector en tu HTML de Configuración
+  // Asegúrate de que en tu index.html el select de mics tenga id="micSelect" o cámbialo aquí
+  const micSelect = document.getElementById("micSelect") || document.getElementById("audioSource");
+  if (!micSelect) return;
+
+  try {
+    // Pedimos un permiso rápido para poder leer los nombres reales de los dispositivos
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // Listamos los aparatos de audio conectados
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const microphones = devices.filter(device => device.kind === 'audioinput');
+
+    micSelect.innerHTML = "";
+
+    microphones.forEach((mic, index) => {
+      const option = document.createElement("option");
+      option.value = mic.deviceId;
+      option.textContent = mic.label || `Micrófono Alternativo ${index + 1}`;
+      micSelect.appendChild(option);
+    });
+
+    // Guardar la elección del usuario cuando cambie de micrófono
+    micSelect.addEventListener("change", (e) => {
+      selectedMicrophoneId = e.target.value;
+      console.log("🔄 Dispositivo de entrada cambiado a:", selectedMicrophoneId);
+      
+      // Si el afinador o el karaoke están activos, reiniciamos el flujo con el nuevo micrófono
+      if (window.audioStream) {
+        iniciarCapturaMicrofono();
+      }
+    });
+
+  } catch (err) {
+    console.error("No se pudieron listar los micrófonos:", err);
+  }
+}
+
 // ==========================================
 // AFINADOR
 // ==========================================
@@ -306,25 +352,50 @@ async function toggleRecording() {
   }
 }
 
+// --- VARIABLES GLOBALES DE APOYO PARA ESTABILIZACIÓN (Ponlas arriba de startAfinador) ---
+let pitchSmoothingHistory = [];
+const PITCH_SMOOTHING_FACTOR = 6; // Promedia los últimos 6 frames para eliminar saltos bruscos
+
 async function startAfinador() {
   audioContext = new AudioContext();
 
-  stream = await navigator.mediaDevices.getUserMedia({
+  // MEJORA 1: Restricciones profesionales de micrófono e integración con selector global
+  const constraints = {
     audio: {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false
+      // Si tienes un micrófono seleccionado en configuración, lo usa; si no, usa el predeterminado
+      deviceId: window.selectedMicrophoneId ? { exact: window.selectedMicrophoneId } : undefined,
+      echoCancellation: true,    // Evita el acople destructivo del altavoz
+      noiseSuppression: true,    // Limpia ruidos de ventiladores o estática de la PC
+      autoGainControl: false,    // Mantiene la dinámica real de tu voz para un análisis limpio
+      latency: { ideal: 0.005 }  // Pide al sistema la latencia más baja posible
     }
-  });
+  };
 
-  const mic = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
-  mic.connect(analyser);
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const mic = audioContext.createMediaStreamSource(stream);
+    
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    
+    mic.connect(analyser);
 
-  setTimeout(() => {
-    detectPitch();
-  }, 300);
+    // Reiniciamos el historial de suavizado al encender el afinador
+    pitchSmoothingHistory = [];
+
+    setTimeout(() => {
+      detectPitch();
+    }, 300);
+  } catch (error) {
+    console.error("Error al acceder al micrófono en el afinador:", error);
+    alert("❌ No se pudo acceder al micrófono. Por favor verifica los permisos.");
+    state.isRecording = false;
+    const btn = $("recordBtn");
+    if (btn) {
+      btn.textContent = "Iniciar";
+      btn.classList.remove("recording");
+    }
+  }
 }
 
 function stopAfinador() {
@@ -335,12 +406,28 @@ function stopAfinador() {
 function detectPitch() {
   if (!state.isRecording || !analyser) return;
 
-  // Usamos el buffer global en lugar de crear uno nuevo cada 16ms
+  // Extraemos los datos de tiempo de audio en el buffer global
   analyser.getFloatTimeDomainData(pitchBuffer);
-  const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
+  let rawPitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
   
+  // MEJORA 2: Filtrado y algoritmo de suavizado para estabilizar la nota
+  let pitch = -1;
+  
+  // Rango seguro de voz humana para cantar (Filtra ruidos de fondo graves o agudos fantasma)
+  if (rawPitch !== -1 && rawPitch >= 50 && rawPitch <= 1200) {
+    pitchSmoothingHistory.push(rawPitch);
+    if (pitchSmoothingHistory.length > PITCH_SMOOTHING_FACTOR) {
+      pitchSmoothingHistory.shift();
+    }
+    // Calculamos el promedio matemático de las frecuencias estables
+    const suma = pitchSmoothingHistory.reduce((a, b) => a + b, 0);
+    pitch = suma / pitchSmoothingHistory.length;
+  } else {
+    // Si la señal es silencio o ruido, vaciamos gradualmente el historial para no congelar la nota vieja
+    pitchSmoothingHistory.shift();
+  }
+
   if (document.getElementById("karaokeCanvas")) {
-    // Asegúrate de que esta función esté definida o comentada para evitar errores
     if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(0, pitch); 
   }
 
@@ -350,43 +437,46 @@ function detectPitch() {
   const targetNote = targetNoteEl ? targetNoteEl.value : "E2";
 
   if (display && guide) {
-    if (pitch !== -1) {
+    if (pitch !== -1 && pitchSmoothingHistory.length >= 2) { // Requiere consistencia mínima para pintar
       const noteFull = getNoteFromFrequency(pitch);
       const targetFreq = getNoteFrequency(targetNote);
+      
       // Evitar logaritmo de 0 o infinito
       const cents = 1200 * Math.log2(pitch / targetFreq);
 
       display.textContent = noteFull;
 
-      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
+      // MEJORA 3: Conexión en vivo con el elemento HTML de configuración
+      const difficultyEl = $("difficultyLevel");
+      const dificultad = difficultyEl ? difficultyEl.value : (localStorage.getItem("singIt_difficulty") || "medio");
+      
       let maxDesviation = 30;
-        if (dificultad === "facil") maxDesviation = 50;
-        else if (dificultad === "dificil") maxDesviation = 15;
-        else if (dificultad === "experto") maxDesviation = 5;
+      if (dificultad === "facil") maxDesviation = 50;
+      else if (dificultad === "dificil") maxDesviation = 15;
+      else if (dificultad === "experto") maxDesviation = 5;
         
-        // Asegúrate de que las llaves envuelven correctamente cada bloque
-        if (Math.abs(cents) <= maxDesviation) {
-            display.style.color = "#22c55e"; 
-            guide.textContent = `🎯 ¡En la nota! (${targetNote})`;
-            guide.style.color = "#22c55e";
-        } else if (cents < 0) {
-            display.style.color = "#f59e0b";
-            guide.textContent = `⬆️ Estás grave. Sube a ${targetNote}`;
-            guide.style.color = "#f59e0b";
-        } else {
-            display.style.color = "#f59e0b";
-            guide.textContent = `⬇️ Estás agudo. Baja a ${targetNote}`;
-            guide.style.color = "#f59e0b";
-        }
+      if (Math.abs(cents) <= maxDesviation) {
+        display.style.color = "#22c55e"; 
+        guide.textContent = `🎯 ¡En la nota! (${targetNote})`;
+        guide.style.color = "#22c55e";
+      } else if (cents < 0) {
+        display.style.color = "#f59e0b";
+        guide.textContent = `⬆️ Estás grave. Sube a ${targetNote}`;
+        guide.style.color = "#f59e0b";
+      } else {
+        display.style.color = "#f59e0b";
+        guide.textContent = `⬇️ Estás agudo. Baja a ${targetNote}`;
+        guide.style.color = "#f59e0b";
+      }
     } else {
       display.textContent = "--";
       display.style.color = "white";
       guide.textContent = "🎤 Esperando voz...";
+      guide.style.color = "var(--text-muted)";
     }
   }
   requestAnimationFrame(detectPitch);
 }
-
 function getNoteFromFrequency(freq) {
   const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const A4 = 440;
