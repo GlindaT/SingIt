@@ -1784,33 +1784,16 @@ function cargarLetrasEnMonitor() {
   container.innerHTML = "";
 
   if (!Array.isArray(transcriptionSegments) || transcriptionSegments.length === 0) {
-    container.innerHTML = `<p class="karaoke-placeholder" style="font-size:18px; text-align: center; width: 100%;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz o selecciona una canción lista.</p>`;
+    container.innerHTML = `<p class="karaoke-placeholder" style="font-size:18px;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz y vuelve aquí para ver la letra.</p>`;
     return;
   }
 
-  // --- SOLUCIÓN DE RAÍZ: Creamos una caja contenedora vertical pura ---
-  // Esto anula cualquier regla flexible o inline que herede "karaokeLiveLyrics" desde el CSS.
-  const cajaVertical = document.createElement("div");
-  cajaVertical.style.display = "flex";
-  cajaVertical.style.flexDirection = "column";
-  cajaVertical.style.gap = "20px";              // Separación elegante entre líneas
-  cajaVertical.style.width = "100%";
-  cajaVertical.style.textAlign = "center";       // Centra todo como un karaoke real
-  cajaVertical.style.padding = "10px 0";
-
+  // Mantenemos tu flujo original de bloque horizontal para el subtítulo del juego
   transcriptionSegments.forEach((seg) => {
     const p = document.createElement("p");
     p.className = "karaoke-live-line";
     p.dataset.start = Number(seg.start || 0);
     p.dataset.end = Number(seg.end || 0);
-
-    // Forzamos que cada oración actúe como bloque independiente y tenga excelente visibilidad
-    p.style.display = "block"; 
-    p.style.fontSize = "26px";
-    p.style.fontWeight = "bold";
-    p.style.margin = "0 auto";
-    p.style.lineHeight = "1.5";
-    p.style.color = "var(--text-main)";
 
     const words = Array.isArray(seg.words) ? seg.words : [];
 
@@ -1820,8 +1803,6 @@ function cargarLetrasEnMonitor() {
         span.className = "karaoke-live-word";
         span.dataset.start = Number(wordObj.start || 0);
         span.dataset.end = Number(wordObj.end || 0);
-        // style inline-block evita que las palabras individuales se rompan a mitad de renglón de forma fea
-        span.style.display = "inline-block"; 
         span.textContent = (wordObj.word || "") + (index < words.length - 1 ? " " : "");
         p.appendChild(span);
       });
@@ -1829,13 +1810,10 @@ function cargarLetrasEnMonitor() {
       p.textContent = (seg.text || "").trim();
     }
 
-    // Agregamos el párrafo a nuestra nueva caja vertical estructurada
-    cajaVertical.appendChild(p);
+    container.appendChild(p);
   });
-
-  // Finalmente metemos la caja con estructura vertical dentro del contenedor original
-  container.appendChild(cajaVertical);
 }
+
 async function startKaraokeRecording() {
   const track = $("karaokeTrack");
 
