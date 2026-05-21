@@ -68,7 +68,7 @@ function safeAdd(id, event, handler) {
 // ==========================================
 function initDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open("VocalAppDB", 1);
+    const request = indexedDB.open("SingItDB", 1);
 
     request.onupgradeneeded = function (event) {
       const database = event.target.result;
@@ -340,7 +340,7 @@ function detectPitch() {
 
       display.textContent = noteFull;
 
-      const dificultad = localStorage.getItem("vocalApp_difficulty") || "medio";
+      const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
       let maxDesviation = 30;
         if (dificultad === "facil") maxDesviation = 50;
         else if (dificultad === "dificil") maxDesviation = 15;
@@ -2237,11 +2237,11 @@ function saveSetting(key, element) {
 
 function initSettings() {
   const settings = {
-    micCount: "vocalApp_micCount",
-    karaokeStage: "vocalApp_stage",
-    difficultyLevel: "vocalApp_difficulty",
-    userVoiceType: "vocalApp_voiceType",
-    appTheme: "vocalApp_theme"
+    micCount: "singIt_micCount",
+    karaokeStage: "singIt_stage",
+    difficultyLevel: "singIt_difficulty",
+    userVoiceType: "singIt_voiceType",
+    appTheme: "singIt_theme"
   };
 
   Object.entries(settings).forEach(([id, storageKey]) => {
@@ -2265,7 +2265,7 @@ function initSettings() {
   });
 
   // Aplicar tema guardado al iniciar
-  applyAppTheme(localStorage.getItem("vocalApp_theme") || "oscuro");
+  applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
 }
 
 function applyAppTheme(theme) {
@@ -2311,7 +2311,7 @@ async function loadAvailableMics() {
       }
 
       // Cargar selección guardada
-      const savedMic1 = localStorage.getItem("vocalApp_mic1");
+      const savedMic1 = localStorage.getItem("singIt_mic1");
       if (savedMic1) mic1Select.value = savedMic1;
     }
 
@@ -2329,7 +2329,7 @@ async function loadAvailableMics() {
       }
 
       // Cargar selección guardada
-      const savedMic2 = localStorage.getItem("vocalApp_mic2");
+      const savedMic2 = localStorage.getItem("singIt_mic2");
       if (savedMic2) mic2Select.value = savedMic2;
     }
 
@@ -2456,7 +2456,7 @@ function stopMicTest() {
 
 function saveMicSelection(micNumber) {
   const selectId = micNumber === 1 ? "mic1Select" : "mic2Select";
-  const storageKey = micNumber === 1 ? "vocalApp_mic1" : "vocalApp_mic2";
+  const storageKey = micNumber === 1 ? "singIt_mic1" : "singIt_mic2";
 
   const select = $(selectId);
   if (select) {
