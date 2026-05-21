@@ -1120,35 +1120,36 @@ async function transcribeSelectedVoice() {
     if (lyricsText) {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
-
-     // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
-    // --- NUEVO GUARDADO INTELIGENTE VINCULADO A LA PISTA INSTRUMENTAL ---
-    // Intentamos obtener el ID de la pista instrumental que está seleccionada en el Estudio
+      
     const studioTrackSelect = $("studioTrackSelect");
     const selectedTrackId = studioTrackSelect ? Number(studioTrackSelect.value) : null;
 
     if (selectedTrackId && !isNaN(selectedTrackId)) {
-      // 1. SI HAY UNA PISTA SELECCIONADA: Le guardamos la letra sincronizada a la pista (Fondo Musical)
-      try {
-        await updateLibraryItem(selectedTrackId, {
-          transcription: baseTranscriptionSegments
-        });
-        console.log(`✅ Sincronización guardada con éxito en la PISTA Instrumental (ID: ${selectedTrackId})`);
-        alert("🎯 ¡Excelente! La letra se ha sincronizado y guardado en el archivo de la PISTA. Ya puedes cantarla en el Karaoke.");
-      } catch (err) {
-        console.error("❌ Error guardando transcripción en la Pista:", err);
-      }
+        // 1. SI HAY UNA PISTA SELECCIONADA: Le guardamos la letra sincronizada a la pista (Fondo Musical)
+        try {
+            await updateLibraryItem(selectedTrackId, {
+                transcription: baseTranscriptionSegments
+            });
+            
+            console.log(`✅ Sincronización guardada con éxito en la PISTA Instrumental (ID: ${selectedTrackId})`);
+            alert("🎯 ¡Excelente! La letra se ha sincronizado y guardado en el archivo de la PISTA. Ya puedes cantarla en el Karaoke.");
+        } catch (err) {
+            console.error("❌ Error guardando transcripción en la Pista:", err);
+        }
+    
     } else if (selectedVoiceId) {
-      // 2. RESPALDO: Si no hay pista de fondo, lo guardamos en la voz para no perder los datos
-      try {
-        await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments
-        });
-        console.log(`⚠️ Guardado en el archivo de VOZ porque no se detectó ninguna pista instrumental de fondo seleccionada.`);
-      } catch (err) {
-        console.error("❌ Error guardando transcripción en la Voz:", err);
-      }
+        // 2. RESPALDO Si no hay pista de fondo, lo guardamos en la voz para no perder los datos
+        try {
+            await updateLibraryItem(selectedVoiceId, {
+                transcription: baseTranscriptionSegments
+            });
+            console.log(`⚠️ Guardado en el archivo de VOZ porque no se detectó ninguna pista instrumental de fondo seleccionada.`);
+        } catch (err) {
+            console.error("❌ Error guardando transcripción en la Voz:", err);
+        }
     }
+  }
+}
 
 // ==========================================
 // FUNCIONES AUXILIARES AUDIO
