@@ -3555,7 +3555,7 @@ async function loadMyKaraokeSongs() {
             <div style="text-align: center; padding: 20px; color: var(--text-muted);">
               <p>No tienes canciones listas aún.</p>
               <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
-            </div>
+              </div>
             `;
             return;
         }
@@ -3578,8 +3578,7 @@ async function loadMyKaraokeSongs() {
               <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
               <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
               </div>
-              `;
-            
+            `;
             container.appendChild(div);
         });
         
@@ -3597,6 +3596,7 @@ async function loadMyKaraokeSongs() {
                 }
             });
         });
+    
     } catch (error) {
         console.error("Error cargando mis canciones:", error);
         container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
