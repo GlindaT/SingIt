@@ -3801,49 +3801,63 @@ async function loadMyKaraokeSongs() {
 }
 
 async function loadKaraokeSong(id) {
-    try {
-        const song = await getLibraryItemById(id);
-        if (!song) {
-            alert("⚠️ Canción no encontrada");
-            return;
-        }
-        
-        const track = $("karaokeTrack");
-        if (track && song.audioBlob) {
-            
-            // MEJORA DE MEMORIA Liberamos la URL anterior si existía 
-            if (currentKaraokeObjectURL) {
-                URL.revokeObjectURL(currentKaraokeObjectURL);
-            }
-            
-            // Creamos la nueva URL y la guardamos en la variable de control
-            currentKaraokeObjectURL = URL.createObjectURL(song.audioBlob);
-            track.src = currentKaraokeObjectURL;
-            
-            track.volume = 0.4;
-            karaokeSelectedTrackBlob = song.audioBlob;
-            karaokeSelectedTrackName = song.name;
-            
-            // Cargar transcripción
-            
-            if (song.transcription && song.transcription.length > 0) {
-            transcriptionSegments = song.transcription;
-            baseTranscriptionSegments = song.transcription;
-            cargarLetrasEnMonitor();
-            }
-        }
-        
-        const title = song.metadata?.title || song.name;
-        $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
-        
-        // Scroll al monitor
-        $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
-    } catch (error) {
-        console.error("Error cargando canción:", error);
-        alert("❌ Error al cargar la canción");
+  console.log("📂 loadKaraokeSong ejecutándose para ID:", id);
+  
+  try {
+    const song = await getLibraryItemById(id);
+    if (!song) {
+      alert("⚠️ No se pudo encontrar el archivo de la canción.");
+      return;
     }
-}
 
+    // --- ADAPTADOR INTELIGENTE DE REPRODUCTOR ---
+    // Localizamos el reproductor de audio principal de tu pestaña Karaoke.
+    // Revisa si en tu app se llama "player", "karaokeAudioPlayer" o "audioPlayer"
+    const player = $("player") || document.getElementById("karaokeAudioPlayer") || document.getElementById("audioPlayer");
+
+    if (player) {
+      // Convertimos el audio guardado (Blob) en una URL ejecutable para el navegador
+      const audioURL = URL.createObjectURL(song.audioBlob);
+      player.src = audioURL;
+      
+      // Intentamos reproducir el audio automáticamente
+      player.play().catch(e => {
+        console.log("🔊 El audio está cargado. Presiona 'Reproducir' en la interfaz para iniciar.");
+      });
+    } else {
+      console.warn("⚠️ No se encontró la etiqueta <audio> en el HTML del Karaoke.");
+    }
+
+    // --- EXTRACCIÓN Y EXTRAVIADO DE LETRAS ---
+    // Pasamos la letra guardada a las variables globales que lee tu Canvas y tu Monitor
+    if (Array.isArray(song.transcription) && song.transcription.length > 0) {
+      baseTranscriptionSegments = song.transcription;
+      transcriptionSegments = [...baseTranscriptionSegments];
+      
+      console.log(`✨ Letras cargadas con éxito: ${transcriptionSegments.length} frases.`);
+    } else {
+      baseTranscriptionSegments = [];
+      transcriptionSegments = [];
+      console.warn("⚠️ Esta canción no tiene un mapa de transcripción o tiempos guardado.");
+    }
+
+    // --- REFRESCO GRÁFICO ---
+    // Forzamos a la app a redibujar el pentagrama/canvas y las líneas de subtítulos
+    if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+    
+    // Si tienes un canvas de fondo o juego, lo inicializamos o reseteamos aquí
+    if (typeof resetKaraokeGame === "function") {
+      resetKaraokeGame();
+    }
+
+    console.log(`🎤 ¡Flujo de carga completado para: "${song.name}"!`);
+
+  } catch (error) {
+    console.error("❌ Error crítico dentro de loadKaraokeSong:", error);
+    alert("No se pudo inicializar el reproductor de Karaoke.");
+  }
+}
 function loadVoiceOptionsInStudio() {
     // Cuando la app intente llamar al nombre viejo, la redirigimos silenciosamente a la nueva función corregida
     if (typeof loadMyVoicesInStudio === "function") {
