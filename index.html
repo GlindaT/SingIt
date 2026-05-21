@@ -227,20 +227,45 @@
 
 <!-- BIBLIOTECA -->
 <section id="biblioteca" class="tab">
-  <h1>📁 Biblioteca</h1>
-
-  <!-- NUEVOS BOTONES DE CARPETA -->
-  <div class="folder-controls">
-    <button class="folder-btn" onclick="renderLibrary('todos')">📂 Todos</button>
-    <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
-    <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
-    <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
-    <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+  <h1>📚 Mi Biblioteca de Medios</h1>
+  
+  <div class="card">
+    <h3>📥 Importar archivo local (Ahorro de API)</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
+      Sube tus archivos instrumentales o de voces directamente desde tu PC sin gastar saldo de IA.
+    </p>
+    
+    <div style="margin-bottom: 12px;">
+      <label for="libraryFileName" style="display:block; margin-bottom:5px; font-weight:bold;">🏷️ Nombre de la canción/audio:</label>
+      <input type="text" id="libraryFileName" placeholder="Ej: Bohemian Rhapsody - Queen">
+    </div>
+    
+    <div style="margin-bottom: 12px;">
+      <label for="libraryFileType" style="display:block; margin-bottom:5px; font-weight:bold;">📁 Tipo de archivo:</label>
+      <select id="libraryFileType" style="width: 100%; padding: 10px; border-radius: 8px; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border);">
+        <option value="pista">🎵 Pista (Instrumental de fondo)</option>
+        <option value="voz">🎤 Voz (Solo voz / Acapella)</option>
+      </select>
+    </div>
+    
+    <div style="margin-bottom: 15px;">
+      <label for="libraryFileInput" style="display:block; margin-bottom:5px; font-weight:bold;">🎵 Selecciona archivo de audio (MP3, WAV, M4A...):</label>
+      <input type="file" id="libraryFileInput" accept="audio/*">
+    </div>
+    
+    <button type="button" id="saveManualFileBtn" style="width: 100%; background: #3b82f6; color: white;">💾 Guardar directamente en Biblioteca</button>
   </div>
 
   <div class="card">
-    <h3>Archivos guardados</h3>
-    <div id="libraryList"></div>
+    <h3>📂 Mis Archivos Guardados</h3>
+    <div style="display:flex; gap:10px; margin-bottom: 15px;">
+      <button type="button" onclick="renderLibrary('todos')">📁 Todo</button>
+      <button type="button" onclick="renderLibrary('pista')">🎵 Pistas</button>
+      <button type="button" onclick="renderLibrary('voz')">🎤 Voces</button>
+    </div>
+    <div id="libraryList">
+      <p>Cargando archivos...</p>
+    </div>
   </div>
 </section>
 
