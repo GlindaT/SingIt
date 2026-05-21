@@ -5,6 +5,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         console.log("Database Ready");
         // Cargar vistas iniciales
         renderLibrary();
+        const saveManualBtn = document.getElementById("saveManualFileBtn");
+        if (saveManualBtn) {
+            saveManualBtn.addEventListener("click", saveManualFileToLibrary);
+        }
         const encabezados = document.querySelectorAll('.encabezado-desplegable');
         encabezados.forEach(encabezado => {
             encabezado.addEventListener('click', () => {
@@ -788,37 +792,41 @@ async function saveManualFileToLibrary() {
   const nameInput = $("libraryFileName");
 
   const file = fileInput ? fileInput.files[0] : null;
-  const type = typeSelect ? typeSelect.value : "audio";
+  const type = typeSelect ? typeSelect.value : "pista";
   const customName = nameInput ? nameInput.value.trim() : "";
 
   if (!file) {
-    alert("⚠️ Selecciona un archivo de audio");
+    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
     return;
   }
 
   const finalName = customName || file.name;
 
   try {
+    // Guardamos en la IndexedDB con la estructura correcta
     await addLibraryItem({
       name: finalName,
       type: type,
       audioBlob: file,
-      date: new Date().toLocaleString("es-ES")
+      date: new Date().toLocaleString("es-ES"),
+      transcription: [] // Inicializa vacío para evitar fallos de lectura posterior
     });
 
-    await loadLibrary();
-
+    // Limpiamos el formulario
     if (fileInput) fileInput.value = "";
     if (nameInput) nameInput.value = "";
     if (typeSelect) typeSelect.value = "pista";
 
-    alert("✅ Archivo guardado en Biblioteca");
+    alert("✅ ¡Archivo guardado exitosamente de forma local!");
+    
+    // Forzamos el redibujado de la tabla/lista en la vista actual
+    await renderLibrary(type);
+    
   } catch (error) {
     console.error(error);
-    alert("❌ No se pudo guardar el archivo");
+    alert("❌ No se pudo guardar el archivo en la base de datos local.");
   }
 }
-
 async function loadTrackOptionsInStudio() {
   const select = $("studioTrackSelect");
   if (!select) return;
@@ -853,9 +861,7 @@ async function loadSelectedTrackFromLibraryStudio() {
   const status = $("studioStatus");
 
   if (!select || !player || !status) return;
-
   const selectedId = Number(select.value);
-
   if (!selectedId) {
     alert("⚠️ Selecciona una pista");
     return;
@@ -863,13 +869,17 @@ async function loadSelectedTrackFromLibraryStudio() {
 
   try {
     const item = await getLibraryItemById(selectedId);
-
     if (!item) {
       alert("⚠️ No se encontró la pista");
       return;
     }
 
     studioTrackFileName = item.name;
+    
+    // --- NUEVA LÍNEA CLAVE ---
+    // Guardamos una referencia global del blob de la pista actual del estudio
+    window.studioSelectedTrackBlob = item.audioBlob; 
+    
     player.src = URL.createObjectURL(item.audioBlob);
     status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
   } catch (error) {
@@ -1071,26 +1081,33 @@ async function transcribeSelectedVoice() {
     }
 
      // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
-    if (selectedVoiceId) {
+    // --- NUEVO GUARDADO INTELIGENTE VINCULADO A LA PISTA INSTRUMENTAL ---
+    // Intentamos obtener el ID de la pista instrumental que está seleccionada en el Estudio
+    const studioTrackSelect = $("studioTrackSelect");
+    const selectedTrackId = studioTrackSelect ? Number(studioTrackSelect.value) : null;
+
+    if (selectedTrackId && !isNaN(selectedTrackId)) {
+      // 1. SI HAY UNA PISTA SELECCIONADA: Le guardamos la letra sincronizada a la pista (Fondo Musical)
+      try {
+        await updateLibraryItem(selectedTrackId, {
+          transcription: baseTranscriptionSegments
+        });
+        console.log(`✅ Sincronización guardada con éxito en la PISTA Instrumental (ID: ${selectedTrackId})`);
+        alert("🎯 ¡Excelente! La letra se ha sincronizado y guardado en el archivo de la PISTA. Ya puedes cantarla en el Karaoke.");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la Pista:", err);
+      }
+    } else if (selectedVoiceId) {
+      // 2. RESPALDO: Si no hay pista de fondo, lo guardamos en la voz para no perder los datos
       try {
         await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments // Guardamos los tiempos y textos
+          transcription: baseTranscriptionSegments
         });
-        console.log("✅ Transcripción guardada en Biblioteca");
+        console.log(`⚠️ Guardado en el archivo de VOZ porque no se detectó ninguna pista instrumental de fondo seleccionada.`);
       } catch (err) {
-        console.error("❌ Error guardando transcripción en BD:", err);
+        console.error("❌ Error guardando transcripción en la Voz:", err);
       }
     }
-
-    if (status) {
-      status.textContent = "Estado: Transcripción completada y guardada ✅";
-    }
-  } catch (error) {
-    console.error(error);
-    alert("❌ Error al transcribir el audio.");
-    if (status) status.textContent = "Estado: Error en la transcripción";
-  }
-}
 
 // ==========================================
 // FUNCIONES AUXILIARES AUDIO
