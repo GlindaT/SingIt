@@ -3607,44 +3607,44 @@ async function loadMyKaraokeSongs() {
 let currentKaraokeObjectURL = null;
 
 async function loadKaraokeSong(id) {
-  try {
-    const song = await getLibraryItemById(id);
-    if (!song) {
-      alert("⚠️ Canción no encontrada");
-      return;
+    try {
+        const song = await getLibraryItemById(id);
+        if (!song) {
+            alert("⚠️ Canción no encontrada");
+            return;
+        }
+        
+        const track = $("karaokeTrack");
+        if (track && song.audioBlob) {
+            // --- MEJORA DE MEMORIA: Liberamos la URL anterior si existía ---
+            if (currentKaraokeObjectURL) {
+                URL.revokeObjectURL(currentKaraokeObjectURL);
+            }
+            
+            // Creamos la nueva URL y la guardamos en la variable de control
+            currentKaraokeObjectURL = URL.createObjectURL(song.audioBlob);
+            track.src = currentKaraokeObjectURL;
+            
+            track.volume = 0.4;
+            karaokeSelectedTrackBlob = song.audioBlob;
+            karaokeSelectedTrackName = song.name;
+        }
+        
+        // Cargar transcripción
+        if (song.transcription && song.transcription.length > 0) {
+            transcriptionSegments = song.transcription;
+            baseTranscriptionSegments = song.transcription;
+            cargarLetrasEnMonitor();
+        }
+        
+        const title = song.metadata?.title || song.name;
+        $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
+        
+        // Scroll al monitor
+        $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
+    
+    } catch (error) {
+        console.error("Error cargando canción:", error);
+        alert("❌ Error al cargar la canción");
     }
-    
-    const track = $("karaokeTrack");
-    if (track && song.audioBlob) {
-      // --- MEJORA DE MEMORIA: Liberamos la URL anterior si existía ---
-      if (currentKaraokeObjectURL) {
-        URL.revokeObjectURL(currentKaraokeObjectURL);
-      }
-      
-      // Creamos la nueva URL y la guardamos en la variable de control
-      currentKaraokeObjectURL = URL.createObjectURL(song.audioBlob);
-      track.src = currentKaraokeObjectURL;
-      
-      track.volume = 0.4;
-      karaokeSelectedTrackBlob = song.audioBlob;
-      karaokeSelectedTrackName = song.name;
-    }
-    
-    // Cargar transcripción
-    if (song.transcription && song.transcription.length > 0) {
-      transcriptionSegments = song.transcription;
-      baseTranscriptionSegments = song.transcription;
-      cargarLetrasEnMonitor();
-    }
-    
-    const title = song.metadata?.title || song.name;
-    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
-    
-    // Scroll al monitor
-    $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
-    
-  } catch (error) {
-    console.error("Error cargando canción:", error);
-    alert("❌ Error al cargar la canción");
-  }
 }
