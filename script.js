@@ -870,6 +870,7 @@ async function saveManualFileToLibrary() {
     alert("❌ No se pudo guardar el archivo en la base de datos local.");
   }
 }
+
 async function loadTrackOptionsInStudio() {
   const select = $("studioTrackSelect");
   if (!select) return;
@@ -1555,6 +1556,7 @@ let karaokeDuoAudioContext = null;
 let karaokeDuoAnalyser1 = null;
 let karaokeDuoAnalyser2 = null;
 let karaokeDuoAnimationId = null;
+let currentKaraokeObjectURL = null;
 
 function cargarPistaKaraoke(e) {
   const file = e.target.files[0];
@@ -3338,78 +3340,76 @@ async function handleUltrastarTxtChange(e) {
 }
 
 async function confirmUltrastarImport() {
-  if (!parsedUltrastar) {
-    alert("⚠️ Primero selecciona un archivo .txt de UltraStar");
-    return;
-  }
-  
-  const audioFile = $("ultrastarAudioFile").files[0];
-  if (!audioFile) {
-    alert("⚠️ Selecciona el archivo de audio de la canción");
-    return;
-  }
-  
-  const vocalsFile = $("ultrastarVocalsFile").files[0];
-  
-  try {
-    // Convertir notas a nuestro formato de segmentos
-    const segments = ultrastarToSegments(parsedUltrastar);
-    
-    if (segments.length === 0) {
-      alert("⚠️ No se pudieron extraer las notas del archivo");
-      return;
+    if (!parsedUltrastar) {
+        alert("⚠️ Primero selecciona un archivo .txt de UltraStar");
+        return;
     }
     
-    // Guardar pista en biblioteca
-    await addLibraryItem({
-      name: `Pista - ${parsedUltrastar.title} (${parsedUltrastar.artist})`,
-      type: "pista",
-      audioBlob: audioFile,
-      date: new Date().toLocaleString("es-ES")
-    });
-    
-    // Si hay voz separada, guardarla también
-    if (vocalsFile) {
-      await addLibraryItem({
-        name: `Voz - ${parsedUltrastar.title} (${parsedUltrastar.artist})`,
-        type: "voz",
-        audioBlob: vocalsFile,
-        date: new Date().toLocaleString("es-ES"),
-        transcription: segments
-      });
+    const audioFile = $("ultrastarAudioFile").files[0];
+    if (!audioFile) {
+        alert("⚠️ Selecciona el archivo de audio de la canción");
+        return;
     }
     
-    // Guardar como "karaoke listo"
-    await addLibraryItem({
-      name: `${parsedUltrastar.title} - ${parsedUltrastar.artist}`,
-      type: "karaoke",
-      audioBlob: audioFile,
-      vocalsBlob: vocalsFile || null,
-      date: new Date().toLocaleString("es-ES"),
-      transcription: segments,
-      metadata: {
-        title: parsedUltrastar.title,
-        artist: parsedUltrastar.artist,
-        bpm: parsedUltrastar.bpm,
-        genre: parsedUltrastar.genre,
-        language: parsedUltrastar.language,
-        year: parsedUltrastar.year
-      }
-    });
+    const vocalsFile = $("ultrastarVocalsFile").files[0];
     
-    // Actualizar biblioteca y listas
-    await renderLibrary("todos");
-    await loadMyKaraokeSongs();
-    
-    // Cerrar modal
-    closeUltrastarModal();
-    
-    alert(`✅ ¡"${parsedUltrastar.title}" importada exitosamente!\n\nLa encontrarás en "Mis Canciones" lista para cantar.`);
-    
-  } catch (error) {
-    console.error("Error importando:", error);
-    alert("❌ Error al importar la canción. Revisa la consola para más detalles.");
-  }
+    try {
+        // Convertir notas a nuestro formato de segmentos
+        const segments = ultrastarToSegments(parsedUltrastar);
+        
+        if (segments.length === 0) {
+            alert("⚠️ No se pudieron extraer las notas del archivo");
+            return;
+        }
+        
+        // Guardar pista en biblioteca
+        await addLibraryItem({
+            name: `Pista - ${parsedUltrastar.title} (${parsedUltrastar.artist})`,
+            type: "pista",
+            audioBlob: audioFile,
+            date: new Date().toLocaleString("es-ES")
+        });
+        
+        // Si hay voz separada, guardarla también
+        if (vocalsFile) {
+            await addLibraryItem({
+                name: `Voz - ${parsedUltrastar.title} (${parsedUltrastar.artist})`,
+                type: "voz",
+                audioBlob: vocalsFile,
+                date: new Date().toLocaleString("es-ES"),
+                transcription: segments
+            });
+        }
+        
+        // Guardar como "karaoke listo"
+        await addLibraryItem({
+            name: `${parsedUltrastar.title} - ${parsedUltrastar.artist}`,
+            type: "karaoke",
+            audioBlob: audioFile,
+            vocalsBlob: vocalsFile || null,
+            date: new Date().toLocaleString("es-ES"),
+            transcription: segments,
+            metadata: {
+                title: parsedUltrastar.title,
+                artist: parsedUltrastar.artist,
+                bpm: parsedUltrastar.bpm,
+                genre: parsedUltrastar.genre,
+                language: parsedUltrastar.language,
+                year: parsedUltrastar.year
+            }
+        });
+        
+        // Actualizar biblioteca y listas
+        await renderLibrary("todos");
+        await loadMyKaraokeSongs();
+        
+        // Cerrar modal
+        closeUltrastarModal();
+        alert(`✅ ¡"${parsedUltrastar.title}" importada exitosamente!\n\nLa encontrarás en "Mis Canciones" lista para cantar.`);
+    } catch (error) {
+        console.error("Error importando:", error);
+        alert("❌ Error al importar la canción. Revisa la consola para más detalles.");
+    }
 }
 
 // ==========================================
@@ -3539,73 +3539,71 @@ async function loadCatalogSong(folder, title, artist) {
 }
 
 async function loadMyKaraokeSongs() {
-  const container = $("myKaraokeList");
-  if (!container) return;
-  
-  try {
-    // Obtener canciones tipo "karaoke" de la biblioteca
-    const karaokeSongs = await getLibraryItemsByType("karaoke");
+    const container = $("myKaraokeList");
+    if (!container) return;
     
-    // También obtener voces que tengan transcripción
-    const voces = await getLibraryItemsByType("voz");
-    const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
-    
-    const allSongs = [...karaokeSongs, ...vocesConSync];
-    
-    if (allSongs.length === 0) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-          <p>No tienes canciones listas aún.</p>
-          <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    container.innerHTML = "";
-    
-    allSongs.forEach(song => {
-      const div = document.createElement("div");
-      div.className = "my-karaoke-item";
-      
-      const title = song.metadata?.title || song.name || "Sin título";
-      const artist = song.metadata?.artist || "";
-      
-      div.innerHTML = `
-        <div class="my-karaoke-item-info">
-          <p class="my-karaoke-item-title">${title}</p>
-          <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
-        </div>
-        <div class="my-karaoke-item-actions">
-          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
-          <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
-        </div>
-      `;
-      
-      container.appendChild(div);
-    });
-    
-    // Agregar eventos
-    container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
-    });
-    
-    container.querySelectorAll(".delete-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        if (confirm("¿Eliminar esta canción de tu biblioteca?")) {
-          await deleteLibraryItemFromDB(Number(btn.dataset.id));
-          await loadMyKaraokeSongs();
+    try {
+        // Obtener canciones tipo "karaoke" de la biblioteca
+        const karaokeSongs = await getLibraryItemsByType("karaoke");
+        
+        // También obtener voces que tengan transcripción
+        const voces = await getLibraryItemsByType("voz");
+        const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
+        
+        const allSongs = [...karaokeSongs, ...vocesConSync];
+        
+        if (allSongs.length === 0) {
+            container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+              <p>No tienes canciones listas aún.</p>
+              <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
+            </div>
+            `;
+            return;
         }
-      });
-    });
-    
-  } catch (error) {
-    console.error("Error cargando mis canciones:", error);
-    container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
-  }
+        
+        container.innerHTML = "";
+        
+        allSongs.forEach(song => {
+            const div = document.createElement("div");
+            div.className = "my-karaoke-item";
+            
+            const title = song.metadata?.title || song.name || "Sin título";
+            const artist = song.metadata?.artist || "";
+            
+            div.innerHTML = `
+            <div class="my-karaoke-item-info">
+              <p class="my-karaoke-item-title">${title}</p>
+              <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
+              </div>
+              <div class="my-karaoke-item-actions">
+              <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
+              <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
+              </div>
+              `;
+            
+            container.appendChild(div);
+        });
+        
+        // Agregar eventos
+        
+        container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
+            btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
+        });
+        
+        container.querySelectorAll(".delete-karaoke-btn").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                if (confirm("¿Eliminar esta canción de tu biblioteca?")) {
+                    await deleteLibraryItemFromDB(Number(btn.dataset.id));
+                    await loadMyKaraokeSongs();
+                }
+            });
+        });
+    } catch (error) {
+        console.error("Error cargando mis canciones:", error);
+        container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
+    }
 }
-
-let currentKaraokeObjectURL = null;
 
 async function loadKaraokeSong(id) {
     try {
