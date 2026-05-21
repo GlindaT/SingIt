@@ -10,6 +10,24 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (saveManualBtn) {
             saveManualBtn.addEventListener("click", saveManualFileToLibrary);
         }
+
+        // Botón Cargar Voz Seleccionada
+        const loadVoiceBtn = document.getElementById("loadSelectedVoiceBtn");
+        if (loadVoiceBtn) {
+            loadVoiceBtn.addEventListener("click", loadSelectedVoiceFromLibrary);
+        }
+
+        // Botón Transcribir con Whisper
+        const transcribeBtn = document.getElementById("transcribeVoiceBtn");
+        if (transcribeBtn) {
+            transcribeBtn.addEventListener("click", transcribeSelectedVoice);
+        }
+
+        // Botón Manual para Actualizar lista de voces
+        const refreshVoiceBtn = document.getElementById("refreshVoiceListBtn");
+        if (refreshVoiceBtn) {
+            refreshVoiceBtn.addEventListener("click", loadMyVoicesInStudio);
+        }
         const encabezados = document.querySelectorAll('.encabezado-desplegable');
         encabezados.forEach(encabezado => {
             encabezado.addEventListener('click', () => {
@@ -947,8 +965,8 @@ async function loadSelectedTrackFromLibraryStudio() {
 }
 
 async function loadMyVoicesInStudio() {
-  // Asegúrate de que el ID coincida con el select de voces en tu HTML
-  const select = document.getElementById("studioVoiceSelect") || document.getElementById("voiceSelect");
+  // Usamos el ID exacto de tu HTML: voiceLibrarySelect
+  const select = document.getElementById("voiceLibrarySelect");
   if (!select) return;
 
   try {
@@ -956,7 +974,7 @@ async function loadMyVoicesInStudio() {
     // Filtramos únicamente los archivos que guardamos como 'voz'
     const voices = allItems.filter(item => item.type === "voz");
 
-    select.innerHTML = '<option value="">-- Selecciona una Voz --</option>';
+    select.innerHTML = '<option value="">Selecciona una voz guardada</option>';
 
     if (voices.length === 0) {
       select.innerHTML += '<option value="" disabled>No hay voces guardadas</option>';
@@ -966,7 +984,6 @@ async function loadMyVoicesInStudio() {
     voices.forEach(voice => {
       const option = document.createElement("option");
       option.value = voice.id;
-      // Mostramos el nombre y la fecha de guardado para distinguirlas
       option.textContent = `${voice.name} (${voice.date || 'Sin fecha'})`;
       select.appendChild(option);
     });
@@ -975,6 +992,10 @@ async function loadMyVoicesInStudio() {
     console.error("Error al cargar las voces en el Estudio:", error);
   }
 }
+
+if (typeof selectedVoiceId === 'undefined') window.selectedVoiceId = null;
+if (typeof selectedVoiceBlob === 'undefined') window.selectedVoiceBlob = null;
+let currentVoiceObjectURL = null; // Para control de memoria RAM
 
 async function loadSelectedVoiceFromLibrary() {
   const select = $("voiceLibrarySelect");
@@ -999,24 +1020,30 @@ async function loadSelectedVoiceFromLibrary() {
       return;
     }
 
-    selectedVoiceBlob = item.audioBlob;
-    selectedVoiceId = item.id;
+    // Guardamos en el espacio global de forma segura
+    window.selectedVoiceBlob = item.audioBlob;
+    window.selectedVoiceId = item.id;
 
-    const audioURL = URL.createObjectURL(item.audioBlob);
-    player.src = audioURL;
+    // --- MEJORA DE MEMORIA RAM ---
+    // Liberamos el espacio del audio anterior para que no sature el navegador
+    if (currentVoiceObjectURL) {
+      URL.revokeObjectURL(currentVoiceObjectURL);
+    }
+
+    currentVoiceObjectURL = URL.createObjectURL(item.audioBlob);
+    player.src = currentVoiceObjectURL;
     status.textContent = `Estado: voz seleccionada -> ${item.name}`;
 
+    // --- MANEJO DE TRANSCRIPCIÓN ---
     if (Array.isArray(item.transcription) && item.transcription.length > 0) {
       baseTranscriptionSegments = item.transcription.map(seg =>
-        buildWordTimingFromSegment(seg)
+        typeof buildWordTimingFromSegment === "function" ? buildWordTimingFromSegment(seg) : seg
       );
 
-      // IMPORTANTE:
-      // aquí respetamos exactamente las líneas guardadas
       transcriptionSegments = baseTranscriptionSegments;
 
-      renderKaraokeLyrics(transcriptionSegments);
-      cargarLetrasEnMonitor();
+      if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+      if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
       if (lyricsText) {
         lyricsText.value = transcriptionSegments
@@ -1025,19 +1052,19 @@ async function loadSelectedVoiceFromLibrary() {
           .trim();
       }
 
-      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+      status.textContent = `Estado: Voz seleccionada [${item.name}] (Letras cargadas de memoria ⚡)`;
     } else {
       baseTranscriptionSegments = [];
       transcriptionSegments = [];
 
-      renderKaraokeLyrics([]);
-      cargarLetrasEnMonitor();
+      if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics([]);
+      if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
       if (lyricsText) lyricsText.value = "";
       status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error al cargar la voz en el estudio:", error);
     alert("❌ No se pudo cargar la voz seleccionada");
   }
 }
