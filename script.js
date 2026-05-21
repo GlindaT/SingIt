@@ -3626,13 +3626,14 @@ async function loadKaraokeSong(id) {
             track.volume = 0.4;
             karaokeSelectedTrackBlob = song.audioBlob;
             karaokeSelectedTrackName = song.name;
-        }
-        
-        // Cargar transcripción
-        if (song.transcription && song.transcription.length > 0) {
+            
+            // Cargar transcripción
+            
+            if (song.transcription && song.transcription.length > 0) {
             transcriptionSegments = song.transcription;
             baseTranscriptionSegments = song.transcription;
             cargarLetrasEnMonitor();
+            }
         }
         
         const title = song.metadata?.title || song.name;
@@ -3640,7 +3641,6 @@ async function loadKaraokeSong(id) {
         
         // Scroll al monitor
         $("karaokeCanvas").scrollIntoView({ behavior: "smooth", block: "center" });
-    
     } catch (error) {
         console.error("Error cargando canción:", error);
         alert("❌ Error al cargar la canción");
