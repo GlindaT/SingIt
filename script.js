@@ -3810,54 +3810,65 @@ async function loadKaraokeSong(id) {
       return;
     }
 
-    // --- ADAPTADOR INTELIGENTE DE REPRODUCTOR ---
-    // Localizamos el reproductor de audio principal de tu pestaña Karaoke.
-    // Revisa si en tu app se llama "player", "karaokeAudioPlayer" o "audioPlayer"
-    const player = $("player") || document.getElementById("karaokeAudioPlayer") || document.getElementById("audioPlayer");
+    // 1. Localizamos el reproductor real que muestra tu HTML (id="player")
+    const player = document.getElementById("player") || $("player");
 
     if (player) {
-      // Convertimos el audio guardado (Blob) en una URL ejecutable para el navegador
       const audioURL = URL.createObjectURL(song.audioBlob);
       player.src = audioURL;
       
-      // Intentamos reproducir el audio automáticamente
+      // --- CONTROLADOR DE BOTONES EN VIVO ---
+      // Vinculamos tus botones del HTML (playTrackBtn, pauseTrackBtn, stopTrackBtn) al reproductor activo
+      const playBtn = document.getElementById("playTrackBtn");
+      const pauseBtn = document.getElementById("pauseTrackBtn");
+      const stopBtn = document.getElementById("stopTrackBtn");
+
+      if (playBtn)  playBtn.onclick = () => { player.play(); console.log("▶️ Pista Iniciada"); };
+      if (pauseBtn) pauseBtn.onclick = () => { player.pause(); console.log("⏸️ Pista Pausada"); };
+      if (stopBtn)  stopBtn.onclick = () => { 
+        player.pause(); 
+        player.currentTime = 0; 
+        console.log("⏹️ Pista Detenida y Reiniciada"); 
+      };
+
+      // Intentamos arrancar la reproducción automática
       player.play().catch(e => {
-        console.log("🔊 El audio está cargado. Presiona 'Reproducir' en la interfaz para iniciar.");
+        console.log("🔊 Audio listo. Usa los botones de la interfaz para controlar.");
       });
     } else {
-      console.warn("⚠️ No se encontró la etiqueta <audio> en el HTML del Karaoke.");
+      console.warn("⚠️ No se encontró la etiqueta <audio id='player'> en el HTML.");
     }
 
-    // --- EXTRACCIÓN Y EXTRAVIADO DE LETRAS ---
-    // Pasamos la letra guardada a las variables globales que lee tu Canvas y tu Monitor
+    // 2. Extraemos las letras
     if (Array.isArray(song.transcription) && song.transcription.length > 0) {
       baseTranscriptionSegments = song.transcription;
       transcriptionSegments = [...baseTranscriptionSegments];
-      
       console.log(`✨ Letras cargadas con éxito: ${transcriptionSegments.length} frases.`);
     } else {
       baseTranscriptionSegments = [];
       transcriptionSegments = [];
-      console.warn("⚠️ Esta canción no tiene un mapa de transcripción o tiempos guardado.");
     }
 
-    // --- REFRESCO GRÁFICO ---
-    // Forzamos a la app a redibujar el pentagrama/canvas y las líneas de subtítulos
+    // 3. Renderizado Gráfico e Inyección del Monitor
     if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
-    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
     
-    // Si tienes un canvas de fondo o juego, lo inicializamos o reseteamos aquí
-    if (typeof resetKaraokeGame === "function") {
-      resetKaraokeGame();
+    // RESPALDO DE MONITOR: Si "karaokeLiveLyrics" no existe, forzamos a que busque tu lienzo dinámico
+    if (typeof cargarLetrasEnMonitor === "function") {
+      cargarLetrasEnMonitor();
+    } else if (document.getElementById("karaokeCanvas")) {
+      // Si usas un Canvas para pintar la letra abajo de las notas azules, lo despertamos aquí
+      if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(0, -1);
     }
 
-    console.log(`🎤 ¡Flujo de carga completado para: "${song.name}"!`);
+    if (typeof resetKaraokeGame === "function") resetKaraokeGame();
+
+    alert(`🎤 ¡Felicidades! "${song.name}" está montada. Usa los botones "Reproducir", "Pausar" o "Detener" para cantar.`);
 
   } catch (error) {
-    console.error("❌ Error crítico dentro de loadKaraokeSong:", error);
-    alert("No se pudo inicializar el reproductor de Karaoke.");
+    console.error("❌ Error dentro de loadKaraokeSong:", error);
   }
 }
+
 function loadVoiceOptionsInStudio() {
     // Cuando la app intente llamar al nombre viejo, la redirigimos silenciosamente a la nueva función corregida
     if (typeof loadMyVoicesInStudio === "function") {
