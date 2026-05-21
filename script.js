@@ -3822,51 +3822,43 @@ async function loadKaraokeSong(id) {
       return;
     }
 
-    // 1. DETENER EL AUDIO DEL ESTUDIO (Si se quedó encendido)
+    // Apagamos los reproductores del Estudio para evitar interferencias
     const studioPlayer = document.getElementById("player");
-    if (studioPlayer) {
-      studioPlayer.pause();
-      studioPlayer.currentTime = 0;
-    }
-
-    // 2. DETENER AUDIO DE VOZ GRABADA (Por si acaso)
+    if (studioPlayer) { studioPlayer.pause(); studioPlayer.currentTime = 0; }
+    
     const voicePlayer = document.getElementById("selectedVoicePlayer");
-    if (voicePlayer) {
-      voicePlayer.pause();
-    }
+    if (voicePlayer) voicePlayer.pause();
 
-    // 3. ASIGNAR AL NUEVO REPRODUCTOR DE KARAOKE
-    const karaokePlayer = document.getElementById("karaokePlayer");
+    // 🎯 APUNTAMOS AL REPRODUCTOR PRINCIPAL DEL JUEGO
+    const karaokeTrack = document.getElementById("karaokeTrack");
 
-    if (karaokePlayer) {
-      // Liberar memoria de URLs viejas si existían
-      if (karaokePlayer.src) {
-        URL.revokeObjectURL(karaokePlayer.src);
-      }
-
-      karaokePlayer.src = URL.createObjectURL(song.audioBlob);
+    if (karaokeTrack) {
+      if (karaokeTrack.src) URL.revokeObjectURL(karaokeTrack.src); // Limpieza de memoria
+      karaokeTrack.src = URL.createObjectURL(song.audioBlob);
       
-      // Intentamos arrancar automáticamente en la pestaña Karaoke
-      karaokePlayer.play().catch(e => {
-        console.log("🔊 Audio listo en Karaoke. Presiona Play en la barra.");
+      // Desplegamos visualmente el paso 1 abriendo su desplegable si es necesario
+      const contenidoPista = document.getElementById("contenido-pista");
+      if (contenidoPista) contenidoPista.style.display = "block";
+
+      // Arrancamos el audio automáticamente
+      karaokeTrack.play().catch(e => {
+        console.log("🔊 Audio cargado en el Paso 1. Dale Play para iniciar.");
       });
     } else {
-      console.warn("⚠️ No se encontró el elemento <audio id='karaokePlayer'> en la pestaña Karaoke.");
+      console.warn("⚠️ No se encontró la etiqueta <audio id='karaokeTrack'> en el HTML.");
     }
 
-    // 4. EXTRAER Y ASIGNAR LETRAS A VARIABLES GLOBALES
+    // Extraemos las letras
     if (Array.isArray(song.transcription) && song.transcription.length > 0) {
       baseTranscriptionSegments = song.transcription;
       transcriptionSegments = [...baseTranscriptionSegments];
-      console.log(`✨ Letras montadas para el juego: ${transcriptionSegments.length} frases.`);
+      console.log(`✨ Letras cargadas con éxito: ${transcriptionSegments.length} frases.`);
     } else {
       baseTranscriptionSegments = [];
       transcriptionSegments = [];
     }
 
-    // 5. ASOCIAR EL LOOP DE ANIMACIÓN AL NUEVO REPRODUCTOR
-    // IMPORTANTE: Asegúrate de que tu función de actualización (el loop del canvas) 
-    // use 'karaokePlayer' cuando se esté en la pestaña de Karaoke.
+    // Renderizamos los componentes gráficos del juego
     if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
     if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
     if (typeof resetKaraokeGame === "function") resetKaraokeGame();
