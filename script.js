@@ -1125,29 +1125,33 @@ async function transcribeSelectedVoice() {
     const selectedTrackId = studioTrackSelect ? Number(studioTrackSelect.value) : null;
 
     if (selectedTrackId && !isNaN(selectedTrackId)) {
-        // 1. SI HAY UNA PISTA SELECCIONADA: Le guardamos la letra sincronizada a la pista (Fondo Musical)
-        try {
-            await updateLibraryItem(selectedTrackId, {
-                transcription: baseTranscriptionSegments
-            });
-            
-            console.log(`✅ Sincronización guardada con éxito en la PISTA Instrumental (ID: ${selectedTrackId})`);
-            alert("🎯 ¡Excelente! La letra se ha sincronizado y guardado en el archivo de la PISTA. Ya puedes cantarla en el Karaoke.");
-        } catch (err) {
-            console.error("❌ Error guardando transcripción en la Pista:", err);
-        }
-    
+      try {
+        await updateLibraryItem(selectedTrackId, {
+          transcription: baseTranscriptionSegments
+        });
+        console.log(`✅ Sincronización guardada con éxito en la PISTA (ID: ${selectedTrackId})`);
+        alert("🎯 ¡Excelente! La letra se ha guardado en el archivo de la PISTA.");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la Pista:", err);
+      }
     } else if (selectedVoiceId) {
-        // 2. RESPALDO Si no hay pista de fondo, lo guardamos en la voz para no perder los datos
-        try {
-            await updateLibraryItem(selectedVoiceId, {
-                transcription: baseTranscriptionSegments
-            });
-            console.log(`⚠️ Guardado en el archivo de VOZ porque no se detectó ninguna pista instrumental de fondo seleccionada.`);
-        } catch (err) {
-            console.error("❌ Error guardando transcripción en la Voz:", err);
-        }
+      try {
+        await updateLibraryItem(selectedVoiceId, {
+          transcription: baseTranscriptionSegments
+        });
+        console.log(`⚠️ Guardado en el archivo de VOZ.`);
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la Voz:", err);
+      }
     }
+
+    if (status) {
+      status.textContent = "Estado: Transcripción completada y guardada ✅";
+    }
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al transcribir el audio.");
+    if (status) status.textContent = "Estado: Error en la transcripción";
   }
 }
 
