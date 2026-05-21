@@ -3850,3 +3850,12 @@ async function loadKaraokeSong(id) {
     console.error("❌ Error dentro de loadKaraokeSong:", error);
   }
 }
+
+function loadVoiceOptionsInStudio() {
+    console.log("⚓ Redirigiendo de forma segura loadVoiceOptionsInStudio...");
+    if (typeof loadMyVoicesInStudio === "function") {
+        loadMyVoicesInStudio();
+    } else {
+        console.warn("⚠️ loadMyVoicesInStudio no está disponible, pero evitamos el crash.");
+    }
+}
