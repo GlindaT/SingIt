@@ -1694,15 +1694,29 @@ function cargarLetrasEnMonitor() {
   container.innerHTML = "";
 
   if (!Array.isArray(transcriptionSegments) || transcriptionSegments.length === 0) {
-    container.innerHTML = `<p class="karaoke-placeholder" style="font-size:18px;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz y vuelve aquí para ver la letra.</p>`;
+    container.innerHTML = `<p class="karaoke-placeholder" style="font-size:18px;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz o selecciona una canción lista.</p>`;
     return;
   }
+
+  // 🔥 MEJORA DE DISEÑO VERTICAL: Aseguramos que el contenedor apile los bloques hacia abajo
+  container.style.display = "flex";
+  container.style.flexDirection = "column";
+  container.style.gap = "16px";          // Espacio cómodo entre frases
+  container.style.textAlign = "center";   // Centramos las frases como un karaoke real
+  container.style.width = "100%";
 
   transcriptionSegments.forEach((seg) => {
     const p = document.createElement("p");
     p.className = "karaoke-live-line";
     p.dataset.start = Number(seg.start || 0);
     p.dataset.end = Number(seg.end || 0);
+
+    // 🔥 MEJORA DE ESTILO DE LA LÍNEA: Forzamos tamaño visible y bloque independiente
+    p.style.fontSize = "24px";
+    p.style.fontWeight = "bold";
+    p.style.margin = "0 auto";
+    p.style.lineHeight = "1.4";
+    p.style.color = "var(--text-main)";
 
     const words = Array.isArray(seg.words) ? seg.words : [];
 
