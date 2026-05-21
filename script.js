@@ -1644,14 +1644,19 @@ function renderKaraokeLyrics(segments) {
 }
 
 function updateKaraokeHighlight(currentTime) {
-  const lines = document.querySelectorAll(".karaoke-line");
+  // Intentamos buscar las líneas en vivo primero, si no, las normales del juego
+  let lines = document.querySelectorAll(".karaoke-live-line");
+  if (!lines.length) {
+    lines = document.querySelectorAll(".karaoke-line");
+  }
+  
   if (!lines.length) return;
 
   let activeLine = null;
 
   lines.forEach((line) => {
-    const start = parseFloat(line.dataset.start);
-    const end = parseFloat(line.dataset.end);
+    const start = parseFloat(line.dataset.start || 0);
+    const end = parseFloat(line.dataset.end || 0);
 
     line.classList.remove("active", "past", "upcoming");
 
@@ -1664,10 +1669,12 @@ function updateKaraokeHighlight(currentTime) {
       line.classList.add("upcoming");
     }
 
-    const words = line.querySelectorAll(".karaoke-word");
+    // Buscamos las palabras dinámicamente según las clases que tenga la línea
+    const words = line.querySelectorAll(".karaoke-live-word, .karaoke-word");
+    
     words.forEach((word) => {
-      const wordStart = parseFloat(word.dataset.start);
-      const wordEnd = parseFloat(word.dataset.end);
+      const wordStart = parseFloat(word.dataset.start || 0);
+      const wordEnd = parseFloat(word.dataset.end || 0);
 
       word.classList.remove("active-word", "past-word");
 
@@ -1679,7 +1686,8 @@ function updateKaraokeHighlight(currentTime) {
     });
   });
 
-  if (activeLine && autoScrollEnabled) {
+  // El scroll automático que ya tenías programado (¡perfecto!)
+  if (activeLine && typeof autoScrollEnabled !== "undefined" && autoScrollEnabled) {
     activeLine.scrollIntoView({
       behavior: "smooth",
       block: "center"
@@ -3026,7 +3034,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadTrackOptionsInStudio();
     await loadTrackOptionsInKaraoke();
 
-    const player = $("player");
+    // 1. Escuchar al reproductor del Estudio (id="player")
+    const player = $("player") || document.getElementById("player");
     if (player) {
       player.addEventListener("timeupdate", () => {
         updateKaraokeHighlight(player.currentTime);
@@ -3036,6 +3045,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateKaraokeHighlight(player.currentTime);
       });
     }
+
+    // 🔥 NUEVO: Escuchar al reproductor exclusivo de la pestaña Karaoke (id="karaokePlayer")
+    const karaokePlayer = document.getElementById("karaokePlayer") || $("karaokePlayer");
+    if (karaokePlayer) {
+      karaokePlayer.addEventListener("timeupdate", () => {
+        updateKaraokeHighlight(karaokePlayer.currentTime);
+      });
+
+      karaokePlayer.addEventListener("ended", () => {
+        updateKaraokeHighlight(karaokePlayer.currentTime);
+      });
+    }
+
   } catch (error) {
     console.error(error);
     alert("❌ Error inicializando la app");
@@ -3810,44 +3832,57 @@ async function loadKaraokeSong(id) {
       return;
     }
 
-    // 1. Localizamos el reproductor real (id="player")
-    const player = document.getElementById("player") || $("player");
-
-    if (player) {
-      const audioURL = URL.createObjectURL(song.audioBlob);
-      player.src = audioURL;
-      
-      // Intentamos arrancar la reproducción automática
-      player.play().catch(e => {
-        console.log("🔊 Audio listo. Usa la barra del reproductor para controlar.");
-      });
-    } else {
-      console.warn("⚠️ No se encontró la etiqueta <audio id='player'> en el HTML.");
+    // 1. DETENER EL AUDIO DEL ESTUDIO (Si se quedó encendido)
+    const studioPlayer = document.getElementById("player");
+    if (studioPlayer) {
+      studioPlayer.pause();
+      studioPlayer.currentTime = 0;
     }
 
-    // 2. Extraemos las letras
+    // 2. DETENER AUDIO DE VOZ GRABADA (Por si acaso)
+    const voicePlayer = document.getElementById("selectedVoicePlayer");
+    if (voicePlayer) {
+      voicePlayer.pause();
+    }
+
+    // 3. ASIGNAR AL NUEVO REPRODUCTOR DE KARAOKE
+    const karaokePlayer = document.getElementById("karaokePlayer");
+
+    if (karaokePlayer) {
+      // Liberar memoria de URLs viejas si existían
+      if (karaokePlayer.src) {
+        URL.revokeObjectURL(karaokePlayer.src);
+      }
+
+      karaokePlayer.src = URL.createObjectURL(song.audioBlob);
+      
+      // Intentamos arrancar automáticamente en la pestaña Karaoke
+      karaokePlayer.play().catch(e => {
+        console.log("🔊 Audio listo en Karaoke. Presiona Play en la barra.");
+      });
+    } else {
+      console.warn("⚠️ No se encontró el elemento <audio id='karaokePlayer'> en la pestaña Karaoke.");
+    }
+
+    // 4. EXTRAER Y ASIGNAR LETRAS A VARIABLES GLOBALES
     if (Array.isArray(song.transcription) && song.transcription.length > 0) {
       baseTranscriptionSegments = song.transcription;
       transcriptionSegments = [...baseTranscriptionSegments];
-      console.log(`✨ Letras cargadas con éxito: ${transcriptionSegments.length} frases.`);
+      console.log(`✨ Letras montadas para el juego: ${transcriptionSegments.length} frases.`);
     } else {
       baseTranscriptionSegments = [];
       transcriptionSegments = [];
     }
 
-    // 3. Renderizado Gráfico e Inyección del Monitor
+    // 5. ASOCIAR EL LOOP DE ANIMACIÓN AL NUEVO REPRODUCTOR
+    // IMPORTANTE: Asegúrate de que tu función de actualización (el loop del canvas) 
+    // use 'karaokePlayer' cuando se esté en la pestaña de Karaoke.
     if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
-    
-    if (typeof cargarLetrasEnMonitor === "function") {
-      cargarLetrasEnMonitor();
-    } else if (document.getElementById("karaokeCanvas")) {
-      if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(0, -1);
-    }
-
+    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
     if (typeof resetKaraokeGame === "function") resetKaraokeGame();
 
   } catch (error) {
-    console.error("❌ Error dentro de loadKaraokeSong:", error);
+    console.error("❌ Error en loadKaraokeSong:", error);
   }
 }
 
