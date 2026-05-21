@@ -3690,21 +3690,26 @@ async function loadMyKaraokeSongs() {
     if (!container) return;
     
     try {
-        // Obtener canciones tipo "karaoke" de la biblioteca
+        // 1. Obtener canciones tipo "karaoke" (ej: importadas de UltraStar)
         const karaokeSongs = await getLibraryItemsByType("karaoke");
         
-        // También obtener voces que tengan transcripción
+        // 2. Obtener voces que tengan transcripción
         const voces = await getLibraryItemsByType("voz");
         const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
         
-        const allSongs = [...karaokeSongs, ...vocesConSync];
+        // 🔥 MEJORA DE UNIFICACIÓN: Obtener también las PISTAS instrumentales que ya sincronizamos en el Estudio
+        const pistas = await getLibraryItemsByType("pista");
+        const pistasConSync = pistas.filter(p => p.transcription && p.transcription.length > 0);
+        
+        // Juntamos absolutamente todo en una sola lista unificada de canciones listas
+        const allSongs = [...karaokeSongs, ...vocesConSync, ...pistasConSync];
         
         if (allSongs.length === 0) {
             container.innerHTML = `
             <div style="text-align: center; padding: 20px; color: var(--text-muted);">
               <p>No tienes canciones listas aún.</p>
-              <p style="font-size: 13px;">Importa de UltraStar o sincroniza una en Estudio.</p>
-              </div>
+              <p style="font-size: 13px;">Importa de UltraStar o sincroniza una pista o voz en la pestaña Estudio.</p>
+            </div>
             `;
             return;
         }
@@ -3715,24 +3720,28 @@ async function loadMyKaraokeSongs() {
             const div = document.createElement("div");
             div.className = "my-karaoke-item";
             
+            // Si es un archivo unificado en el Estudio, usamos iconos descriptivos para que sepa el usuario de dónde viene
+            let icono = "🎤"; 
+            if (song.type === "pista") icono = "🎵";
+            if (song.type === "karaoke") icono = "🌟";
+
             const title = song.metadata?.title || song.name || "Sin título";
             const artist = song.metadata?.artist || "";
             
             div.innerHTML = `
             <div class="my-karaoke-item-info">
-              <p class="my-karaoke-item-title">${title}</p>
-              <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
-              </div>
-              <div class="my-karaoke-item-actions">
+              <p class="my-karaoke-item-title">${icono} ${title}</p>
+              <p class="my-karaoke-item-artist">${artist || "Archivo Local Sincronizado ✨"}</p>
+            </div>
+            <div class="my-karaoke-item-actions">
               <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
               <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
-              </div>
+            </div>
             `;
             container.appendChild(div);
         });
         
-        // Agregar eventos
-        
+        // Agregar eventos (Se quedan exactamente iguales a los tuyos)
         container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
             btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
         });
@@ -3751,7 +3760,6 @@ async function loadMyKaraokeSongs() {
         container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
     }
 }
-
 async function loadKaraokeSong(id) {
     try {
         const song = await getLibraryItemById(id);
