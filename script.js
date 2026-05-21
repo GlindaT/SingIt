@@ -3615,7 +3615,7 @@ async function loadKaraokeSong(id) {
         
         const track = $("karaokeTrack");
         if (track && song.audioBlob) {
-            // --- MEJORA DE MEMORIA: Liberamos la URL anterior si existía ---
+            // --- MEJORA DE MEMORIA Liberamos la URL anterior si existía ---
             if (currentKaraokeObjectURL) {
                 URL.revokeObjectURL(currentKaraokeObjectURL);
             }
