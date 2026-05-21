@@ -827,45 +827,46 @@ async function deleteLibraryItem(id) {
 }
 
 async function saveManualFileToLibrary() {
-  const fileInput = $("libraryFileInput");
-  const typeSelect = $("libraryFileType");
-  const nameInput = $("libraryFileName");
-
-  const file = fileInput ? fileInput.files[0] : null;
-  const type = typeSelect ? typeSelect.value : "pista";
-  const customName = nameInput ? nameInput.value.trim() : "";
-
-  if (!file) {
-    alert("⚠️ Por favor, selecciona un archivo de audio primero.");
-    return;
-  }
-
-  const finalName = customName || file.name;
-
-  try {
-    // Guardamos en la IndexedDB con la estructura correcta
-    await addLibraryItem({
-      name: finalName,
-      type: type,
-      audioBlob: file,
-      date: new Date().toLocaleString("es-ES"),
-      transcription: [] // Inicializa vacío para evitar fallos de lectura posterior
-    });
-
-    // Limpiamos el formulario
-    if (fileInput) fileInput.value = "";
-    if (nameInput) nameInput.value = "";
-    if (typeSelect) typeSelect.value = "pista";
-
-    alert("✅ ¡Archivo guardado exitosamente de forma local!");
+    const fileInput = $("libraryFileInput");
+    const typeSelect = $("libraryFileType");
+    const nameInput = $("libraryFileName");
     
-    // Forzamos el redibujado de la tabla/lista en la vista actual
-    await renderLibrary(type);
+    const file = fileInput ? fileInput.files[0] : null;
+    const type = typeSelect ? typeSelect.value : "pista";
+    const customName = nameInput ? nameInput.value.trim() : "";
     
-  } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo guardar el archivo en la base de datos local.");
-  }
+    if (!file) {
+        alert("⚠️ Por favor, selecciona un archivo de audio primero.");
+        return;
+    }
+    
+    const finalName = customName || file.name;
+    
+    try {
+        // Guardamos en la IndexedDB con la estructura correcta
+        await addLibraryItem({
+            name: finalName,
+            type: type,
+            audioBlob: file,
+            date: new Date().toLocaleString("es-ES"),
+            transcription: []
+        });
+        
+        // Limpiamos el formulario
+        if (fileInput) fileInput.value = "";
+        if (nameInput) nameInput.value = "";
+        if (typeSelect) typeSelect.value = "pista";
+        
+        alert("✅ ¡Archivo guardado exitosamente de forma local!");
+        
+        // Forzamos el redibujado de la tabla/lista en la vista actual
+        
+        await renderLibrary(type);
+    
+    } catch (error) {
+        console.error(error);
+        alert("❌ No se pudo guardar el archivo en la base de datos local.");
+    }
 }
 
 async function loadTrackOptionsInStudio() {
