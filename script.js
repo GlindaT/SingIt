@@ -3810,30 +3810,16 @@ async function loadKaraokeSong(id) {
       return;
     }
 
-    // 1. Localizamos el reproductor real que muestra tu HTML (id="player")
+    // 1. Localizamos el reproductor real (id="player")
     const player = document.getElementById("player") || $("player");
 
     if (player) {
       const audioURL = URL.createObjectURL(song.audioBlob);
       player.src = audioURL;
       
-      // --- CONTROLADOR DE BOTONES EN VIVO ---
-      // Vinculamos tus botones del HTML (playTrackBtn, pauseTrackBtn, stopTrackBtn) al reproductor activo
-      const playBtn = document.getElementById("playTrackBtn");
-      const pauseBtn = document.getElementById("pauseTrackBtn");
-      const stopBtn = document.getElementById("stopTrackBtn");
-
-      if (playBtn)  playBtn.onclick = () => { player.play(); console.log("▶️ Pista Iniciada"); };
-      if (pauseBtn) pauseBtn.onclick = () => { player.pause(); console.log("⏸️ Pista Pausada"); };
-      if (stopBtn)  stopBtn.onclick = () => { 
-        player.pause(); 
-        player.currentTime = 0; 
-        console.log("⏹️ Pista Detenida y Reiniciada"); 
-      };
-
       // Intentamos arrancar la reproducción automática
       player.play().catch(e => {
-        console.log("🔊 Audio listo. Usa los botones de la interfaz para controlar.");
+        console.log("🔊 Audio listo. Usa la barra del reproductor para controlar.");
       });
     } else {
       console.warn("⚠️ No se encontró la etiqueta <audio id='player'> en el HTML.");
@@ -3852,28 +3838,15 @@ async function loadKaraokeSong(id) {
     // 3. Renderizado Gráfico e Inyección del Monitor
     if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
     
-    // RESPALDO DE MONITOR: Si "karaokeLiveLyrics" no existe, forzamos a que busque tu lienzo dinámico
     if (typeof cargarLetrasEnMonitor === "function") {
       cargarLetrasEnMonitor();
     } else if (document.getElementById("karaokeCanvas")) {
-      // Si usas un Canvas para pintar la letra abajo de las notas azules, lo despertamos aquí
       if (typeof drawKaraokeMonitor === "function") drawKaraokeMonitor(0, -1);
     }
 
     if (typeof resetKaraokeGame === "function") resetKaraokeGame();
 
-    alert(`🎤 ¡Felicidades! "${song.name}" está montada. Usa los botones "Reproducir", "Pausar" o "Detener" para cantar.`);
-
   } catch (error) {
     console.error("❌ Error dentro de loadKaraokeSong:", error);
   }
-}
-
-function loadVoiceOptionsInStudio() {
-    // Cuando la app intente llamar al nombre viejo, la redirigimos silenciosamente a la nueva función corregida
-    if (typeof loadMyVoicesInStudio === "function") {
-        loadMyVoicesInStudio();
-    } else {
-        console.warn("⚠️ loadMyVoicesInStudio aún no está definida en el script.");
-    }
 }
