@@ -2756,24 +2756,24 @@ function redoTapSync() {
 // INIT
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    await initDB();
-    initSettings();
-
-    function applyKaraokeTheme() {
-      const theme = localStorage.getItem("vocalApp_stage") || "clasico";
-      const monitor = $("karaokeLiveLyrics");
-      if (monitor) {
-        monitor.className = "karaoke-lyrics theme-" + theme;
-      }
-    }
-
-    applyKaraokeTheme();
-
-    safeAdd("karaokeStage", "change", (e) => {
-      saveSetting("vocalApp_stage", e.target);
-      applyKaraokeTheme();
-    });
+    try {
+        await initDB();
+        initSettings();
+        
+        function applyKaraokeTheme() {
+            const theme = localStorage.getItem("SingIt_stage") || "clasico";
+            const monitor = $("karaokeLiveLyrics");
+            if (monitor) {
+                monitor.className = "karaoke-lyrics theme-" + theme;
+            }
+        }
+        
+        applyKaraokeTheme();
+        
+        safeAdd("karaokeStage", "change", (e) => {
+            saveSetting("singIt_stage", e.target);
+            applyKaraokeTheme();
+        });
 
     // navegación
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
@@ -2830,11 +2830,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
       
     // Cerrar modal al hacer clic fuera
-    $("ultrastarModal")?.addEventListener("click", (e) => {
-      if (e.target.id === "ultrastarModal") {
-        closeUltrastarModal();
-      }
-    });
+      $("ultrastarModal")?.addEventListener("click", (e) => {
+          if (e.target.id === "ultrastarModal") {
+              closeUltrastarModal();
+          }
+      });
       
     // Cargar catálogo y mis canciones al iniciar
     loadKaraokeCatalog();
@@ -2854,12 +2854,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const kTrack = $("karaokeTrack");
     if (kTrack) {
-      kTrack.addEventListener("timeupdate", () => {
-        syncKaraokeMonitor(kTrack.currentTime);
-      });
+        kTrack.addEventListener("timeupdate", () => {
+            syncKaraokeMonitor(kTrack.currentTime);
+        });
     }
-
-    // splitter
+      
+      // splitter
     safeAdd("splitBtn", "click", splitAudio);
 
     // micrófonos
@@ -3615,7 +3615,8 @@ async function loadKaraokeSong(id) {
         
         const track = $("karaokeTrack");
         if (track && song.audioBlob) {
-            // --- MEJORA DE MEMORIA Liberamos la URL anterior si existía ---
+            
+            // MEJORA DE MEMORIA Liberamos la URL anterior si existía 
             if (currentKaraokeObjectURL) {
                 URL.revokeObjectURL(currentKaraokeObjectURL);
             }
