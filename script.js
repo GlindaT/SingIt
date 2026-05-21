@@ -3034,28 +3034,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadTrackOptionsInStudio();
     await loadTrackOptionsInKaraoke();
 
-    // 1. Escuchar al reproductor del Estudio (id="player")
+    // 1. Escucha al reproductor del Estudio (id="player")
     const player = $("player") || document.getElementById("player");
     if (player) {
-      player.addEventListener("timeupdate", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
-
-      player.addEventListener("ended", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
+      player.addEventListener("timeupdate", () => updateKaraokeHighlight(player.currentTime));
+      player.addEventListener("ended", () => updateKaraokeHighlight(player.currentTime));
     }
 
-    // 🔥 NUEVO: Escuchar al reproductor exclusivo de la pestaña Karaoke (id="karaokePlayer")
-    const karaokePlayer = document.getElementById("karaokePlayer") || $("karaokePlayer");
-    if (karaokePlayer) {
-      karaokePlayer.addEventListener("timeupdate", () => {
-        updateKaraokeHighlight(karaokePlayer.currentTime);
-      });
-
-      karaokePlayer.addEventListener("ended", () => {
-        updateKaraokeHighlight(karaokePlayer.currentTime);
-      });
+    // 🎯 RECTIFICACIÓN: Escucha al verdadero reproductor del Karaoke (id="karaokeTrack")
+    const karaokeTrack = document.getElementById("karaokeTrack") || $("karaokeTrack");
+    if (karaokeTrack) {
+      karaokeTrack.addEventListener("timeupdate", () => updateKaraokeHighlight(karaokeTrack.currentTime));
+      karaokeTrack.addEventListener("ended", () => updateKaraokeHighlight(karaokeTrack.currentTime));
     }
 
   } catch (error) {
