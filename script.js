@@ -53,6 +53,11 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function safeAdd(id, event, handler) {
+  const el = $(id);
+  if (el) el.addEventListener(event, handler);
+}
+
 // ==========================================
 // INICIALIZADOR DE INTERFAZ (DOM)
 // ==========================================
