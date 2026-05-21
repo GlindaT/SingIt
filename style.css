@@ -211,27 +211,6 @@ audio {
   margin-bottom: 10px;
 }
 
-#biblioteca input[type="text"], 
-#biblioteca select {
-  width: 100%;
-  background: var(--bg-main);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 11px;
-  font-size: 14px;
-  margin-top: 5px;
-  box-sizing: border-box;
-}
-
-#biblioteca button {
-  transition: transform 0.1s ease, background-color 0.2s ease;
-}
-
-#biblioteca button:active {
-  transform: scale(0.98);
-}
-
 /* ==========================================
    SCROLL PERSONALIZADO (OPCIONAL)
 ========================================== */
@@ -340,16 +319,6 @@ input[type="text"] {
 
 .karaoke-line.upcoming {
   color: var(--text-muted);
-}
-
-/* Oculta por completo la sección si tiene la clase .oculto */
-.contenido-desplegable.oculto {
-    display: none !important;
-}
-
-/* Rota la flecha 90 grados apuntando abajo cuando el menú esté desplegado */
-.flecha.rotada {
-    transform: rotate(90deg);
 }
 
 /* ==========================================
