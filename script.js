@@ -759,60 +759,76 @@ async function saveToLibrary(blob, options = {}) {
   }
 }
 
-async function renderLibrary(filter = 'todos') {
-  const container = $("libraryList");
+async function renderLibrary(filterType = 'todos') {
+  const container = document.getElementById("libraryList");
   if (!container) return;
 
-  container.innerHTML = "<p>Cargando archivos...</p>";
-
   try {
-    let library = await getAllLibraryItems();
+    container.innerHTML = "<p>Cargando archivos de la biblioteca...</p>";
+    const allItems = await getAllLibraryItems();
+    
+    // Filtrar según la pestaña o selección
+    const filtered = allItems.filter(item => {
+      if (filterType === 'todos') return true;
+      return item.type === filterType;
+    });
 
-    // Filtramos según la carpeta seleccionada
-    let filteredItems = library;
-    if (filter !== 'todos') {
-      filteredItems = library.filter(item => item.type === filter);
+    if (filtered.length === 0) {
+      container.innerHTML = `<p style="color: var(--text-muted);">No hay archivos en esta categoría (${filterType}).</p>`;
+      return;
     }
 
-    container.innerHTML = "";
+    // Generar el HTML de la lista de forma limpia
+    let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+    filtered.forEach(item => {
+      const icono = item.type === 'pista' ? '🎵' : '🎤';
+      const badgeColor = item.type === 'pista' ? '#22c55e' : '#a855f7';
+      
+      html += `
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 0; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+          <div>
+            <span style="font-size: 18px; margin-right: 8px;">${icono}</span>
+            <strong style="color: var(--text-main);">${item.name}</strong>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+              <span style="background: ${badgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 8px; text-transform: uppercase;">${item.type}</span>
+              📅 ${item.date || 'Sin fecha'}
+            </div>
+          </div>
+          <button type="button" class="btn-delete-item" data-id="${item.id}" style="background: var(--danger); color: white; padding: 6px 12px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer;">🗑️ Eliminar</button>
+        </div>
+      `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
 
-    if (filteredItems.length === 0) {
-      container.innerHTML = `<p>La carpeta '${filter}' está vacía.</p>`;
-    } else {
-      filteredItems.forEach((item) => {
-        const div = document.createElement("div");
-        div.className = "library-item card"; // Usamos la clase card para que se vea bien
-        div.style.marginBottom = "10px";
-
-        const audioURL = URL.createObjectURL(item.audioBlob);
-
-        div.innerHTML = `
-          <p><strong>${item.name}</strong></p>
-          <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
-          <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
-          <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    // Reactivar botones de borrar
-    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
+    // Asignar eventos de eliminación a los botones generados
+    container.querySelectorAll(".btn-delete-item").forEach(btn => {
       btn.addEventListener("click", async () => {
-        const id = Number(btn.dataset.id);
-        await deleteLibraryItem(id);
-        renderLibrary(filter); // Recargamos la misma vista
+        if (confirm("¿Estás seguro de que deseas eliminar este archivo permanentemente de la base de datos local?")) {
+          await deleteLibraryItemFromDB(Number(btn.dataset.id));
+          await renderLibrary(filterType);
+          
+          // Refrescamos los selectores del estudio automáticamente al eliminar
+          if (typeof loadMyTracksInStudio === "function") loadMyTracksInStudio();
+          if (typeof loadMyVoicesInStudio === "function") loadMyVoicesInStudio();
+        }
       });
     });
 
-    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
-    await loadVoiceOptionsInStudio();
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
+    // ========================================================
+    // 🔥 ENGRANJE CRÍTICO CON EL ESTUDIO 🔥
+    // ========================================================
+    // Cada vez que la biblioteca cambia, le avisamos a los selectores del Estudio que se actualicen
+    if (typeof loadMyTracksInStudio === "function") {
+        await loadMyTracksInStudio();
+    }
+    if (typeof loadMyVoicesInStudio === "function") {
+        await loadMyVoicesInStudio();
+    }
 
   } catch (error) {
-    console.error(error);
-    container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
+    console.error("Error al renderizar la biblioteca:", error);
+    container.innerHTML = `<p style="color: var(--danger);">❌ Error al cargar la biblioteca de medios.</p>`;
   }
 }
 
