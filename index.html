@@ -110,24 +110,24 @@
 </div>
 
   <div class="card">
-  <h3>Voz desde Biblioteca</h3>
+    <h3>🎤 Voz desde Biblioteca</h3>
 
-  <div class="studio-controls">
-    <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
-  </div>
+    <div class="studio-controls" style="margin-bottom: 12px;">
+      <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
+    </div>
 
-  <select id="voiceLibrarySelect">
-    <option value="">Selecciona una voz guardada</option>
-  </select>
+    <select id="voiceLibrarySelect" style="width: 100%; padding: 10px; border-radius: 8px; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border); margin-bottom: 15px;">
+      <option value="">Selecciona una voz guardada</option>
+    </select>
 
-  <div class="studio-controls">
-    <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
-    <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
-  </div>
+    <div class="studio-controls" style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button id="loadSelectedVoiceBtn" type="button" style="flex: 1; background: #3b82f6; color: white;">📥 Cargar voz</button>
+      <button id="transcribeVoiceBtn" type="button" style="flex: 1; background: #a855f7; color: white;">📝 Transcribir (Whisper)</button>
+    </div>
 
-  <audio id="selectedVoicePlayer" controls></audio>
+    <audio id="selectedVoicePlayer" controls style="width: 100%; margin-bottom: 10px;"></audio>
 
-  <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
+    <p id="selectedVoiceStatus" style="color: var(--text-muted); font-size: 14px; font-style: italic; margin-top: 5px;">Estado: ninguna voz seleccionada</p>
   </div>
 
   <div class="card">
@@ -514,13 +514,14 @@
         </div>
         
         <div class="settings-group">
-          <label for="difficultyLevel">📊 Dificultad para el Pentagrama</label>
-          <select id="difficultyLevel">
+          <label for="difficultyPentagramLevel">📊 Dificultad para el Pentagrama</label>
+          <select id="difficultyPentagramLevel">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
           </select>
         </div>
+        
         <div class="settings-group">
           <label for="appTheme">🎨 Tema de la App</label>
           <select id="appTheme">
