@@ -201,70 +201,67 @@ function getLibraryItemById(id) {
 // NAVEGACIÓN
 // ==========================================
 function showTab(tabId) {
-  // 1. Ocultar todas las pestañas quitando la clase active
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.classList.remove("active");
-  });
-
-  // 2. Mostrar la pestaña seleccionada
-  const target = $(tabId);
-  if (target) target.classList.add("active");
-
-  // 3. Desactivar todos los botones del sidebar
-  document.querySelectorAll(".sidebar button").forEach(btn => {
-    btn.classList.remove("active");
-  });
-
-  // Diccionario de mapeo de botones
-  const btnMap = {
-    afinador: "btnAfinador",
-    estudio: "btnEstudio",
-    biblioteca: "btnBiblioteca",
-    karaoke: "btnKaraoke",
-    splitter: "btnSplitter",
-    config: "btnConfig"
-  };
-
-  // 4. Activar el botón de la pestaña correspondiente
-  const activeBtn = $(btnMap[tabId]);
-  if (activeBtn) activeBtn.classList.add("active");
-
-  // ========================================================
-  // 🔥 MEJORA CRÍTICA: REFRESCAR DATOS AUTOMÁTICAMENTE 🔥
-  // ========================================================
-  try {
-    switch (tabId) {
-      case "biblioteca":
-        // Refresca la lista de archivos mostrando "todos" por defecto
-        if (typeof renderLibrary === "function") {
-          renderLibrary("todos");
+    // 1. Ocultar todas las pestañas quitando la clase active
+    document.querySelectorAll(".tab").forEach(tab => {
+        tab.classList.remove("active");
+    });
+    
+    // 2. Mostrar la pestaña seleccionada
+    const target = $(tabId);
+    if (target) target.classList.add("active");
+    
+    // 3. Desactivar todos los botones del sidebar
+    document.querySelectorAll(".sidebar button").forEach(btn => {
+        btn.classList.remove("active");
+    });
+    
+    // Diccionario de mapeo de botones
+    const btnMap = {
+        afinador: "btnAfinador",
+        estudio: "btnEstudio",
+        biblioteca: "btnBiblioteca",
+        karaoke: "btnKaraoke",
+        splitter: "btnSplitter",
+        config: "btnConfig"
+    };
+    
+    // 4. Activar el botón de la pestaña correspondiente
+    const activeBtn = $(btnMap[tabId]);
+    if (activeBtn) activeBtn.classList.add("active");
+    
+    // ========================================================
+    // 🔥 MEJORA CRÍTICA REFRESCAR DATOS AUTOMÁTICAMENTE 🔥
+    // ========================================================
+    try {
+        switch (tabId) {
+            case "biblioteca":
+                // Refresca la lista de archivos mostrando "todos" por defecto
+                if (typeof renderLibrary === "function") {
+                    renderLibrary("todos");
+                }
+                break;
+            case "estudio":
+                // Refresca los selectores de pistas y voces para que aparezca lo último guardado
+                if (typeof loadMyTracksInStudio === "function") {
+                    loadMyTracksInStudio();
+                }
+                if (typeof loadMyVoicesInStudio === "function") {
+                    loadMyVoicesInStudio();
+                }
+                break;
+            case "karaoke":
+                // Refresca el catálogo interno del karaoke con los tracks listos
+                if (typeof loadMyKaraokeSongs === "function") {
+                    loadMyKaraokeSongs();
+                }
+                break;
+            default:
+                // Pestañas como afinador, splitter o config no requieren recarga de datos de IndexedDB al entrar
+                break;
         }
-        break;
-
-      case "estudio":
-        // Refresca los selectores de pistas y voces para que aparezca lo último guardado
-        if (typeof loadMyTracksInStudio === "function") {
-          loadMyTracksInStudio();
-        }
-        if (typeof loadMyVoicesInStudio === "function") {
-          loadMyVoicesInStudio();
-        }
-        break;
-
-      case "karaoke":
-        // Refresca el catálogo interno del karaoke con los tracks listos
-        if (typeof loadMyKaraokeSongs === "function") {
-          loadMyKaraokeSongs();
-        }
-        break;
-
-      default:
-        // Pestañas como afinador, splitter o config no requieren recarga de datos de IndexedDB al entrar
-        break;
+    } catch (error) {
+        console.error(`Error al refrescar los datos de la pestaña ${tabId}:`, error);
     }
-  } catch (error) {
-    console.error(`Error al refrescar los datos de la pestaña ${tabId}:`, error);
-  }
 }
 
 // ==========================================
