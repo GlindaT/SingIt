@@ -3651,3 +3651,12 @@ async function loadKaraokeSong(id) {
         alert("❌ Error al cargar la canción");
     }
 }
+
+function loadVoiceOptionsInStudio() {
+    // Cuando la app intente llamar al nombre viejo, la redirigimos silenciosamente a la nueva función corregida
+    if (typeof loadMyVoicesInStudio === "function") {
+        loadMyVoicesInStudio();
+    } else {
+        console.warn("⚠️ loadMyVoicesInStudio aún no está definida en el script.");
+    }
+}
