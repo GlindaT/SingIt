@@ -390,6 +390,19 @@ async function toggleRecording() {
   }
 }
 
+function toggleMic2Visibility() {
+  const micCount = $("micCount");
+  const mic2Group = $("mic2Group");
+
+  if (micCount && mic2Group) {
+    if (micCount.value === "2") {
+      mic2Group.style.display = "block";
+    } else {
+      mic2Group.style.display = "none";
+    }
+  }
+}
+
 async function startAfinador() {
   audioContext = new AudioContext();
   const constraints = {
