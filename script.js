@@ -2432,6 +2432,70 @@ function redoTapSync() {
   startTapSync();
 }
 
+async function applyCorrectedLyrics() {
+  const lyricsText = $("lyricsText");
+  const status = $("selectedVoiceStatus");
+
+  if (!lyricsText) return;
+
+  const correctedText = lyricsText.value.trim();
+
+  if (!correctedText) {
+    alert("⚠️ No hay texto corregido para aplicar.");
+    return;
+  }
+
+  if (!Array.isArray(baseTranscriptionSegments) || !baseTranscriptionSegments.length) {
+    alert("⚠️ Primero transcribe una voz antes de corregir la letra.");
+    return;
+  }
+
+  const rebuiltSegments = buildSegmentsFromMultilineLyrics(
+    correctedText,
+    baseTranscriptionSegments
+  );
+
+  if (!rebuiltSegments.length) {
+    alert("⚠️ No se pudo reconstruir la letra corregida.");
+    return;
+  }
+
+  // Guardamos como nueva base la versión corregida
+  baseTranscriptionSegments = rebuiltSegments;
+
+  // Mostramos exactamente las líneas escritas por el usuario
+  transcriptionSegments = rebuiltSegments;
+
+  renderKaraokeLyrics(transcriptionSegments);
+  cargarLetrasEnMonitor();
+
+  lyricsText.value = transcriptionSegments
+    .map(seg => seg.text || "")
+    .join("\n")
+    .trim();
+
+  if (selectedVoiceId) {
+    try {
+      await updateLibraryItem(selectedVoiceId, {
+        transcription: baseTranscriptionSegments
+      });
+
+      if (status) {
+        status.textContent = "Estado: letra corregida aplicada y guardada ✅";
+      }
+    } catch (error) {
+      console.error(error);
+      if (status) {
+        status.textContent = "Estado: letra corregida aplicada, pero no se pudo guardar en BD";
+      }
+    }
+  } else {
+    if (status) {
+      status.textContent = "Estado: letra corregida aplicada ✅";
+    }
+  }
+}
+
 // ==========================================
 // MONITOR DE KARAOKE (CANVAS)
 // ==========================================
