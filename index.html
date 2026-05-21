@@ -13,12 +13,12 @@
 
   <nav class="sidebar">
     <h2>🎤 SingIt</h2>
-    <button id="btnAfinador" type="button" class="active" onclick="showTab('afinador')">Afinador</button>
-    <button id="btnEstudio" type="button" onclick="showTab('estudio')">Estudio</button>
-    <button id="btnBiblioteca" type="button" onclick="showTab('biblioteca')">Biblioteca</button>
-    <button id="btnKaraoke" type="button" onclick="showTab('karaoke')">Karaoke</button>
-    <button id="btnSplitter" type="button" onclick="showTab('splitter')">Splitter</button>
-    <button id="btnConfig" type="button" onclick="showTab('config')">Configuración</button>
+    <button id="btnAfinador" type="button">Afinador</button>
+    <button id="btnEstudio" type="button">Estudio</button>
+    <button id="btnBiblioteca" type="button">Biblioteca</button>
+    <button id="btnKaraoke" type="button">Karaoke</button>
+    <button id="btnSplitter" type="button">Splitter</button>
+    <button id="btnConfig" type="button">Configuración</button>
   </nav>
 
   <main class="content">
@@ -58,31 +58,46 @@
     <section id="estudio" class="tab">
       <h1>🎧 Estudio de Grabación</h1>
 
-      <div class="card">
-        <h3>Pista Musical de Fondo</h3>
-        <div class="studio-controls">
-          <select id="studioTrackSelect">
-            <option value="">Selecciona una pista desde Biblioteca</option>
-          </select>
-          <button id="loadStudioTrackBtn" type="button" onclick="loadSelectedTrackFromLibraryStudio()">📥 Cargar Pista</button>
-        </div>
-        <p style="color: var(--text-muted); font-size: 14px; margin-top: 15px;">O arrastra un archivo local desde tu PC:</p>
-        <input type="file" id="audioFile" accept="audio/*" onchange="cargarAudioEstudio(event)">
-        <audio id="player" controls style="width: 100%; margin-top: 10px;"></audio>
-      </div>
+<div class="card">
+  <h3>Pista musical</h3>
 
+  <div class="studio-controls">
+    <button id="refreshStudioTrackListBtn" type="button">🔄 Actualizar lista</button>
+  </div>
+
+  <select id="studioTrackSelect">
+    <option value="">Selecciona una pista desde Biblioteca</option>
+  </select>
+
+  <div class="studio-controls" style="margin-bottom: 15px;">
+    <button id="loadStudioTrackBtn" type="button">📥 Cargar pista seleccionada</button>
+  </div>
+
+  <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+  <input type="file" id="audioFile" accept="audio/*">
+
+  <audio id="player" controls></audio>
+  
       <div class="card">
-        <h3>Voz de la Biblioteca</h3>
-        <select id="voiceLibrarySelect">
-          <option value="">Selecciona una voz guardada</option>
-        </select>
-        <div class="studio-controls" style="margin-top: 10px;">
-          <button id="loadSelectedVoiceBtn" type="button">📥 Cargar Voz</button>
-          <button id="transcribeVoiceBtn" type="button" style="background: var(--accent);">📝 Transcribir con Whisper</button>
-        </div>
-        <audio id="selectedVoicePlayer" controls style="width: 100%; margin-top: 15px;"></audio>
-        <p id="selectedVoiceStatus" style="font-size: 13px; color: var(--text-muted); margin-top: 5px;">Estado: Ninguna voz seleccionada</p>
-      </div>
+  <h3>Voz desde Biblioteca</h3>
+
+  <div class="studio-controls">
+    <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
+  </div>
+
+  <select id="voiceLibrarySelect">
+    <option value="">Selecciona una voz guardada</option>
+  </select>
+
+  <div class="studio-controls">
+    <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
+    <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
+  </div>
+
+  <audio id="selectedVoicePlayer" controls></audio>
+
+  <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
+  </div>
 
       <div class="card">
         <h3>Grabación en Vivo</h3>
@@ -128,11 +143,71 @@
         <audio id="voicePlayer" controls style="width: 100%; margin-top: 15px;"></audio>
       </div>
 
-      <div class="card">
-        <h3>Letras del Archivo de Voz</h3>
-        <textarea id="lyricsText" readonly placeholder="Las letras transcritas aparecerán aquí..." style="width: 100%; height: 120px; background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: monospace; resize: vertical;"></textarea>
-      </div>
-    </section>
+      
+ <div class="card">
+  <h3>Letra</h3>
+
+  <textarea
+    id="lyricsText"
+    rows="6"
+    placeholder="Aquí vamos a mostrar o pegar la letra de la canción..."
+  ></textarea>
+
+  <div class="studio-controls">
+    <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar letra corregida</button>
+  </div>
+
+  <!-- SINCRONIZACIÓN MANUAL CON TAPS -->
+<div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <h4 style="margin: 0; color: #60a5fa;">🎯 Sincronización Manual</h4>
+    <button id="toggleAutoScrollBtn" type="button" style="background: #f59e0b; font-size: 12px; padding: 5px 10px;">🔒 Auto-scroll: ON</button>
+  </div>
+  
+  <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+    Escucha el audio y presiona TAP (o ESPACIO) cada vez que empiece una nueva línea.
+  </p>
+  
+  <div class="studio-controls" style="margin-bottom: 15px;">
+    <button id="startTapSyncBtn" type="button" style="background: #3b82f6; color: white;">▶️ Iniciar Sincronización</button>
+    <button id="cancelTapSyncBtn" type="button" style="background: #6b7280; display: none;">❌ Cancelar</button>
+  </div>
+  
+  <!-- Modo de sincronización activo -->
+  <div id="tapSyncActive" style="display: none;">
+    <div style="text-align: center; padding: 20px; background: var(--bg-main); border-radius: 8px; margin-bottom: 15px;">
+      <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0;">Línea actual:</p>
+      <p id="tapCurrentLine" style="font-size: 20px; font-weight: bold; color: #facc15; margin: 0 0 15px 0;">---</p>
+      <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 5px 0;">Progreso:</p>
+      <p id="tapProgress" style="font-size: 16px; color: #22c55e; margin: 0;">0 / 0 líneas</p>
+    </div>
+    
+    <button id="tapBeatBtn" type="button" style="width: 100%; padding: 30px; font-size: 24px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border-radius: 12px;">
+      🎵 TAP (o presiona ESPACIO)
+    </button>
+    
+    <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+      ⌨️ También puedes usar la barra espaciadora
+    </p>
+  </div>
+  
+  <!-- Resultado -->
+  <div id="tapSyncResult" style="display: none; margin-top: 15px; padding: 15px; background: #14532d; border-radius: 8px; border: 1px solid #22c55e;">
+    <p style="color: #22c55e; font-weight: bold; margin: 0 0 10px 0;">✅ ¡Sincronización completada!</p>
+    <div class="studio-controls">
+      <button id="applyTapSyncBtn" type="button" style="background: #22c55e;">✅ Aplicar tiempos</button>
+      <button id="redoTapSyncBtn" type="button" style="background: #f59e0b;">🔄 Repetir</button>
+    </div>
+  </div>
+</div>
+
+
+  <div id="karaokeLyrics" class="karaoke-lyrics">
+    <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
+  </div>
+</div>
+
+</section>
 
     <section id="biblioteca" class="tab">
       <h1>📁 Biblioteca de Medios</h1>
@@ -254,13 +329,29 @@
       </div>
     </section>
 
+    <!-- SPLITTER -->
     <section id="splitter" class="tab">
-      <h1>🎛️ Separador de Pistas Vocales (Splitter)</h1>
+      <h1>✂️ Splitter IA</h1>
+
       <div class="card">
-        <h3>Procesamiento de Audio AI</h3>
-        <p style="color: var(--text-muted);">Sección lista para implementar el desacople de voz e instrumentales de tus canciones preferidas.</p>
+        <h3>Separar Voz e Instrumental</h3>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+          Sube una canción. La Inteligencia Artificial la separará y la guardará en tu Biblioteca.
+        </p>
+
+        <input type="file" id="splitterFile" accept="audio/*">
+        
+        <div class="studio-controls">
+          <button id="splitBtn" type="button" style="background: #3b82f6; color: white;">✨ Separar Audio con IA</button>
+        </div>
+
+        <div id="splitterStatusBox" style="margin-top: 20px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border); display: none;">
+          <h4 id="splitterStatusText" style="color: var(--accent); margin: 0;">Iniciando IA...</h4>
+          <p id="splitterDetailText" style="color: var(--text-muted); font-size: 14px;">Esto puede tardar un poco.</p>
+        </div>
       </div>
     </section>
+
 
     <section id="config" class="tab">
       <h1>⚙️ Panel de Configuración</h1>
@@ -312,20 +403,6 @@
   </main>
 </div>
 
-<div id="ultrastarModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center;">
-  <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; border: 1px solid var(--border);">
-    <h3 style="margin-top: 0; color: var(--accent);">📥 Importar Archivo UltraStar</h3>
-    
-    <div style="background: var(--bg-main); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
-      <a href="https://animux.de" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;">🔗 Visitar Base de Datos de UltraStar (USDB)</a>
-      <p style="margin: 5px 0 0 0; font-size: 12px; color: var(--text-muted);">Obtén la partitura estructurada (.txt) y el archivo multimedia complementario.</p>
-    </div>
-    
-    <div class="settings-group">
-      <label>📄 Partitura de Tiempos UltraStar (.txt):</label>
-      <input type="file" id="ultrastarTxtFile" accept=".txt">
-    </div>
-    
     <div class="settings-group">
       <label>🎵 Archivo de Audio Principal (.mp3, .wav, .ogg):</label>
       <input type="file" id="ultrastarAudioFile" accept="audio/*">
@@ -335,14 +412,7 @@
       <label>🎤 Pista Vocal Aislada (Opcional):</label>
       <input type="file" id="ultrastarVocalsFile" accept="audio/*">
     </div>
-    
-    <div id="ultrastarPreview" style="display: none; background: var(--bg-main); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-      <h4 style="margin: 0 0 10px 0; color: #22c55e;">Metadatos Encontrados:</h4>
-      <p id="ultrastarTitle" style="margin: 5px 0;"><strong>Título:</strong> ---</p>
-      <p id="ultrastarArtist" style="margin: 5px 0;"><strong>Artista:</strong> ---</p>
-      <p id="ultrastarBpm" style="margin: 5px 0;"><strong>Métrica (BPM):</strong> ---</p>
-      <p id="ultrastarNotes" style="margin: 5px 0;"><strong>Nº de Notas Detectadas:</strong> ---</p>
-    </div>
+  
     
     <div class="studio-controls">
       <button id="confirmImportBtn" type="button" style="background: #22c55e;">✅ Consolidar en Biblioteca</button>
