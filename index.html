@@ -26,34 +26,53 @@
     <section id="afinador" class="tab active">
       <h1>🎵 Afinador</h1>
       
-      <div class="afinador-container">
-        <div class="settings-group">
-          <label for="targetNote">Nota objetivo:</label>
-          <select id="targetNote">
-            <option value="C2">Do 2 (C2)</option>
-            <option value="C#2">Do# 2 (C#2)</option>
-            <option value="D2">Re 2 (D2)</option>
-            <option value="D#2">Re# 2 (D#2)</option>
-            <option value="E2" selected>Mi 2 (E2)</option>
-            <option value="F2">Fa 2 (F2)</option>
-            <option value="F#2">Fa# 2 (F#2)</option>
-            <option value="G2">Sol 2 (G2)</option>
-            <option value="G#2">Sol# 2 (G#2)</option>
-            <option value="A2">La 2 (A2)</option>
-            <option value="A#2">La# 2 (A#2)</option>
-            <option value="B2">Si 2 (B2)</option>
-            <option value="C3">Do 3 (C3)</option>
-            <option value="C4">Do 4 (C4 - Central)</option>
-            <option value="A4">La 4 (A4 - 440Hz)</option>
-          </select>
-        </div>
+<div class="afinador-container">
+    <label for="targetNote">Nota objetivo:</label>
+<select id="targetNote">
+  <option value="C2">Do 2 (C2)</option>
+  <option value="C#2">Do# 2 (C#2)</option>
+  <option value="D2">Re 2 (D2)</option>
+  <option value="D#2">Re# 2 (D#2)</option>
+  <option value="E2" selected>Mi 2 (E2)</option>
+  <option value="F2">Fa 2 (F2)</option>
+  <option value="F#2">Fa# 2 (F#2)</option>
+  <option value="G2">Sol 2 (G2)</option>
+  <option value="G#2">Sol# 2 (G#2)</option>
+  <option value="A2">La 2 (A2)</option>
+  <option value="A#2">La# 2 (A#2)</option>
+  <option value="B2">Si 2 (B2)</option>
 
-        <div class="note-display" id="noteDisplay">--</div>
-        <div class="guide-text" id="guideText">🎤 Esperando voz...</div>
-        
-        <button id="recordBtn" type="button" class="btn-primary" onclick="toggleRecording()">Iniciar</button>
-      </div>
-    </section>
+  <option value="C3">Do 3 (C3)</option>
+  <option value="C#3">Do# 3 (C#3)</option>
+  <option value="D3">Re 3 (D3)</option>
+  <option value="D#3">Re# 3 (D#3)</option>
+  <option value="E3">Mi 3 (E3)</option>
+  <option value="F3">Fa 3 (F3)</option>
+  <option value="F#3">Fa# 3 (F#3)</option>
+  <option value="G3">Sol 3 (G3)</option>
+  <option value="G#3">Sol# 3 (G#3)</option>
+  <option value="A3">La 3 (A3)</option>
+  <option value="A#3">La# 3 (A#3)</option>
+  <option value="B3">Si 3 (B3)</option>
+
+  <option value="C4">Do 4 (C4)</option>
+  <option value="C#4">Do# 4 (C#4)</option>
+  <option value="D4">Re 4 (D4)</option>
+  <option value="D#4">Re# 4 (D#4)</option>
+  <option value="E4">Mi 4 (E4)</option>
+  <option value="F4">Fa 4 (F4)</option>
+  <option value="F#4">Fa# 4 (F#4)</option>
+  <option value="G4">Sol 4 (G4)</option>
+  <option value="G#4">Sol# 4 (G#4)</option>
+  <option value="A4">La 4 (A4)</option>
+  <option value="A#4">La# 4 (A#4)</option>
+  <option value="B4">Si 4 (B4)</option>
+</select>
+    <button id="recordBtn">Iniciar</button>
+    <h2 id="noteDisplay">--</h2>
+    <div id="guideText" style="font-size: 24px; font-weight: bold; margin-top: 10px;"></div>
+  </div>
+</section>
 
     <section id="estudio" class="tab">
       <h1>🎧 Estudio de Grabación</h1>
