@@ -3746,13 +3746,52 @@ async function loadMyKaraokeSongs() {
             btn.addEventListener("click", () => loadKaraokeSong(Number(btn.dataset.id)));
         });
         
+        // Botón Cantar: Vinculación directa e inmediata
+        container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
+            btn.onclick = async () => {
+                const songId = Number(btn.dataset.id);
+                console.log("🚀 Intentando cargar canción ID:", songId);
+                
+                if (typeof loadKaraokeSong === "function") {
+                    loadKaraokeSong(songId);
+                } else {
+                    // PLAN DE RESPALDO: Si por culpa de la caché el script general está inaccesible,
+                    // extraemos el archivo nosotros mismos de la DB para que NUNCA se quede congelado el botón.
+                    try {
+                        const song = await getLibraryItemById(songId);
+                        if (!song) return;
+
+                        // Localizamos tu reproductor principal
+                        const player = $("player") || document.getElementById("karaokeAudioPlayer");
+                        if (player) {
+                            player.src = URL.createObjectURL(song.audioBlob);
+                            player.play().catch(e => console.log("Audio en espera de interacción..."));
+                        }
+
+                        // Cargamos la letra en los segmentos globales
+                        baseTranscriptionSegments = song.transcription || [];
+                        transcriptionSegments = [...baseTranscriptionSegments];
+
+                        // Redibujamos la interfaz
+                        if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+                        if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+                        
+                        console.log("✅ Canción cargada con éxito mediante plan de respaldo.");
+                    } catch (err) {
+                        console.error("Error en el respaldo de carga:", err);
+                    }
+                }
+            };
+        });
+        
+        // Botón Eliminar: Conservamos tu misma estructura lógica
         container.querySelectorAll(".delete-karaoke-btn").forEach(btn => {
-            btn.addEventListener("click", async () => {
+            btn.onclick = async () => {
                 if (confirm("¿Eliminar esta canción de tu biblioteca?")) {
                     await deleteLibraryItemFromDB(Number(btn.dataset.id));
                     await loadMyKaraokeSongs();
                 }
-            });
+            };
         });
     
     } catch (error) {
@@ -3760,6 +3799,7 @@ async function loadMyKaraokeSongs() {
         container.innerHTML = `<p style="color: #ef4444;">Error al cargar canciones</p>`;
     }
 }
+
 async function loadKaraokeSong(id) {
     try {
         const song = await getLibraryItemById(id);
