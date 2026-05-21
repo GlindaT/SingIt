@@ -325,7 +325,7 @@ function showTab(tabId) {
     try {
         switch (tabId) {
             case "config":
-                cargarSelectorDeMicrofonos();
+                loadAvailableMics();
                 break;
             case "biblioteca":
                 renderLibrary("todos");
@@ -343,7 +343,7 @@ function showTab(tabId) {
     }
 }
 
-async function cargarSelectorDeMicrofonos() {
+async function loadAvailableMics() {
   const micSelect = document.getElementById("micSelect") || document.getElementById("audioSource");
   if (!micSelect) return;
 
