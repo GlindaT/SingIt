@@ -2748,7 +2748,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         arrow.classList.toggle('rotada');
       }
     });
-  }
+  });
   try {
     await initDB();
     initSettings();
