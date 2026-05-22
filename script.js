@@ -2612,7 +2612,7 @@ async function applyTapSync() {
     alert("⚠️ No hay datos de sincronización.");
     return;
   }
-  
+  const studioSelectedTrackBlob = file;
   const voicePlayer = $("selectedVoicePlayer");
   const totalDuration = voicePlayer ? voicePlayer.duration : 0;
   const status = $("selectedVoiceStatus");
