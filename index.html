@@ -275,12 +275,7 @@
       <!-- CATÁLOGO DE CANCIONES LISTAS -->
       <div class="card">
         <h3>🎤 Canciones Listas para Cantar</h3>
-        <div class="encabezado-desplegable" data-target="contenido-catalogo" data-arrow="flecha-catalogo" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-          <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
-          <span id="flecha-catalogo" class="flecha">▶</span>
-        </div>
-
-        <div id="contenido-catalogo" class="contenido-desplegable oculto" style="margin-top: 15px;">
+        
         <!-- Catálogo pre-cargado -->
         <div id="catalogSection">
           <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
@@ -303,53 +298,7 @@
           <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
         </div>
       </div>
-      <div class="card">
-        
-          <div id="catalogSection">
-            <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo Base</h4>
-            <div id="catalogList" style="max-height: 180px; overflow-y: auto;">
-              <p style="color: var(--text-muted);">Cargando canciones del sistema...</p>
-            </div>
-          </div>
-          
-          <div id="myKaraokeSongs" style="margin-top: 20px;">
-            <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Producciones Sincronizadas</h4>
-            <div id="myKaraokeList" style="max-height: 180px; overflow-y: auto;">
-              <p style="color: var(--text-muted);">No se detectan pistas en tu biblioteca personal.</p>
-            </div>
-          </div>
-          
-          <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
-            <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar Formato UltraStar (.txt)</button>
-            <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Refrescar Listas</button>
-          </div>
-        </div>
-      </div>
       
-      <div class="card">
-        <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-          <h3 style="margin: 0;">1. Reproductor de Pista Instrumental</h3>
-          <span id="flecha-pista" class="flecha">▶</span>
-        </div>
-        
-        <div id="contenido-pista" class="contenido-desplegable" style="margin-top: 15px;">
-          <div class="studio-controls">
-            <button id="refreshKaraokeTrackBtn" type="button">🔄 Buscar Pistas Nuevas</button>
-          </div>
-          <select id="karaokeTrackSelect" style="width: 100%; margin: 10px 0;">
-            <option value="">Selecciona un archivo instrumental...</option>
-          </select>
-          <div class="studio-controls" style="margin-bottom: 15px;">
-            <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar en Consola</button>
-          </div>
-
-          <p style="color: var(--text-muted); font-size: 14px;">O monta una pista externa desde tu dispositivo:</p>
-          <input type="file" id="karaokeTrackFile" accept="audio/*">
-          
-          <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
-        </div>
-      </div>
-
       <!-- Paso 1: Pista -->
       <div class="card">
         <h3>1. Cargar Pista (Instrumental)</h3>
@@ -422,7 +371,7 @@
       </div>
 
     </section>
-
+    
     <!-- SPLITTER -->
     <section id="splitter" class="tab">
       <h1>✂️ Splitter IA</h1>
