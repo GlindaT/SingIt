@@ -2731,6 +2731,26 @@ function redoTapSync() {
 // INIT
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
+  const encabezado = document.querySelector('.encabezable-desplegable');
+  
+  if (encabezado) {
+    encabezado.addEventListener('click', () => {
+      const targetId = encabezado.getAttribute('data-target');
+      const arrowId = encabezado.getAttribute('data-arrow');
+      
+      const content = document.getElementById(targetId);
+      const arrow = document.getElementById(arrowId);
+      
+      // Valida el estado actual y cambia la visibilidad
+      if (content.style.display === 'none' || content.style.display === '') {
+        content.style.display = 'block';
+        arrow.style.transform = 'rotate(90deg)'; // Gira la flecha hacia abajo
+      } else {
+        content.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';  // Regresa la flecha a la derecha
+      }
+    });
+  }
   try {
     await initDB();
     initSettings();
