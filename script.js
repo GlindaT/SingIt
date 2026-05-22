@@ -382,7 +382,7 @@ let studioTrackBlob = null;
 let studioTrackId = null;
 let selectedVoiceBlob = null;
 let selectedVoiceId = null;
-
+let studioSelectedTrackBlob = null;
 
 // ==========================================
 // ESTUDIO
