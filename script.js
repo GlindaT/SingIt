@@ -703,20 +703,23 @@ function saveStudioRecording() {
   $("studioStatus").textContent = "Estado: grabación guardada en Biblioteca";
 }
 
+
+
 // ==========================================
 // BIBLIOTECA
 // ==========================================
 async function saveToLibrary(blob, options = {}) {
   try {
     await addLibraryItem({
-      name: options.name || "Audio",
+      name: options.name || "Archivo",
       type: options.type || "audio",
-      audioBlob: blob,
+      audioBlob: blob || null, // Permite nulos si es texto
+      textoPlano: options.textoPlano || null, // Compatibilidad con el nuevo formato
       date: new Date().toLocaleString("es-ES"),
-      transcription: options.transcription || [] // Añadir campo para evitar errores
+      transcription: options.transcription || [] 
     });
 
-    await renderLibrary(); // Antes decía loadLibrary (error)
+    await renderLibrary(options.type || 'todos');
   } catch (error) {
     console.error(error);
     alert("❌ No se pudo guardar en Biblioteca");
@@ -745,17 +748,39 @@ async function renderLibrary(filter = 'todos') {
     } else {
       filteredItems.forEach((item) => {
         const div = document.createElement("div");
-        div.className = "library-item card"; // Usamos la clase card para que se vea bien
+        div.className = "library-item card"; 
         div.style.marginBottom = "10px";
 
-        const audioURL = URL.createObjectURL(item.audioBlob);
+        // Condicional: Si es un archivo de texto UltraStar
+        if (item.type === 'ultrastar_txt') {
+          // Cortamos el texto para mostrar solo un adelanto de las primeras líneas
+          const previewTexto = item.textoPlano ? item.textoPlano.substring(0, 120) + "..." : "Sin contenido";
 
-        div.innerHTML = `
-          <p><strong>${item.name}</strong></p>
-          <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
-          <audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>
-          <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
-        `;
+          div.innerHTML = `
+            <p><strong>${item.name}</strong></p>
+            <small>Tipo: 📝 TEXTO ULTRASTAR | ${item.date}</small>
+            <div style="background: var(--bg-main); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; margin: 10px 0; white-space: pre-wrap; border: 1px solid var(--border); color: var(--text-muted);">
+              ${previewTexto}
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" data-id="${item.id}" class="load-monitor-btn" style="background:#3b82f6; color:white;">📥 Cargar en Monitor</button>
+              <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+            </div>
+          `;
+        } 
+        // Si es cualquier otro archivo (pista, voz, grabación, karaoke con audio)
+        else {
+          // Validamos que exista el blob antes de crear la URL para evitar errores accidentales
+          const audioURL = item.audioBlob ? URL.createObjectURL(item.audioBlob) : "";
+
+          div.innerHTML = `
+            <p><strong>${item.name}</strong></p>
+            <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
+            ${audioURL ? `<audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>` : '<p style="color:red; font-size:12px;">Audio no encontrado</p>'}
+            <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+          `;
+        }
+
         container.appendChild(div);
       });
     }
@@ -765,7 +790,23 @@ async function renderLibrary(filter = 'todos') {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
         await deleteLibraryItem(id);
-        renderLibrary(filter); // Recargamos la misma vista
+        renderLibrary(filter); 
+      });
+    });
+
+    // NUEVO: Escuchar el botón para mandar el texto de vuelta al mini monitor
+    document.querySelectorAll(".load-monitor-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.id);
+        const item = library.find(i => i.id === id);
+        if (item && item.textoPlano) {
+          // Cambia 'miniMonitorTextArea' por el ID real de tu textarea del monitor
+          const monitor = document.getElementById("miniMonitorTextArea");
+          if (monitor) {
+            monitor.value = item.textoPlano;
+            alert(`✅ Letra de "${item.name}" cargada en el monitor para editar.`);
+          }
+        }
       });
     });
 
@@ -795,35 +836,52 @@ async function saveManualFileToLibrary() {
   const typeSelect = $("libraryFileType");
   const nameInput = $("libraryFileName");
 
-  const file = fileInput ? fileInput.files[0] : null;
-  const type = typeSelect ? typeSelect.value : "audio";
-  const customName = nameInput ? nameInput.value.trim() : "";
-
-  if (!file) {
-    alert("⚠️ Selecciona un archivo de audio");
+  if (!fileInput || !fileInput.files[0]) {
+    alert("⚠️ Por favor, selecciona un archivo primero.");
     return;
   }
 
-  const finalName = customName || file.name;
+  const file = fileInput.files[0];
+  const selectedType = typeSelect ? typeSelect.value : "pista";
+  const customName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : file.name.replace(/\.[^.]+$/, "");
 
   try {
-    await addLibraryItem({
-      name: finalName,
-      type: type,
-      audioBlob: file,
-      date: new Date().toLocaleString("es-ES")
-    });
+    // CASO A: Es un archivo de texto UltraStar
+    if (selectedType === "ultrastar_txt") {
+      // Leemos el contenido real del archivo .txt como texto plano
+      const textoPlano = await file.text();
+      
+      await addLibraryItem({
+        name: customName,
+        type: selectedType,
+        audioBlob: null, // No lleva audio
+        textoPlano: textoPlano, // Guardamos la letra sincronizada aquí
+        date: new Date().toLocaleString("es-ES"),
+        transcription: []
+      });
+    } 
+    // CASO B: Es cualquier archivo de audio (pista, voz, grabación)
+    else {
+      await addLibraryItem({
+        name: customName,
+        type: selectedType,
+        audioBlob: file, // Guardamos el archivo binario de audio directamente
+        date: new Date().toLocaleString("es-ES"),
+        transcription: []
+      });
+    }
 
-    await renderLibrary('todos');
-
-    if (fileInput) fileInput.value = "";
+    // Limpiar el formulario tras guardar con éxito
+    fileInput.value = "";
     if (nameInput) nameInput.value = "";
-    if (typeSelect) typeSelect.value = "pista";
+    
+    // Refrescar la carpeta en la que nos encontramos
+    await renderLibrary(selectedType);
+    alert(`✅ ¡"${customName}" guardado en la biblioteca con éxito!`);
 
-    alert("✅ Archivo guardado en Biblioteca");
   } catch (error) {
-    console.error(error);
-    alert("❌ No se pudo guardar el archivo");
+    console.error("Error al guardar archivo manualmente:", error);
+    alert("❌ Ocurrió un error al procesar y guardar tu archivo.");
   }
 }
 
@@ -1080,25 +1138,97 @@ async function transcribeSelectedVoice() {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
 
-     // --- AQUÍ ESTÁ EL GUARDADO AUTOMÁTICO EN BIBLIOTECA ---
+    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
+    try {
+      const vozOriginal = await getLibraryItem(selectedVoiceId); 
+      const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
+      
+      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:120\n#GAP:0\n`;
+      
+      const cuerpoTexto = transcriptionSegments.map(line => {
+        return line.text; 
+      }).join("\n");
+
+      const contenidoFinalTxt = cabeceraUltraStar + cuerpoTexto;
+
+      await addLibraryItem({
+        name: `UltraStar - ${nombreBase}`,
+        type: "ultrastar_txt", 
+        audioBlob: null,       
+        textoPlano: contenidoFinalTxt, 
+        date: new Date().toLocaleString("es-ES"),
+        transcription: baseTranscriptionSegments 
+      });
+
+      console.log("✅ Nuevo archivo de Texto UltraStar creado en la Biblioteca");
+      await renderLibrary("todos");
+
+    } catch (err) {
+      console.error("❌ Error al generar el archivo UltraStar independiente:", err);
+    }
+
+    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
     if (selectedVoiceId) {
       try {
         await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments // Guardamos los tiempos y textos
+          transcription: baseTranscriptionSegments 
         });
-        console.log("✅ Transcripción guardada en Biblioteca");
+        console.log("✅ Transcripción vinculada a la voz original");
       } catch (err) {
-        console.error("❌ Error guardando transcripción en BD:", err);
+        console.error("❌ Error guardando transcripción en la voz:", err);
       }
     }
 
     if (status) {
-      status.textContent = "Estado: Transcripción completada y guardada ✅";
+      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
     }
+
   } catch (error) {
     console.error(error);
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
+  }
+}
+
+async function guardarTextoUltraStarEnBiblioteca() {
+  try {
+    // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
+    const textoMonitor = document.getElementById("miniMonitorTextArea").value; 
+    
+    if (!textoMonitor.trim()) {
+      alert("⚠️ El monitor está vacío. No hay texto para guardar.");
+      return;
+    }
+
+    // 2. Extraer metadatos básicos para el nombre (puedes usar variables globales de tu app)
+    const tituloCancion = window.currentSongTitle || "Nueva Canción";
+    const artistaCancion = window.currentSongArtist || "Artista Desconocido";
+
+    // 3. Crear el objeto con el nuevo tipo especializado
+    const nuevoElemento = {
+      name: `UltraStar - ${tituloCancion} (${artistaCancion})`,
+      type: "ultrastar_txt", // <--- Este es el nuevo tipo de archivo para el filtro
+      audioBlob: null,       // No requiere audio directo
+      date: new Date().toLocaleString("es-ES"),
+      textoPlano: textoMonitor, // Guardamos el formato de texto plano estructurado
+      metadata: {
+        title: tituloCancion,
+        artist: artistaCancion,
+        generadoPor: "Whisper + Manual Tap"
+      }
+    };
+
+    // 4. Guardar en tu base de datos existente
+    await addLibraryItem(nuevoElemento);
+
+    // 5. Refrescar la vista actual de la biblioteca
+    await renderLibrary("ultrastar_txt");
+    
+    alert("✅ ¡Texto UltraStar guardado en la biblioteca con éxito!");
+
+  } catch (error) {
+    console.error("Error al guardar texto UltraStar:", error);
+    alert("❌ No se pudo guardar el archivo en la biblioteca.");
   }
 }
 
