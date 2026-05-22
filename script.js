@@ -2633,73 +2633,51 @@ async function applyTapSync() {
     }));
   }
   
-  // Analizar pitch desde la VOZ (si está seleccionada) para detectar notas musicales
-  // Los tiempos están alineados a la pista, y la voz suele estar alineada con la pista
-  let analyzedSegments = newSegments;
-  if (selectedVoiceBlob) {
-    if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
-    analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
-  }
-  
-  baseTranscriptionSegments = analyzedSegments;
-  transcriptionSegments = analyzedSegments;
-  
-  renderKaraokeLyrics(transcriptionSegments);
-  cargarLetrasEnMonitor();
-  
-  // 🎤 GUARDAR COMO ARCHIVO "KARAOKE LISTO" CON LA PISTA (NO LA VOZ)
-  // Esto soluciona el bug: el karaoke ahora reproduce la PISTA + letra sincronizada
-  if (studioTrackBlob) {
-    try {
-      const karaokeName = `Karaoke - ${studioTrackFileName || "Sin nombre"}`;
-      await addLibraryItem({
-        name: karaokeName,
-        type: "karaoke",
-        audioBlob: studioTrackBlob,       // ← LA PISTA, no la voz
-        vocalsBlob: selectedVoiceBlob || null,
-        date: new Date().toLocaleString("es-ES"),
-        transcription: baseTranscriptionSegments,
-        metadata: {
-          title: studioTrackFileName || "Sin nombre",
-          artist: "",
-          syncedManually: true
-        }
-      });
-      console.log("✅ Karaoke listo guardado en Biblioteca (con pista instrumental)");
-      // Refrescar listas
-      try { await loadMyKaraokeSongs(); } catch (e) {}
-      try { await renderLibrary("todos"); } catch (e) {}
-    } catch (err) {
-      console.error("❌ Error guardando karaoke:", err);
+  // Analizar pitch si tenemos el blob de audio
+    let analyzedSegments = newSegments;
+    if (selectedVoiceBlob) {
+        if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
+        analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
     }
-  } else {
-    console.warn("⚠️ No hay pista cargada en Estudio - solo se guardará la transcripción en la voz");
-  }
-  
-  // También guardar la transcripción asociada a la voz (si está seleccionada)
-  // para que al recargarla mantenga la sincronización
-  if (selectedVoiceId) {
-    updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
-      .then(() => console.log("✅ Transcripción guardada también en la voz"))
-      .catch(err => console.error("Error:", err));
-  }
-  
-  $("startTapSyncBtn").style.display = "inline-block";
-  $("tapSyncResult").style.display = "none";
-  
-  tapSyncLines = [];
-  tapSyncTimestamps = [];
-  tapSyncCurrentIndex = 0;
-  
-  if (status) {
-    status.textContent = studioTrackBlob
-      ? "Estado: ✅ Karaoke listo guardado en Biblioteca (con pista)"
-      : "Estado: ✅ Sincronización aplicada (sin pista cargada)";
-  }
-  
-  alert(studioTrackBlob
-    ? "✅ ¡Karaoke listo! Lo encontrarás en la Biblioteca → carpeta Karaoke, y en 'Mis Canciones' del Karaoke."
-    : "✅ Tiempos aplicados. ⚠️ Carga una pista en Estudio antes de sincronizar para guardar el karaoke con la pista instrumental.");
+    
+    baseTranscriptionSegments = analyzedSegments;
+    transcriptionSegments = analyzedSegments;
+    if (studioSelectedTrackBlob) {
+        try {
+            await addLibraryItem({
+                name: `Karaoke - ${studioSelectedTrackName || "Sin título"}`,
+                type: "karaoke",
+                audioBlob: studioSelectedTrackBlob,
+                date: new Date().toLocaleString("es-ES"),
+                transcription: analyzedSegments,
+                metadata: {
+                    title: studioSelectedTrackName || "Sin título",
+                    sourceVoiceId: selectedVoiceId || null,
+                    sourceTrackId: studioSelectedTrackId || null
+                }
+            });
+            console.log("✅ Canción karaoke creada");
+        } catch (err) {
+            console.error("❌ Error creando karaoke:", err);
+        }
+    } else {
+        console.warn("⚠️ No hay pista instrumental seleccionada para crear karaoke");
+    }
+    
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
+    if (selectedVoiceId) {
+        updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
+            .then(() => console.log("✅ Guardado en Biblioteca"))
+            .catch(err => console.error("Error:", err));
+    }
+    $("startTapSyncBtn").style.display = "inline-block";
+    $("tapSyncResult").style.display = "none";
+    tapSyncLines = [];
+    tapSyncTimestamps = [];
+    tapSyncCurrentIndex = 0;
+    if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
+    alert("✅ ¡Tiempos y notas aplicados! Reproduce para verificar.");
 }
 
 
