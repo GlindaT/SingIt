@@ -2472,7 +2472,7 @@ async function applyCorrectedLyrics() {
 // ==========================================
 function startTapSync() {
   const lyricsText = $("lyricsText");
-  const trackPlayer = $("player");
+  const voicePlayer = $("selectedVoicePlayer");
   
   if (!lyricsText || !lyricsText.value.trim()) {
     alert("⚠️ Primero escribe o corrige la letra en el área de texto.");
@@ -2510,8 +2510,8 @@ function startTapSync() {
   updateTapSyncDisplay();
   
   // Reproducir la PISTA desde el inicio (la sincronización es contra el instrumental)
-  trackPlayer.currentTime = 0;
-  trackPlayer.play();
+  voicePlayer.currentTime = 0;
+  voicePlayer.play();
   
   // Activar listener de teclado
   document.addEventListener("keydown", handleTapSyncKeypress);
@@ -2535,10 +2535,10 @@ function handleTapSyncKeypress(e) {
 function recordTap() {
   if (!tapSyncMode) return;
   
-  const trackPlayer = $("player");
-  if (!trackPlayer) return;
+  const voicePlayer = $("selectedVoicePlayer");
+  if (!voicePlayer) return;
   
-  const currentTime = trackPlayer.currentTime;
+  const currentTime = voicePlayer.currentTime;
   
   tapSyncTimestamps.push(currentTime);
   tapSyncCurrentIndex++;
@@ -2577,8 +2577,8 @@ function updateTapSyncDisplay() {
 function finishTapSync() {
   tapSyncMode = false;
   
-  const trackPlayer = $("player");
-  if (trackPlayer) trackPlayer.pause();
+  const voicePlayer = $("selectedVoicePlayer");
+  if (voicePlayer) voicePlayer.pause();
   
   document.removeEventListener("keydown", handleTapSyncKeypress);
   
@@ -2592,8 +2592,8 @@ function finishTapSync() {
 function cancelTapSync() {
   tapSyncMode = false;
   
-  const trackPlayer = $("player");
-  if (trackPlayer) trackPlayer.pause();
+  const voicePlayer = $("selectedVoicePlayer");
+  if (voicePlayer) voicePlayer.pause();
   
   document.removeEventListener("keydown", handleTapSyncKeypress);
   
@@ -2613,8 +2613,8 @@ async function applyTapSync() {
     return;
   }
   
-  const trackPlayer = $("player");
-  const totalDuration = trackPlayer ? trackPlayer.duration : 0;
+  const voicePlayer = $("selectedVoicePlayer");
+  const totalDuration = voicePlayer ? voicePlayer.duration : 0;
   const status = $("selectedVoiceStatus");
   
   // Mostrar estado
