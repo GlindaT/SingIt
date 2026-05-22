@@ -2479,8 +2479,8 @@ function startTapSync() {
     return;
   }
   
-  if (!trackPlayer || !trackPlayer.src) {
-    alert("⚠️ Primero carga una PISTA INSTRUMENTAL en Estudio. La sincronización se hace contra la pista, no contra la voz.");
+  if (!voicePlayer || !voicePlayer.src) {
+    alert("⚠️ Primero carga una voz desde la Biblioteca.");
     return;
   }
   
