@@ -236,18 +236,21 @@
     <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
     <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
     <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+    <!-- NUEVA CATEGORÍA AGREGADA -->
+    <button class="folder-btn" onclick="renderLibrary('ultrastar_txt')">📝 Texto UltraStar</button>
   </div>
 
   <!-- SUBIR ARCHIVOS DESDE PC (ahorra API) -->
   <div class="card">
     <h3>📤 Subir archivo desde PC</h3>
     <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
-      Sube pistas instrumentales o voces sin gastar API. Los archivos se guardan en tu navegador.
+      Sube pistas, voces o letras sincronizadas. Los archivos se guardan en tu navegador.
     </p>
 
     <div class="settings-group">
-      <label for="libraryFileInput">Archivo de audio (mp3, wav, ogg...)</label>
-      <input type="file" id="libraryFileInput" accept="audio/*">
+      <!-- Actualizado accept para permitir también archivos de texto (.txt) -->
+      <label for="libraryFileInput">Archivo (Audio o Letra TXT)</label>
+      <input type="file" id="libraryFileInput" accept="audio/*,.txt">
     </div>
 
     <div class="settings-group">
@@ -256,6 +259,8 @@
         <option value="pista">🎵 Pista instrumental</option>
         <option value="voz">🎙️ Voz</option>
         <option value="grabacion">💾 Grabación / Mezcla</option>
+        <!-- NUEVA OPCIÓN EN EL SELECT -->
+        <option value="ultrastar_txt">📝 Texto UltraStar (.txt)</option>
       </select>
     </div>
 
@@ -275,7 +280,7 @@
     <div id="libraryList"></div>
   </div>
 </section>
-
+    
     <!-- KARAOKE -->
     <section id="karaoke" class="tab">
       <h1>🎤 Karaoke</h1>
