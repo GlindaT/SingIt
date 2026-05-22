@@ -217,6 +217,29 @@ async function toggleRecording() {
   }
 }
 
+function aplicarCadenaDeAudio(audioCtx, source) {
+  // 1. Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
+  const highPass = audioCtx.createBiquadFilter();
+  highPass.type = "highpass";
+  highPass.frequency.value = 80;
+
+  // 2. Filtro Paso Bajo (Elimina siseos eléctricos de 1000Hz hacia arriba)
+  const lowPass = audioCtx.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.value = 1000;
+
+  // 3. Control de Ganancia (Un poco de volumen extra)
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 1.5;
+
+  // Conectamos: Fuente -> HighPass -> LowPass -> Gain -> Salida
+  source.connect(highPass);
+  highPass.connect(lowPass);
+  lowPass.connect(gainNode);
+  
+  return gainNode; // Retornamos el último nodo para conectarlo al Analyser
+}
+
 async function startAfinador() {
   audioContext = new AudioContext();
 
@@ -229,9 +252,15 @@ async function startAfinador() {
   });
 
   const mic = audioContext.createMediaStreamSource(stream);
+  
+  // --- AQUÍ APLICAMOS LA LIMPIEZA ---
+  const cadenaLimpia = aplicarCadenaDeAudio(audioContext, mic);
+  
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
-  mic.connect(analyser);
+  
+  // Conectamos la salida de la cadena al analizador
+  cadenaLimpia.connect(analyser);
 
   setTimeout(() => {
     detectPitch();
@@ -271,9 +300,9 @@ function detectPitch() {
 
       const dificultad = localStorage.getItem("singIt_difficulty") || "medio";
       let maxDesviation = 30;
-        if (dificultad === "facil") maxDesviation = 50;
-        else if (dificultad === "dificil") maxDesviation = 15;
-        else if (dificultad === "experto") maxDesviation = 5;
+      if (dificultad === "facil") maxDesviation = 50;
+      else if (dificultad === "dificil") maxDesviation = 15;
+      else if (dificultad === "experto") maxDesviation = 5;
         
         // Asegúrate de que las llaves envuelven correctamente cada bloque
         if (Math.abs(cents) <= maxDesviation) {
@@ -340,8 +369,10 @@ function autoCorrelate(buf, sampleRate) {
   }
   rms = Math.sqrt(rms / buf.length);
 
+  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.03;
+
   // Si el volumen es muy bajo, ignoramos la detección
-  if (rms < 0.01) return -1;
+  if (rms < umbral) return -1;
 
   let bestOffset = -1;
   let bestCorrelation = 0;
@@ -2156,6 +2187,16 @@ function saveSetting(key, element) {
 }
 
 function initSettings() {
+  const sensInput = $("micSensitivity");
+  if (sensInput) {
+    
+    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.03";
+    
+    sensInput.addEventListener("input", (e) => {
+      localStorage.setItem("singIt_sensitivity", e.target.value);
+    });
+  }
+
   const settings = {
     micCount: "singIt_micCount",
     karaokeStage: "singIt_stage",
@@ -3123,7 +3164,6 @@ function openUltrastarModal() {
     $("ultrastarAudioFile").value = "";
     $("ultrastarVocalsFile").value = "";
     $("ultrastarPreview").style.display = "none";
-    parsedUltrastar = null;
   }
 }
 
