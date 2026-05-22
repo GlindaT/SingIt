@@ -2731,23 +2731,21 @@ function redoTapSync() {
 // INIT
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
-  const encabezado = document.querySelector('.encabezado-desplegable');
+  const encabezados = document.querySelectorAll('.encabezado-desplegable');
   
-  if (encabezado) {
+  encabezados.forEach(encabezado => {
     encabezado.addEventListener('click', () => {
+      // 2. Obtiene los IDs correspondientes a esta tarjeta específica
       const targetId = encabezado.getAttribute('data-target');
       const arrowId = encabezado.getAttribute('data-arrow');
       
       const content = document.getElementById(targetId);
       const arrow = document.getElementById(arrowId);
       
-      // Valida el estado actual y cambia la visibilidad
-      if (content.style.display === 'none' || content.style.display === '') {
-        content.style.display = 'block';
-        arrow.style.transform = 'rotate(90deg)'; // Gira la flecha hacia abajo
-      } else {
-        content.style.display = 'none';
-        arrow.style.transform = 'rotate(0deg)';  // Regresa la flecha a la derecha
+      // 3. Aplica los cambios si los elementos existen en la página
+      if (content && arrow) {
+        content.classList.toggle('oculto'); 
+        arrow.classList.toggle('rotada');
       }
     });
   }
