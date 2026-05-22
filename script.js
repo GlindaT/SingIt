@@ -2731,7 +2731,7 @@ function redoTapSync() {
 // INIT
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
-  const encabezado = document.querySelector('.encabezable-desplegable');
+  const encabezado = document.querySelector('.encabezado-desplegable');
   
   if (encabezado) {
     encabezado.addEventListener('click', () => {
