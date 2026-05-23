@@ -1,166 +1,165 @@
-#TITLE:Quien Te Cantará
-#ARTIST:Nicho Hinojosa
-#MP3:Voz - Quien Te Cantará.mp3
-#BPM:120
+#ARTIST:Mocedades
+#TITLE:Quién Te Cantará
+#BPM:120.00
 #GAP:0
-: 67 6 57 Ayer
-: 73 7 57 pensé
-: 81 3 57 en
-: 83 10 56 decirte
-: 94 7 57 adios
-- 101
-: 101 2 0 y
-: 103 5 55 me
-: 108 11 55 falto
-: 119 5 0 el
-: 124 11 0 valor
-- 135
-: 135 2 47 es
-: 137 3 49 que
-: 140 5 52 había
-: 145 2 47 en
-: 147 3 50 tus
-: 150 4 47 ojos
-- 153
-: 153 23 52 tanto
-: 176 18 0 amor
-- 194
-: 194 4 56 que
-: 198 7 57 fácil
-: 206 3 57 es
-: 209 7 57 decir
-: 216 7 56 adios
-- 223
-: 223 6 0 que
-: 229 10 57 facil
-: 239 16 0 olvidar,
-- 255
-: 255 3 0 que
-: 258 8 0 dificil
-: 267 5 48 sera
-- 271
-: 271 10 49 para
-: 281 8 49 los
-: 289 10 49 dos.
-- 300
-: 300 10 0 Quien
-: 310 4 56 te
-: 314 15 57 cantara
-- 328
-: 328 6 57 con
-: 334 7 56 esta
-: 341 17 56 guitarra?
-- 358
-: 358 8 54 quien
-: 366 3 56 la
-: 369 7 57 hara
-: 376 8 57 sonar
-- 385
-: 385 11 57 cuando
-: 396 4 56 no
-: 400 8 56 este
-: 408 6 56 yo?
-- 413
-: 413 6 54 quien
-: 419 5 59 dara
-: 424 1 52 a
-: 425 2 51 tu
-: 427 4 52 casa
-- 431
-: 431 10 61 color
-: 441 2 61 y
-: 443 2 52 a
-: 445 4 59 tu
-: 449 10 57 lecho
-: 459 11 61 calor?
-- 471
-: 471 20 55 quien
-: 491 8 53 te
-: 499 16 55 hara
-: 515 8 55 el
-: 523 20 55 amor?
-- 487
-: 544 6 56 Quien
-: 550 9 56 tachara
-: 559 3 57 mi
-: 561 11 56 direccion
-- 573
-: 573 4 0 de
-: 577 4 57 tu
-: 581 16 59 libreta
-: 597 9 0 azul
-- 606
-: 606 20 0 archivando
-: 625 4 0 mi
-: 629 16 0 historia
-: 645 4 0 en
-: 649 4 0 un
-: 653 10 0 cajon
-- 662
-: 662 1 57 y
-: 663 2 57 tu
-: 665 2 57 que
-: 667 5 57 haras,
-- 672
-: 672 2 59 a
-: 674 12 61 donde
-: 686 9 59 iras
-- 695
-: 695 5 57 tal
-: 700 5 57 vez
-: 705 4 56 me
-: 709 16 52 olvidaras
-- 726
-: 726 1 0 y
-: 727 7 0 pondras
-: 734 2 0 mi
-: 736 8 0 guitarra
-- 744
-: 744 6 0 en
-: 750 6 0 un
-: 756 18 0 rincon
-- 774
-: 774 10 44 Quien
-: 784 4 45 te
-: 788 14 57 cantara
-- 802
-: 802 5 55 con
-: 807 7 59 esta
-: 814 16 56 guitarra?
-- 829
-: 829 8 55 quien
-: 837 3 57 la
-: 840 6 57 hara
-: 846 8 57 sonar
-- 855
-: 855 12 57 cuando
-: 867 4 56 no
-: 871 8 56 este
-: 879 6 56 yo?
-- 884
-: 884 5 56 quien
-: 889 4 59 dara
-: 893 1 56 a
-: 894 2 52 tu
-: 896 4 52 casa
-- 895
-: 895 10 61 color
-: 905 2 61 y
-: 907 2 59 a
-: 909 4 61 tu
-: 913 10 58 lecho
-- 922
-: 922 11 50 calor?
-- 933
-: 933 16 0 quien
-: 949 6 54 te
-: 956 13 53 hara
-: 969 6 54 el
-: 975 16 54 amor?
-- 991
-: 991 46 57 quien
-: 1037 18 54 te
-: 1056 37 54 hara
-: 1092 18 57 el
-: 1111 46 57 amor?
+---
+: 33 3 9 Ayer 
+: 36 4 9 pensé 
+: 40 2 9 en 
+: 42 5 8 decirte 
+: 47 3 9 adios 
+- 51
+: 50 1 0 y 
+: 51 2 5 me 
+: 53 6 5 falto 
+: 59 2 0 el 
+: 61 6 0 valor 
+- 68
+: 67 1 -1 es 
+: 68 2 1 que 
+: 70 2 4 había 
+: 72 1 -1 en 
+: 73 1 2 tus 
+: 74 2 -1 ojos 
+- 77
+: 76 11 4 tanto 
+: 87 9 0 amor 
+- 97
+: 96 2 8 que 
+: 98 4 9 fácil 
+: 102 2 9 es 
+: 104 4 9 decir 
+: 108 4 8 adios 
+- 112
+: 111 3 0 que 
+: 114 5 9 facil 
+: 119 8 0 olvidar, 
+- 128
+: 127 2 0 que 
+: 129 4 0 dificil 
+: 133 2 -12 sera 
+- 136
+: 135 5 -11 para 
+: 140 4 -11 los 
+: 144 5 -11 dos. 
+- 150
+: 149 5 0 Quien 
+: 154 2 8 te 
+: 156 8 9 cantara 
+- 165
+: 164 3 9 con 
+: 167 3 8 esta 
+: 170 9 8 guitarra? 
+- 180
+: 179 4 6 quien 
+: 183 2 8 la 
+: 185 3 9 hara 
+: 188 4 9 sonar 
+- 193
+: 192 6 9 cuando 
+: 198 2 8 no 
+: 200 4 8 este 
+: 204 3 8 yo? 
+- 207
+: 206 3 6 quien 
+: 209 2 11 dara 
+: 211 1 6 a 
+: 212 1 1 tu 
+: 213 2 2 casa 
+- 216
+: 215 5 13 color 
+: 220 1 13 y 
+: 221 1 1 a 
+: 222 2 10 tu 
+: 224 5 9 lecho 
+: 229 6 13 calor? 
+- 236
+: 235 10 7 quien 
+: 245 4 5 te 
+: 249 8 7 hara 
+: 257 4 7 el 
+: 261 10 7 amor? 
+- 272
+: 271 3 8 Quien 
+: 274 5 8 tachara 
+: 279 1 9 mi 
+: 280 6 8 direccion 
+- 287
+: 286 2 0 de 
+: 288 2 9 tu 
+: 290 8 11 libreta 
+: 298 5 0 azul 
+- 303
+: 302 10 0 archivando 
+: 312 2 0 mi 
+: 314 8 0 historia 
+: 322 2 0 en 
+: 324 2 0 un 
+: 326 5 0 cajon 
+- 332
+: 331 1 9 y 
+: 332 1 9 tu 
+: 333 1 9 que 
+: 334 2 9 haras, 
+- 336
+: 335 1 11 a 
+: 336 6 13 donde 
+: 342 5 11 iras 
+- 348
+: 347 3 9 tal 
+: 350 3 9 vez 
+: 353 2 8 me 
+: 355 8 4 olvidaras 
+- 363
+: 362 1 0 y 
+: 363 4 0 pondras 
+: 367 1 0 mi 
+: 368 4 0 guitarra 
+- 372
+: 371 3 0 en 
+: 374 3 0 un 
+: 377 10 0 rincon 
+- 388
+: 387 5 -8 Quien 
+: 392 2 -7 te 
+: 394 7 9 cantara 
+- 401
+: 400 3 7 con 
+: 403 4 11 esta 
+: 407 8 8 guitarra? 
+- 415
+: 414 4 7 quien 
+: 418 2 9 la 
+: 420 3 9 hara 
+: 423 4 9 sonar 
+- 428
+: 427 6 9 cuando 
+: 433 2 8 no 
+: 435 4 8 este 
+: 439 3 8 yo? 
+- 442
+: 441 3 8 quien 
+: 444 2 11 dara 
+: 446 1 4 a 
+: 447 1 2 tu 
+: 448 2 2 casa 
+- 451
+: 450 5 13 color 
+: 455 1 13 y 
+: 456 1 11 a 
+: 457 2 13 tu 
+: 459 5 10 lecho 
+: 464 6 2 calor? 
+- 470
+: 469 8 0 quien 
+: 477 3 6 te 
+: 480 7 5 hara 
+: 487 3 6 el 
+: 490 8 6 amor? 
+- 499
+: 498 23 9 quien 
+: 521 9 6 te 
+: 530 19 6 hara 
+: 549 9 9 el 
+: 558 23 9 amor? 
 E
