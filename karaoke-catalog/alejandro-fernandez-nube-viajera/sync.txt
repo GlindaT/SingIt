@@ -1,11 +1,11 @@
 #TITLE:Nube viajera
-#ARTIST:Alejandro Fernández
-#LANGUAGE:Español
+#ARTIST:Alejandro FernÃ¡ndez
+#LANGUAGE:EspaÃ±ol
 #CREATOR:DaVIch0
 #YEAR:1996
-#MP3:Alejandro Fernández - Nube viajera.mp3
-#COVER:Alejandro Fernández - Nube viajera [CO].jpg
-#VIDEO:Alejandro Fernández - Nube viajera.avi
+#MP3:Alejandro FernÃ¡ndez - Nube viajera.mp3
+#COVER:Alejandro FernÃ¡ndez - Nube viajera [CO].jpg
+#VIDEO:Alejandro FernÃ¡ndez - Nube viajera.avi
 #VIDEOGAP:1.7
 #BPM:220
 #GAP:25800
@@ -14,7 +14,7 @@
 : 18 5 2 mor
 - 37
 : 60 2 9 A
-: 64 2 9 quí es
+: 64 2 9 quÃ­ es
 : 68 2 7 toy
 : 73 5 9  pre
 : 80 2 9 so
@@ -37,7 +37,7 @@
 : 252 2 9  tan
 : 256 1 7 tos
 : 260 4 9  a
-: 267 2 9 ños
+: 267 2 9 Ã±os
 : 271 6 7  y
 : 280 6 9  no hay
 : 289 2 7  re
@@ -92,11 +92,11 @@
 : 693 4 3 men
 : 700 4 2 tal
 - 718
-: 743 7 14 ¿Dón
+: 743 7 14 Â¿DÃ³n
 : 753 6 12 de es
-: 763 11 7 tás?
+: 763 11 7 tÃ¡s?
 - 788
-: 809 1 7 Qué
+: 809 1 7 QuÃ©
 : 812 2 15  cie
 : 816 2 14 lo
 * 820 5 15  cru
@@ -104,7 +104,7 @@
 : 832 5 14  sin
 : 840 4 15  ex
 : 848 1 14 tra
-: 851 4 15 ñar
+: 851 4 15 Ã±ar
 : 859 2 15 me
 - 862
 : 864 6 17 Nu
@@ -114,7 +114,7 @@
 * 890 26 14 da
 - 928
 : 932 2 5 Por
-: 937 2 14  qué
+: 937 2 14  quÃ©
 : 941 1 13  no
 : 944 6 14  vie
 : 952 2 14 nes
@@ -146,12 +146,12 @@
 : 1129 3 10  por
 * 1137 39 14  ti
 - 1178
-: 1180 7 14 ¿Dón
+: 1180 7 14 Â¿DÃ³n
 : 1193 5 12 de es
-: 1203 8 7 tás?
+: 1203 8 7 tÃ¡s?
 - 1225
 : 1243 2 7 De
-: 1248 2 15 tén
+: 1248 2 15 tÃ©n
 : 1252 1 14  tu
 : 1255 6 15  vue
 : 1263 2 15 lo
@@ -202,14 +202,14 @@
 : 1560 8 14 jos
 : 1580 3 12  de
 : 1584 2 10 ~
-: 1590 2 12  mí
+: 1590 2 12  mÃ­
 : 1593 30 10 ~
 - 1652
-: 1991 6 14 ¿Dón
+: 1991 6 14 Â¿DÃ³n
 : 2000 5 12 de es
-: 2009 9 7 tás?
+: 2009 9 7 tÃ¡s?
 - 2032
-: 2055 1 7 Qué
+: 2055 1 7 QuÃ©
 : 2059 2 15  cie
 : 2063 1 14 lo
 : 2066 5 15  cru
@@ -217,7 +217,7 @@
 : 2079 5 14  sin
 : 2087 5 15  ex
 : 2095 2 14 tra
-: 2099 3 15 ñar
+: 2099 3 15 Ã±ar
 : 2106 2 15 me
 - 2109
 : 2111 4 17 Nu
@@ -227,7 +227,7 @@
 : 2137 25 14 da
 - 2172
 : 2179 2 5 Por
-: 2184 1 14  qué
+: 2184 1 14  quÃ©
 : 2187 2 13  no
 : 2191 5 14  vie
 : 2198 3 14 nes
@@ -260,12 +260,12 @@
 : 2376 2 10  por
 * 2383 41 14  ti
 - 2425
-: 2427 7 14 ¿Dón
+: 2427 7 14 Â¿DÃ³n
 : 2439 6 12 de es
-: 2449 9 7 tás?
+: 2449 9 7 tÃ¡s?
 - 2472
 : 2490 2 7 De
-: 2494 2 15 tén
+: 2494 2 15 tÃ©n
 : 2498 2 14  tu
 : 2502 5 15  vue
 : 2510 2 15 lo
@@ -316,6 +316,6 @@
 : 2808 5 14 jos
 : 2825 3 12  de
 : 2829 3 10 ~
-: 2835 2 12  mí
+: 2835 2 12  mÃ­
 : 2838 63 10 ~
 E
