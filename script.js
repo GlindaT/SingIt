@@ -3055,7 +3055,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   ctx.fillStyle = "#666";
   ctx.font = "10px Arial";
   ctx.textAlign = "right";
-  const noteLabels = ["C6", "A5", "F5", "D5", "B4", "G4", "E4", "C4", "A3", "F3", "D3", "C3"];
+  const noteLabels = ["C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4"];
   noteLabels.forEach((label, i) => {
     const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
     ctx.fillText(label, 25, y);
