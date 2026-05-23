@@ -3,163 +3,163 @@
 #BPM:120.00
 #GAP:0
 ---
-: 33 3 9 Ayer 
-: 36 4 9 pensé 
-: 40 2 9 en 
-: 42 5 8 decirte 
-: 47 3 9 adios 
+: 33 3 0 Ayer 
+: 36 4 0 pensé 
+: 40 2 0 en 
+: 42 5 -1 decirte 
+: 47 3 0 adios 
 - 51
-: 50 1 0 y 
-: 51 2 5 me 
-: 53 6 5 falto 
-: 59 2 0 el 
-: 61 6 0 valor 
+: 50 1 -9 y 
+: 51 2 -4 me 
+: 53 6 -4 falto 
+: 59 2 -9 el 
+: 61 6 -9 valor 
 - 68
-: 67 1 -1 es 
-: 68 2 1 que 
-: 70 2 4 había 
-: 72 1 -1 en 
-: 73 1 2 tus 
-: 74 2 -1 ojos 
+: 67 1 -10 es 
+: 68 2 -8 que 
+: 70 2 -5 había 
+: 72 1 -10 en 
+: 73 1 -7 tus 
+: 74 2 -10 ojos 
 - 77
-: 76 11 4 tanto 
-: 87 9 0 amor 
+: 76 11 -5 tanto 
+: 87 9 -9 amor 
 - 97
-: 96 2 8 que 
-: 98 4 9 fácil 
-: 102 2 9 es 
-: 104 4 9 decir 
-: 108 4 8 adios 
+: 96 2 -1 que 
+: 98 4 0 fácil 
+: 102 2 0 es 
+: 104 4 0 decir 
+: 108 4 -1 adios 
 - 112
-: 111 3 0 que 
-: 114 5 9 facil 
-: 119 8 0 olvidar, 
+: 111 3 -9 que 
+: 114 5 0 facil 
+: 119 8 -9 olvidar, 
 - 128
-: 127 2 0 que 
-: 129 4 0 dificil 
-: 133 2 -12 sera 
+: 127 2 -9 que 
+: 129 4 -9 dificil 
+: 133 2 -21 sera 
 - 136
-: 135 5 -11 para 
-: 140 4 -11 los 
-: 144 5 -11 dos. 
+: 135 5 -20 para 
+: 140 4 -20 los 
+: 144 5 -20 dos. 
 - 150
-: 149 5 0 Quien 
-: 154 2 8 te 
-: 156 8 9 cantara 
+: 149 5 -9 Quien 
+: 154 2 -1 te 
+: 156 8 0 cantara 
 - 165
-: 164 3 9 con 
-: 167 3 8 esta 
-: 170 9 8 guitarra? 
+: 164 3 0 con 
+: 167 3 -1 esta 
+: 170 9 -1 guitarra? 
 - 180
-: 179 4 6 quien 
-: 183 2 8 la 
-: 185 3 9 hara 
-: 188 4 9 sonar 
+: 179 4 -3 quien 
+: 183 2 -1 la 
+: 185 3 0 hara 
+: 188 4 0 sonar 
 - 193
-: 192 6 9 cuando 
-: 198 2 8 no 
-: 200 4 8 este 
-: 204 3 8 yo? 
+: 192 6 0 cuando 
+: 198 2 -1 no 
+: 200 4 -1 este 
+: 204 3 -1 yo? 
 - 207
-: 206 3 6 quien 
-: 209 2 11 dara 
-: 211 1 6 a 
-: 212 1 1 tu 
-: 213 2 2 casa 
+: 206 3 -3 quien 
+: 209 2 2 dara 
+: 211 1 -3 a 
+: 212 1 -8 tu 
+: 213 2 -7 casa 
 - 216
-: 215 5 13 color 
-: 220 1 13 y 
-: 221 1 1 a 
-: 222 2 10 tu 
-: 224 5 9 lecho 
-: 229 6 13 calor? 
+: 215 5 4 color 
+: 220 1 4 y 
+: 221 1 -8 a 
+: 222 2 1 tu 
+: 224 5 0 lecho 
+: 229 6 4 calor? 
 - 236
-: 235 10 7 quien 
-: 245 4 5 te 
-: 249 8 7 hara 
-: 257 4 7 el 
-: 261 10 7 amor? 
+: 235 10 -2 quien 
+: 245 4 -4 te 
+: 249 8 -2 hara 
+: 257 4 -2 el 
+: 261 10 -2 amor? 
 - 272
-: 271 3 8 Quien 
-: 274 5 8 tachara 
-: 279 1 9 mi 
-: 280 6 8 direccion 
+: 271 3 -1 Quien 
+: 274 5 -1 tachara 
+: 279 1 0 mi 
+: 280 6 -1 direccion 
 - 287
-: 286 2 0 de 
-: 288 2 9 tu 
-: 290 8 11 libreta 
-: 298 5 0 azul 
+: 286 2 -9 de 
+: 288 2 0 tu 
+: 290 8 2 libreta 
+: 298 5 -9 azul 
 - 303
-: 302 10 0 archivando 
-: 312 2 0 mi 
-: 314 8 0 historia 
-: 322 2 0 en 
-: 324 2 0 un 
-: 326 5 0 cajon 
+: 302 10 -9 archivando 
+: 312 2 -9 mi 
+: 314 8 -9 historia 
+: 322 2 -9 en 
+: 324 2 -9 un 
+: 326 5 -9 cajon 
 - 332
-: 331 1 9 y 
-: 332 1 9 tu 
-: 333 1 9 que 
-: 334 2 9 haras, 
+: 331 1 0 y 
+: 332 1 0 tu 
+: 333 1 0 que 
+: 334 2 0 haras, 
 - 336
-: 335 1 11 a 
-: 336 6 13 donde 
-: 342 5 11 iras 
+: 335 1 2 a 
+: 336 6 4 donde 
+: 342 5 2 iras 
 - 348
-: 347 3 9 tal 
-: 350 3 9 vez 
-: 353 2 8 me 
-: 355 8 4 olvidaras 
+: 347 3 0 tal 
+: 350 3 0 vez 
+: 353 2 -1 me 
+: 355 8 -5 olvidaras 
 - 363
-: 362 1 0 y 
-: 363 4 0 pondras 
-: 367 1 0 mi 
-: 368 4 0 guitarra 
+: 362 1 -9 y 
+: 363 4 -9 pondras 
+: 367 1 -9 mi 
+: 368 4 -9 guitarra 
 - 372
-: 371 3 0 en 
-: 374 3 0 un 
-: 377 10 0 rincon 
+: 371 3 -9 en 
+: 374 3 -9 un 
+: 377 10 -9 rincon 
 - 388
-: 387 5 -8 Quien 
-: 392 2 -7 te 
-: 394 7 9 cantara 
+: 387 5 -17 Quien 
+: 392 2 -16 te 
+: 394 7 0 cantara 
 - 401
-: 400 3 7 con 
-: 403 4 11 esta 
-: 407 8 8 guitarra? 
+: 400 3 -2 con 
+: 403 4 2 esta 
+: 407 8 -1 guitarra? 
 - 415
-: 414 4 7 quien 
-: 418 2 9 la 
-: 420 3 9 hara 
-: 423 4 9 sonar 
+: 414 4 -2 quien 
+: 418 2 0 la 
+: 420 3 0 hara 
+: 423 4 0 sonar 
 - 428
-: 427 6 9 cuando 
-: 433 2 8 no 
-: 435 4 8 este 
-: 439 3 8 yo? 
+: 427 6 0 cuando 
+: 433 2 -1 no 
+: 435 4 -1 este 
+: 439 3 -1 yo? 
 - 442
-: 441 3 8 quien 
-: 444 2 11 dara 
-: 446 1 4 a 
-: 447 1 2 tu 
-: 448 2 2 casa 
+: 441 3 -1 quien 
+: 444 2 2 dara 
+: 446 1 -5 a 
+: 447 1 -7 tu 
+: 448 2 -7 casa 
 - 451
-: 450 5 13 color 
-: 455 1 13 y 
-: 456 1 11 a 
-: 457 2 13 tu 
-: 459 5 10 lecho 
-: 464 6 2 calor? 
+: 450 5 4 color 
+: 455 1 4 y 
+: 456 1 2 a 
+: 457 2 4 tu 
+: 459 5 1 lecho 
+: 464 6 -7 calor? 
 - 470
-: 469 8 0 quien 
-: 477 3 6 te 
-: 480 7 5 hara 
-: 487 3 6 el 
-: 490 8 6 amor? 
+: 469 8 -9 quien 
+: 477 3 -3 te 
+: 480 7 -4 hara 
+: 487 3 -3 el 
+: 490 8 -3 amor? 
 - 499
-: 498 23 9 quien 
-: 521 9 6 te 
-: 530 19 6 hara 
-: 549 9 9 el 
-: 558 23 9 amor? 
+: 498 23 0 quien 
+: 521 9 -3 te 
+: 530 19 -3 hara 
+: 549 9 0 el 
+: 558 23 0 amor? 
 E
