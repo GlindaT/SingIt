@@ -3510,6 +3510,7 @@ async function loadCatalogSong(folder, title, artist) {
     if (track) {
       track.src = URL.createObjectURL(audioBlob);
       track.volume = 0.4;
+      track.play().catch(e => console.error("Error al reproducir audio:", e));
       karaokeSelectedTrackBlob = audioBlob;
       karaokeSelectedTrackName = `${title} - ${artist}`;
     }
