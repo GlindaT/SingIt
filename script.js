@@ -3043,7 +3043,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   const pixelsPerSecond = (canvas.width - 40) / 6; 
   const lineX = 40; // Línea de tiempo actual
   const topMargin = 30;
-  const bottomMargin = canvas.height - 60;
+  const bottomMargin = canvas.height - 80;
   const drawHeight = bottomMargin - topMargin;
   
   // Escala MIDI dinámica
@@ -3070,71 +3070,73 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   
   // --- 3. DIBUJAR BARRAS DE NOTAS ---
   let currentLyric = "";
-  
-  transcriptionSegments.forEach((segment) => {
-    const words = Array.isArray(segment.words) ? segment.words : [];
-    words.forEach((word) => {
-      const x = lineX + (word.start - currentTime) * pixelsPerSecond;
-      const w = (word.end - word.start) * pixelsPerSecond;
-      const y = midiToY(word.midi || 60);
-      
-      if (x + w < 0 || x > canvas.width) return;
-      
-      const isActive = currentTime >= word.start && currentTime <= word.end;
-      const isPast = currentTime > word.end;
-      if (isActive) currentLyric = word.text;
-      
-      // Lógica de color según acierto
-      let isCorrect = false;
-      if (isActive && currentFreq > 0) {
-        const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
-        isCorrect = Math.abs(userMidi - word.midi) <= 2;
-      }
-      
-      ctx.fillStyle = isPast ? "#4b5563" : (isCorrect ? "#22c55e" : (isActive ? "#3b82f6" : "rgba(59, 130, 246, 0.4)"));
-      
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(x, y - 10, Math.max(w, 5), 20, 5);
-      } else {
-        ctx.rect(x, y - 10, Math.max(w, 5), 20);
-      }
-      ctx.fill();
-      
-      // Texto de la sílaba
-      ctx.fillStyle = isActive ? "white" : "rgba(255,255,255,0.6)";
-      ctx.font = "11px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(word.text, x + w / 2, y - 15);
-      
-      // --- 4. DIBUJAR VOZ DEL USUARIO ---
-      if (currentFreq > 0) {
-        const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
-        const userY = midiToY(userMidi);
+  if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
+    transcriptionSegments.forEach((segment) => {
+      const words = Array.isArray(segment.words) ? segment.words : [];
+      words.forEach((word) => {
+        const x = lineX + (word.start - currentTime) * pixelsPerSecond;
+        const w = (word.end - word.start) * pixelsPerSecond;
+        const y = midiToY(word.midi || 60);
+        
+        if (x + w < 0 || x > canvas.width) return;
+        
+        const isActive = currentTime >= word.start && currentTime <= word.end;
+        const isPast = currentTime > word.end;
+        if (isActive) currentLyric = word.text;
+        
+        // Lógica de color según acierto
+        let isCorrect = false;
+        if (isActive && currentFreq > 0) {
+          const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
+          isCorrect = Math.abs(userMidi - word.midi) <= 2;
+        }
+        
+        ctx.fillStyle = isPast ? "#4b5563" : (isCorrect ? "#22c55e" : (isActive ? "#3b82f6" : "rgba(59, 130, 246, 0.4)"));
         
         ctx.beginPath();
-        ctx.fillStyle = "#facc15";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#facc15";
-        ctx.arc(lineX, userY, 6, 0, Math.PI * 2);
+        if (ctx.roundRect) {
+          ctx.roundRect(x, y - 10, Math.max(w, 5), 20, 5);
+        
+        } else {
+          ctx.rect(x, y - 10, Math.max(w, 5), 20);
+        }
         ctx.fill();
-        ctx.shadowBlur = 0;
-      }
-      
-      // --- 5. LÍNEA DE TIEMPO Y LETRA GRANDE ---
-      ctx.strokeStyle = "#ef4444";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(lineX, 20);
-      ctx.lineTo(lineX, canvas.height - 80);
-      ctx.stroke();
-      
-      ctx.fillStyle = "white";
-      ctx.font = "bold 35px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
+        
+        // Texto de la sílaba
+        ctx.fillStyle = isActive ? "white" : "rgba(255,255,255,0.6)";
+        ctx.font = "11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(word.text, x + w / 2, y - 15);
+      });
     });
-  });
+  }
+  
+  // --- 4. DIBUJAR VOZ DEL USUARIO ---
+  if (currentFreq > 0) {
+    const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
+    const userY = midiToY(userMidi);
+    
+    ctx.beginPath();
+    ctx.fillStyle = "#facc15";
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "#facc15";
+    ctx.arc(lineX, userY, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  
+  // --- 5. LÍNEA DE TIEMPO Y LETRA GRANDE ---
+  ctx.strokeStyle = "#ef4444";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(lineX, 20);
+  ctx.lineTo(lineX, canvas.height - 80);
+  ctx.stroke();
+      
+  ctx.fillStyle = "white";
+  ctx.font = "bold 35px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
 }
 
 // ==========================================
