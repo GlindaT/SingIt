@@ -3042,11 +3042,11 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // --- 1. CONFIGURACIÓN DE VENTANA ---
-    const pixelsPerSecond = (canvas.width - 100) / 6; 
-    const lineX = 100; // Línea de tiempo actual
-    const topMargin = 50;
-    const bottomMargin = 100;
-    const drawHeight = canvas.height - topMargin - bottomMargin;
+    const pixelsPerSecond = (canvas.width - 40) / 6; 
+    const lineX = 40; // Línea de tiempo actual
+    const topMargin = 30;
+    const bottomMargin = canvas.height - 60;
+    const drawHeight = pentagramBottom - pentagramTop;
 
     // Escala MIDI dinámica
     const allMidis = transcriptionSegments.map(s => s.midi).filter(m => m > 0);
@@ -3073,22 +3073,25 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     // --- 3. DIBUJAR BARRAS DE NOTAS ---
     let currentLyric = "";
 
-    transcriptionSegments.forEach(seg => {
-        const x = lineX + (seg.start - currentTime) * pixelsPerSecond;
-        const w = (seg.end - seg.start) * pixelsPerSecond;
-        const y = midiToY(seg.midi || 60);
+    transcriptionSegments.forEach((segment) => {
+      const words = Array.isArray(segment.words) ? segment.words : [];
+      words.forEach((word) => {
+        if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
+        const x = lineX + (word.start - currentTime) * pixelsPerSecond;
+        const w = (word.end - word.start) * pixelsPerSecond;
+        const y = midiToY(word.midi || 60);
 
         if (x + w < 0 || x > canvas.width) return;
 
-        const isActive = currentTime >= seg.start && currentTime <= seg.end;
-        const isPast = currentTime > seg.end;
-        if (isActive) currentLyric = seg.text;
+        const isActive = currentTime >= word.start && currentTime <= word.end;
+        const isPast = currentTime > word.end;
+        if (isActive) currentLyric = word.text;
 
         // Lógica de color según acierto
         let isCorrect = false;
         if (isActive && currentFreq > 0) {
             const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
-            isCorrect = Math.abs(userMidi - seg.midi) <= 2;
+            isCorrect = Math.abs(userMidi - word.midi) <= 2;
         }
 
         ctx.fillStyle = isPast ? "#4b5563" : (isCorrect ? "#22c55e" : (isActive ? "#3b82f6" : "rgba(59, 130, 246, 0.4)"));
@@ -3105,7 +3108,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
         ctx.fillStyle = isActive ? "white" : "rgba(255,255,255,0.6)";
         ctx.font = "11px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(seg.text, x + w / 2, y - 15);
+        ctx.fillText(word.text, x + w / 2, y - 15);
     });
 
     // --- 4. DIBUJAR VOZ DEL USUARIO ---
