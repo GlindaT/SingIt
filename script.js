@@ -3072,9 +3072,6 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   // --- DIBUJAR BARRAS DE NOTAS ---
   if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
     
-    // Limpiamos el canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
     // Ventana de tiempo visible (5 segundos hacia adelante, 1 hacia atrás)
     const timeWindowStart = currentTime - 1;
     const timeWindowEnd = currentTime + 5;
