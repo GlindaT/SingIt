@@ -8,24 +8,6 @@
       "folder": "adele-when-we-were-young"
     },
     {
-      "id": "nicho-hinojosa-quien-te-cantara",
-      "title": "Quién Te Cantará",
-      "artist": "Nicho Hinojosa",
-      "folder": "nicho-hinojosa-quien-te-cantara"
-    },
-    {
-      "id": "alejandro-fernandez-nube-viajera",
-      "title": "Nube Viajera",
-      "artist": "Alejandro Fernández",
-      "folder": "alejandro-fernandez-nube-viajera"
-    },
-    {
-      "id": "mr-kilombo-y-rozalen-sinmigo",
-      "title": "Sinmigo",
-      "artist": "Mr. Kilombo Y Rozalén",
-      "folder": "mr-kilombo-y-rozalen-sinmigo"
-    },
-    {
       "id": "mon-laferte-y-enrique-bumbury-mi-buen-amor",
       "title": "Mi Buen Amor",
       "artist": "Mon Laferte Y Enrique Bumbury",
@@ -36,12 +18,6 @@
       "title": "Un Millón Como Tú",
       "artist": "Lasso Y Cami",
       "folder": "lasso-y-cami-un-millon-como-tu"
-    },
-    {
-      "id": "ricardo-arjona-y-gaby-moreno-fuiste-tu",
-      "title": "Fuiste Tú",
-      "artist": "Ricardo Arjona Y Gaby Moreno",
-      "folder": "ricardo-arjona-y-gaby-moreno-fuiste-tu"
     }
   ]
 }
