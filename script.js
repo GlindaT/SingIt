@@ -3137,7 +3137,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.font = "bold 35px Arial";
     ctx.textAlign = "center";
     ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
-}
+});
 // ==========================================
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
