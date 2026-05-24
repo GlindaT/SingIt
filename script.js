@@ -3206,35 +3206,50 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     });
     ctx.stroke();
   }
-
-    // --- DIBUJAR LETRA ACTUAL ABAJO ---
-  const currentSegment = transcriptionSegments.find(seg => 
+  
+  // --- DIBUJAR LETRA ACTUAL ABAJO ---
+  // 1. Encontrar el segmento que está sonando ahora mismo
+  const currentIndex = transcriptionSegments.findIndex(seg => 
     currentTime >= seg.start && currentTime <= seg.end + 0.5
   );
-  
-  if (currentSegment) {
-    // Fondo para la letra
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-    
-    // Letra actual
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 20px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(currentSegment.text || "", canvas.width / 2, canvas.height - 25);
-  }
 
-  // --- DIBUJAR SIGUIENTE LÍNEA ---
-  const nextSegment = transcriptionSegments.find(seg => seg.start > currentTime);
-  if (nextSegment && !currentSegment) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-    
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "16px Arial";
+  // Dibujar SIEMPRE el fondo negro para las letras abajo (así no parpadea si hay silencios)
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+  // 2. CASO A: Hay una letra sonando en este momento
+  if (currentIndex !== -1) {
+    const currentSegment = transcriptionSegments[currentIndex];
+    // Dibujar la letra actual (Limpia y corregida en blanco)
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 18px Arial"; // Bajamos a 18px para dar espacio al subtítulo
     ctx.textAlign = "center";
-    ctx.fillText("Próximo: " + (nextSegment.text || ""), canvas.width / 2, canvas.height - 25);
+    ctx.textBaseline = "top"; // Alineado al borde superior del fondo negro
+    ctx.fillText(currentSegment.text || "", canvas.width / 2, canvas.height - 42);
+
+    // Buscar si existe un siguiente segmento en tu lista corregida para el "Próximo:"
+    const nextSegment = transcriptionSegments[currentIndex + 1];
+    if (nextSegment && nextSegment.text) {
+      ctx.fillStyle = "#888888"; // Gris claro sutil idéntico al de tu captura
+      ctx.font = "13px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom"; // Alineado al borde inferior del fondo negro
+      ctx.fillText("Próximo: " + nextSegment.text, canvas.width / 2, canvas.height - 8);
+    }
+  } 
+  
+  // 3. CASO B: No está sonando nada en este instante (Silencio o inicio de la canción)
+  else {
+  // Buscamos cuál es el primer segmento que va a empezar en el futuro
+    const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
+    
+    if (upcomingSegment && upcomingSegment.text) {
+      ctx.fillStyle = "#888888";
+      ctx.font = "15px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle"; // Centrado vertical perfecto en el fondo negro
+      ctx.fillText("Próximo: " + upcomingSegment.text, canvas.width / 2, canvas.height - 25);
+    }
   }
 }
 
