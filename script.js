@@ -3017,6 +3017,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ==========================================
 // MONITOR DE KARAOKE (CANVAS)
 // ==========================================
+
+// --- FUNCIÓN PARA CONSTRUIR LA FRASE CON ESPACIOS DESDE LAS PALABRAS ---
+function reconstruirFraseDesdeWords(segmento) {
+  if (!segmento || !Array.isArray(segmento.words)) return "";
+  
+  // 1. Mapeamos cada palabra/sílaba individual
+  // 2. Eliminamos los guiones "-" que se usan para las notas musicales flotantes
+  // 3. Unimos todo con un espacio en blanco
+  return segmento.words
+    .map(w => (w.text || "").replace(/-/g, "")) 
+    .join(" ")
+    .replace(/\s+/g, " ") // Limpia espacios duplicados
+    .trim();
+}
+
 function drawKaraokeMonitor(currentTime, currentFreq) {
   const canvas = $("karaokeCanvas");
   if (!canvas) return;
@@ -3208,19 +3223,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   }
   
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
-  // --- FUNCIÓN PARA CONSTRUIR LA FRASE CON ESPACIOS DESDE LAS PALABRAS ---
-  function reconstruirFraseDesdeWords(segmento) {
-    if (!segmento || !Array.isArray(segmento.words)) return "";
 
-    // 1. Mapeamos cada palabra/sílaba individual
-    // 2. Eliminamos los guiones "-" que se usan para las notas musicales flotantes
-    // 3. Unimos todo con un espacio en blanco
-    return segmento.words
-      .map(w => (w.text || "").replace(/-/g, "")) 
-      .join(" ")
-      .replace(/\s+/g, " ") // Limpia espacios duplicados
-      .trim();
-  }
   // =========================================================================
   // TU RENDERIZADOR INFERIOR CORREGIDO Y ADAPTADO
   // =========================================================================
