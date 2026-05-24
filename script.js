@@ -3034,15 +3034,15 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   const pentagramBottom = canvas.height - 60;
   const pentagramHeight = pentagramBottom - pentagramTop;
   
-  // Rango de notas (MIDI): C3 (48) a C6 (84)
-  const midiMin = 48;
-  const midiMax = 84;
+  // Rango de notas (MIDI): A3 (57) a C5 (72)
+  const midiMin = 57;
+  const midiMax = 72;
   const midiRange = midiMax - midiMin;
 
   // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
-  const numLines = 12;
+  ctx.strokeStyle = "#333333";
+  ctx.lineWidth = 2;
+  const numLines = 5;
   for (let i = 0; i <= numLines; i++) {
     const y = pentagramTop + (pentagramHeight / numLines) * i;
     ctx.beginPath();
@@ -3052,8 +3052,8 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   }
 
   // --- DIBUJAR INDICADORES DE NOTAS A LA IZQUIERDA ---
-  ctx.fillStyle = "#666";
-  ctx.font = "10px Arial";
+  ctx.fillStyle = "#666666";
+  ctx.font = "12px Arial";
   ctx.textAlign = "right";
   const noteLabels = ["C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4"];
   noteLabels.forEach((label, i) => {
@@ -3071,6 +3071,9 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
 
   // --- DIBUJAR BARRAS DE NOTAS ---
   if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
+    
+    // Limpiamos el canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
     // Ventana de tiempo visible (5 segundos hacia adelante, 1 hacia atrás)
     const timeWindowStart = currentTime - 1;
@@ -3097,7 +3100,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
         // Calcular posición X basada en el tiempo
         const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
         const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
-        const barWidth = Math.max(wordEndX - wordStartX, 20);
+        const barWidth = Math.max(wordEndX - wordStartX, 50);
         
         // Posición Y basada en la nota MIDI
         const midi = word.midi || segment.midi || 60; // Default: C4
@@ -3150,7 +3153,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
         
         // Texto de la palabra
         ctx.fillStyle = textColor;
-        ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
+        ctx.font = isActive ? "bold 14px Arial" : "12px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
