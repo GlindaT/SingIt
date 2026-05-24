@@ -3207,8 +3207,8 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.stroke();
   }
 
-  // --- DIBUJAR LETRA ACTUAL ABAJO ---
-  const currentSegment = correctedText.find(seg => 
+    // --- DIBUJAR LETRA ACTUAL ABAJO ---
+  const currentSegment = transcriptionSegments.find(seg => 
     currentTime >= seg.start && currentTime <= seg.end + 0.5
   );
   
@@ -3226,7 +3226,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   }
 
   // --- DIBUJAR SIGUIENTE LÍNEA ---
-  const nextSegment = correctedText.find(seg => seg.start > currentTime);
+  const nextSegment = transcriptionSegments.find(seg => seg.start > currentTime);
   if (nextSegment && !currentSegment) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
     ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
