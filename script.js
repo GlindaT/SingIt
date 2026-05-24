@@ -1168,7 +1168,7 @@ async function transcribeSelectedVoice() {
       });
 
       console.log("✅ Nuevo archivo de Texto UltraStar creado en la Biblioteca");
-      await renderLibrary("todos");
+      await renderLibrary("ultrastar_txt");
 
     } catch (err) {
       console.error("❌ Error al generar el archivo UltraStar independiente:", err);
