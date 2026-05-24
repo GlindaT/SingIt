@@ -3042,7 +3042,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
   ctx.strokeStyle = "#333333";
   ctx.lineWidth = 2;
-  const numLines = 5;
+  const numLines = 10;
   for (let i = 0; i <= numLines; i++) {
     const y = pentagramTop + (pentagramHeight / numLines) * i;
     ctx.beginPath();
@@ -3097,7 +3097,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
         // Calcular posición X basada en el tiempo
         const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
         const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
-        const barWidth = Math.max(wordEndX - wordStartX, 50);
+        const barWidth = Math.max(wordEndX - wordStartX, 30);
         
         // Posición Y basada en la nota MIDI
         const midi = word.midi || segment.midi || 60; // Default: C4
