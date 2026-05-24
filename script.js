@@ -3020,10 +3020,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // --- FUNCIÓN PARA CONSTRUIR LA FRASE CON ESPACIOS DESDE LAS PALABRAS ---
 function reconstruirFraseDesdeWords(segmento) {
-  if (!segmento || !Array.isArray(segmento.words)) return "";
-  return segmento.words
-    .map(w => (w.text || "").replace(/-/g, "")) 
-    .join(" ")
+  // 1. Si el segmento no existe, devolvemos vacío
+  if (!segmento) return "";
+
+  // 2. Intentar buscar el arreglo de palabras (revisamos .words y .text como plan B)
+  const listaPalabras = Array.isArray(segmento.words) ? segmento.words : [];
+  
+  // 3. PLAN B AUTOMÁTICO: Si .words está vacío, pero el segmento ya tiene un texto plano general
+  if (listaPalabras.length === 0 && segmento.text) {
+    return segmento.text.trim(); 
+  }
+
+  // 4. Si encontramos palabras individuales, las unimos asegurando mapear la propiedad correcta
+  return listaPalabras
+    .map(w => {
+      // Extraemos el texto buscando cualquier propiedad común (.text, .word o el objeto directo)
+      let textoPalabra = "";
+      if (typeof w === "string") textoPalabra = w;
+      else if (w) textoPalabra = w.text || w.word || "";
+      
+      // Limpiamos los guiones de separación
+      return textoPalabra.replace(/-/g, "");
+    }) 
+    .join(" ")            // Agrega los espacios automáticos que querías
     .replace(/\s+/g, " ") // Limpia espacios duplicados
     .trim();
 }
@@ -3221,7 +3240,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
   
   // Encontrar el índice del segmento que está sonando ahora mismo
-  const currentIndex = transcriptionSegments.find(seg => 
+  const currentIndex = transcriptionSegments.findIndex(seg => 
     currentTime >= seg.start && currentTime <= seg.end + 0.5
   );
 
