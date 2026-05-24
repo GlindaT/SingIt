@@ -3019,124 +3019,223 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ==========================================
 function drawKaraokeMonitor(currentTime, currentFreq) {
   const canvas = $("karaokeCanvas");
-  if (!canvas || !transcriptionSegments || transcriptionSegments.length === 0) {
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#666";
-      ctx.font = "16px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText("Sin datos de karaoke", canvas.width / 2, canvas.height / 2);
-    }
-    return;
-  }
+  if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  
-  // Guardar historial para el rastro de voz
-  if (typeof pitchHistory === 'undefined') window.pitchHistory = [];
+
+  // Guardamos la frecuencia actual
   pitchHistory.push(currentFreq > 0 ? currentFreq : null);
   if (pitchHistory.length > 60) pitchHistory.shift();
-  
+
+  // Limpiamos el canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Configuración del pentagrama
+  const pentagramTop = 30;
+  const pentagramBottom = canvas.height - 60;
+  const pentagramHeight = pentagramBottom - pentagramTop;
   
-  // --- 1. CONFIGURACIÓN DE VENTANA ---
-  const pixelsPerSecond = (canvas.width - 40) / 6; 
-  const lineX = 40; // Línea de tiempo actual
-  const topMargin = 30;
-  const bottomMargin = canvas.height - 80;
-  const drawHeight = bottomMargin - topMargin;
-  
-  // Escala MIDI dinámica
-  const allMidis = transcriptionSegments.map(s => s.midi).filter(m => m > 0);
-  const viewMidiMin = (allMidis.length > 0 ? Math.min(...allMidis) : 60) - 5;
-  const viewMidiMax = (allMidis.length > 0 ? Math.max(...allMidis) : 72) + 5;
-  const midiRange = viewMidiMax - viewMidiMin;
-  
-  const midiToY = (m) => {
-    const normalized = (viewMidiMax - m) / midiRange;
-    return topMargin + (normalized * drawHeight);
-  };
-  
-  // --- 2. DIBUJAR PENTAGRAMA ---
-  ctx.textAlign = "left";
-  for (let m = viewMidiMin; m <= viewMidiMax; m++) {
-    const y = midiToY(m);
-    ctx.strokeStyle = (m % 12 === 0) ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)";
+  // Rango de notas (MIDI): G3 (55) a B4 (71)
+  const midiMin = 55;
+  const midiMax = 71;
+  const midiRange = midiMax - midiMin;
+
+  // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
+  ctx.strokeStyle = "#333333";
+  ctx.lineWidth = 2;
+  const numLines = 10;
+  for (let i = 0; i <= numLines; i++) {
+    const y = pentagramTop + (pentagramHeight / numLines) * i;
     ctx.beginPath();
-    ctx.moveTo(lineX, y);
+    ctx.moveTo(0, y);
     ctx.lineTo(canvas.width, y);
     ctx.stroke();
   }
-  
-  // --- 3. DIBUJAR BARRAS DE NOTAS ---
-  let currentLyric = "";
+
+  // --- DIBUJAR INDICADORES DE NOTAS A LA IZQUIERDA ---
+  ctx.fillStyle = "#666666";
+  ctx.font = "12px Arial";
+  ctx.textAlign = "right";
+  const noteLabels = ["B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3"];
+  noteLabels.forEach((label, i) => {
+    const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
+    ctx.fillText(label, 25, y);
+  });
+
+  // Función para convertir MIDI a posición Y
+  function midiToY(midi) {
+    if (!midi || midi < midiMin) midi = midiMin;
+    if (midi > midiMax) midi = midiMax;
+    const normalized = (midiMax - midi) / midiRange;
+    return pentagramTop + normalized * pentagramHeight;
+  }
+
+  // --- DIBUJAR BARRAS DE NOTAS ---
   if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
+    
+    // Ventana de tiempo visible (5 segundos hacia adelante, 1 hacia atrás)
+    const timeWindowStart = currentTime - 1;
+    const timeWindowEnd = currentTime + 5;
+    const pixelsPerSecond = (canvas.width - 40) / 6; // 6 segundos de ventana
+    const lineX = 40; // Línea de tiempo actual
+
+    // Dibujar línea de tiempo actual
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(lineX, pentagramTop);
+    ctx.lineTo(lineX, pentagramBottom);
+    ctx.stroke();
+
+    // Recorrer todos los segmentos
     transcriptionSegments.forEach((segment) => {
       const words = Array.isArray(segment.words) ? segment.words : [];
+      
       words.forEach((word) => {
-        const x = lineX + (word.start - currentTime) * pixelsPerSecond;
-        const w = (word.end - word.start) * pixelsPerSecond;
-        const y = midiToY(word.midi || 60);
+        // Verificar si está en la ventana visible
+        if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
         
-        if (x + w < 0 || x > canvas.width) return;
+        // Calcular posición X basada en el tiempo
+        const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
+        const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
+        const barWidth = Math.max(wordEndX - wordStartX, 30);
         
+        // Posición Y basada en la nota MIDI
+        const midi = word.midi || segment.midi || 60; // Default: C4
+        const barY = midiToY(midi);
+        const barHeight = 22;
+        
+        // Determinar si la palabra está activa
         const isActive = currentTime >= word.start && currentTime <= word.end;
         const isPast = currentTime > word.end;
-        if (isActive) currentLyric = word.text;
         
-        // Lógica de color según acierto
+        // Determinar si el usuario está cantando la nota correcta
         let isCorrect = false;
         if (isActive && currentFreq > 0) {
-          const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
-          isCorrect = Math.abs(userMidi - word.midi) <= 2;
+          const userMidi = frequencyToMidi(currentFreq);
+          isCorrect = Math.abs(userMidi - midi) <= 2; // Tolerancia de 2 semitonos
         }
         
-        ctx.fillStyle = isPast ? "#4b5563" : (isCorrect ? "#22c55e" : (isActive ? "#3b82f6" : "rgba(59, 130, 246, 0.4)"));
-        
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(x, y - 10, Math.max(w, 5), 20, 5);
-        
+        // Colores según estado
+        let barColor, textColor, borderColor;
+        if (isPast) {
+          barColor = "#4b5563"; // Gris
+          textColor = "#9ca3af";
+          borderColor = "#6b7280";
+        } else if (isActive) {
+          if (isCorrect) {
+            barColor = "#22c55e"; // Verde - ¡Correcto!
+            textColor = "#ffffff";
+            borderColor = "#4ade80";
+          } else {
+            barColor = "#3b82f6"; // Azul - Activo
+            textColor = "#ffffff";
+            borderColor = "#60a5fa";
+          }
         } else {
-          ctx.rect(x, y - 10, Math.max(w, 5), 20);
+          barColor = "#1e40af"; // Azul oscuro - Próximo
+          textColor = "#93c5fd";
+          borderColor = "#3b82f6";
         }
+        
+        // Dibujar barra con bordes redondeados
+        ctx.fillStyle = barColor;
+        ctx.beginPath();
+        ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 8);
         ctx.fill();
         
-        // Texto de la sílaba
-        ctx.fillStyle = isActive ? "white" : "rgba(255,255,255,0.6)";
-        ctx.font = "11px Arial";
+        // Borde
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = isActive ? 2 : 1;
+        ctx.stroke();
+        
+        // Texto de la palabra
+        ctx.fillStyle = textColor;
+        ctx.font = isActive ? "bold 14px Arial" : "12px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(word.text, x + w / 2, y - 15);
+        ctx.textBaseline = "middle";
+        
+        // Truncar si es muy largo
+        let displayWord = word.word || "";
+        if (displayWord.length > 10) {
+          displayWord = displayWord.substring(0, 8) + "..";
+        }
+        ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
       });
     });
+
+  } else {
+    ctx.fillStyle = "#666";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
-  
-  // --- 4. DIBUJAR VOZ DEL USUARIO ---
+
+  // --- DIBUJAR LA VOZ DEL USUARIO (LÍNEA/PUNTO) ---
   if (currentFreq > 0) {
-    const userMidi = 69 + 12 * Math.log2(currentFreq / 440);
+    const userMidi = frequencyToMidi(currentFreq);
     const userY = midiToY(userMidi);
     
+    // Punto grande en la posición actual
     ctx.beginPath();
     ctx.fillStyle = "#facc15";
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 15;
     ctx.shadowColor = "#facc15";
-    ctx.arc(lineX, userY, 6, 0, Math.PI * 2);
+    ctx.arc(40, userY, 8, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
+    
+    // Rastro de la voz
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+    ctx.lineWidth = 3;
+    
+    let started = false;
+    pitchHistory.forEach((freq, i) => {
+      if (freq) {
+        const midi = frequencyToMidi(freq);
+        const y = midiToY(midi);
+        const x = 40 - (pitchHistory.length - i) * 2;
+        
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+    });
+    ctx.stroke();
   }
+
+  // --- DIBUJAR LETRA ACTUAL ABAJO ---
+  const currentSegment = correctedText.find(seg => 
+    currentTime >= seg.start && currentTime <= seg.end + 0.5
+  );
   
-  // --- 5. LÍNEA DE TIEMPO Y LETRA GRANDE ---
-  ctx.strokeStyle = "#ef4444";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(lineX, 20);
-  ctx.lineTo(lineX, canvas.height - 80);
-  ctx.stroke();
-      
-  ctx.fillStyle = "white";
-  ctx.font = "bold 35px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText(currentLyric.toUpperCase(), canvas.width / 2, canvas.height - 30);
+  if (currentSegment) {
+    // Fondo para la letra
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+    
+    // Letra actual
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 20px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(currentSegment.text || "", canvas.width / 2, canvas.height - 25);
+  }
+
+  // --- DIBUJAR SIGUIENTE LÍNEA ---
+  const nextSegment = correctedText.find(seg => seg.start > currentTime);
+  if (nextSegment && !currentSegment) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+    
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "16px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Próximo: " + (nextSegment.text || ""), canvas.width / 2, canvas.height - 25);
+  }
 }
 
 // ==========================================
