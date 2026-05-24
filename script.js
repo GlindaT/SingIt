@@ -3074,7 +3074,6 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   transcriptionSegments.forEach((segment) => {
     const words = Array.isArray(segment.words) ? segment.words : [];
     words.forEach((word) => {
-      if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
       const x = lineX + (word.start - currentTime) * pixelsPerSecond;
       const w = (word.end - word.start) * pixelsPerSecond;
       const y = midiToY(word.midi || 60);
