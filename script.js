@@ -3044,7 +3044,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   const lineX = 40; // Línea de tiempo actual
   const topMargin = 30;
   const bottomMargin = canvas.height - 60;
-  const drawHeight = pentagramBottom - pentagramTop;
+  const drawHeight = bottomMargin - topMargin;
   
   // Escala MIDI dinámica
   const allMidis = transcriptionSegments.map(s => s.midi).filter(m => m > 0);
