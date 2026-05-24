@@ -3220,6 +3220,15 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
   
+  // Encontrar el índice del segmento que está sonando ahora mismo
+  const currentIndex = transcriptionSegments.findIndex(seg => 
+    currentTime >= seg.start && currentTime <= seg.end + 0.5
+  );
+
+  // Dibujar SIEMPRE el fondo negro para las letras abajo
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
   // CASO A: Hay una letra sonando en este momento
   if (currentIndex !== -1) {
     const currentSegment = transcriptionSegments[currentIndex];
@@ -3246,7 +3255,8 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
       ctx.textBaseline = "bottom"; 
       ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 8);
     }
-  } 
+  }
+  
   // CASO B: No está sonando nada en este instante (Silencio o Intro)
   else {
     const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
