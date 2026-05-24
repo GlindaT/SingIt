@@ -1,0 +1,390 @@
+#TITLE:Fuiste Tu (Voz)
+#ARTIST:Ricardo Arjona - Gaby Moreno
+#BPM:120
+#GAP:0
+: 30 7 58 Fuiste
+: 37 2 58 tú
+- 38
+: 40 1 58 Tenerte
+: 41 0 58 fue
+: 42 0 58 una
+: 43 0 58 foto
+: 44 1 57 tuya
+- 45
+: 45 4 57 puesta
+: 49 1 56 en
+: 50 1 57 mi
+: 51 4 57 cartera
+- 56
+: 56 0 57 Un
+: 57 1 57 beso
+: 58 0 57 y
+: 58 1 57 verte
+: 59 0 57 ser
+: 60 1 58 pequeño
+- 61
+: 61 2 58 por
+: 64 1 58 la
+: 65 7 58 carretera
+- 73
+: 73 0 65 Lo
+: 73 0 64 tuyo
+: 74 0 65 fue
+: 75 0 65 la
+: 75 2 65 intermitencia
+- 78
+: 78 0 64 y
+: 79 1 62 la
+: 80 8 69 melancolía
+- 89
+: 89 0 62 Lo
+: 90 0 60 mío
+: 90 0 62 fue
+: 91 2 62 aceptarlo
+: 93 1 62 todo
+- 94
+: 94 4 60 porque
+: 98 1 57 te
+: 100 4 58 quería
+- 104
+: 104 2 58 Verte
+: 106 2 58 llegar
+: 109 1 56 fue
+: 110 1 58 luz,
+- 112
+: 112 2 51 verte
+: 114 3 51 partir,
+: 117 0 53 un
+: 118 2 55 blues
+- 120
+: 120 8 58 Fuiste
+: 128 2 58 tú
+- 130
+: 130 0 58 De
+: 131 0 58 más
+: 131 0 58 está
+: 132 0 58 a
+: 133 1 58 decir
+: 134 0 57 que
+: 134 1 58 sobra
+- 135
+: 135 3 58 decir
+: 139 4 58 tantas
+: 143 3 55 cosas
+- 147
+: 147 0 58 O
+: 147 1 58 aprendes
+: 149 0 57 a
+: 149 1 58 querer
+: 150 0 58 la
+: 150 1 57 espina,
+- 152
+: 152 0 58 o
+: 152 1 56 no
+: 154 5 60 aceptes
+: 159 3 58 rosas
+- 163
+: 163 1 65 Jamás
+: 164 0 65 te
+: 165 0 64 dije
+: 165 0 63 una
+: 166 1 65 mentira
+- 168
+: 168 0 64 o
+: 169 1 61 te
+: 170 3 62 inventé
+: 173 1 64 un
+: 174 4 64 chantaje
+- 178
+: 178 0 60 Las
+: 179 1 60 nubes
+: 180 1 60 grises
+: 182 1 62 también
+: 183 1 62 forman
+- 185
+: 185 3 57 parte
+: 188 2 57 del
+: 190 4 57 paisaje
+- 195
+: 195 0 58 Y
+: 195 1 60 no
+: 196 1 58 me
+: 198 2 53 veas
+: 200 2 58 así,
+- 202
+: 202 0 60 si
+: 203 1 60 hubo
+: 205 0 60 un
+: 206 3 60 culpable
+: 209 2 60 aquí,
+- 211
+: 211 7 40 fuiste
+: 218 2 40 tú
+- 220
+: 220 0 64 Qué
+: 221 1 64 fácil
+: 222 0 67 fue
+: 223 1 45 tocar
+: 224 0 41 el
+: 225 1 53 cielo
+- 226
+: 226 0 65 la
+: 227 2 65 primera
+: 229 1 65 vez
+- 230
+: 230 1 67 Cuando
+: 231 0 67 los
+: 232 1 67 besos
+: 233 1 67 fueron
+- 234
+: 234 0 65 el
+: 235 1 65 motor
+: 236 0 60 de
+: 236 2 48 arranque
+- 238
+: 238 0 62 Que
+: 239 1 62 encendió
+: 241 0 62 la
+: 241 0 62 luz
+- 242
+: 242 2 60 que
+: 244 2 59 hoy
+: 246 1 60 se
+: 247 6 57 desaparece
+- 254
+: 254 0 50 Así
+: 254 0 67 se
+: 255 1 68 disfraza
+: 257 0 50 el
+: 257 1 50 amor
+- 258
+: 258 1 64 para
+: 259 0 64 su
+: 260 3 65 conveniencia
+- 263
+: 263 2 50 Aceptando
+: 265 1 50 todo,
+- 267
+: 267 0 62 sin
+: 267 1 62 hacer
+: 269 2 45 preguntas
+- 271
+: 271 0 60 Y
+: 271 1 62 dejando
+: 273 0 60 al
+: 274 1 60 tiempo
+- 275
+: 275 1 62 la
+: 276 5 70 estocada
+: 281 3 53 muerte
+- 285
+: 285 2 65 Nada
+: 287 1 65 más
+: 289 1 65 que
+: 290 2 65 decir
+- 292
+: 292 1 62 Solo
+: 294 2 62 queda
+: 296 3 53 insistir
+- 301
+: 301 4 58 Dilo
+- 306
+: 306 6 58 Fuiste
+: 313 2 58 tú
+- 315
+: 315 0 57 La
+: 315 0 57 luz
+: 316 0 57 de
+: 317 0 57 neón
+: 317 0 58 del
+: 318 1 57 barrio
+: 319 0 59 sabe
+- 321
+: 321 1 59 que
+: 322 3 58 estoy
+: 325 1 57 tan
+: 327 4 59 cansada
+- 331
+: 331 0 58 Me
+: 332 0 58 ha
+: 332 1 57 visto
+: 334 1 57 caminar
+: 335 1 57 descalza
+- 337
+: 337 2 58 por
+: 339 1 58 la
+: 340 7 59 madrugada
+- 348
+: 348 1 65 Estoy
+: 349 0 65 en
+: 350 1 64 medio
+: 351 0 65 del
+: 352 0 65 que
+: 353 0 65 soy
+- 353
+: 353 0 64 y
+: 354 1 64 del
+: 356 1 41 que
+: 358 1 60 tú
+: 359 5 60 quisieras
+- 365
+: 365 1 62 Queriendo
+: 367 1 62 despertar
+: 368 1 62 pensando
+- 370
+: 370 2 62 como
+: 373 1 62 no
+: 374 5 57 quisiera
+- 380
+: 380 0 58 Y
+: 380 1 60 no
+: 381 1 58 me
+: 383 2 58 veas
+: 385 2 52 así,
+- 388
+: 388 0 52 si
+: 388 1 45 hubo
+: 390 0 64 un
+: 391 3 53 culpable
+: 394 1 64 aquí,
+- 396
+: 396 7 53 fuiste
+: 404 2 69 tú
+- 406
+: 406 0 69 Qué
+: 407 1 69 fácil
+: 408 0 69 fue
+: 408 1 64 tocar
+: 409 0 53 el
+: 410 1 41 cielo
+- 411
+: 411 0 69 la
+: 412 2 69 primera
+: 414 0 67 vez
+- 415
+: 415 1 67 Cuando
+: 416 0 67 los
+: 417 1 67 besos
+: 418 1 67 fueron
+- 419
+: 419 0 40 el
+: 420 0 40 motor
+: 421 0 48 de
+: 421 1 48 arranque
+- 423
+: 423 0 62 Que
+: 244 1 48 encendió
+: 426 0 62 la
+: 426 0 62 luz
+- 427
+: 427 2 60 que
+: 429 2 59 hoy
+: 431 1 60 se
+: 432 6 57 desaparece
+- 439
+: 439 0 65 Así
+: 440 0 67 se
+: 440 2 64 disfraza
+: 442 0 52 el
+: 443 0 41 amor
+- 444
+: 444 1 43 para
+: 445 0 43 su
+: 445 2 53 conveniencia
+- 448
+: 448 2 72 Aceptando
+: 451 1 72 todo,
+- 453
+: 453 0 64 sin
+: 453 1 64 hacer
+: 454 2 64 preguntas
+- 456
+: 456 0 62 Y
+: 456 1 62 dejando
+: 458 0 62 al
+: 458 1 60 tiempo
+- 459
+: 459 1 60 la
+: 460 5 71 estocada
+: 465 3 65 muerte
+- 470
+: 470 2 58 Nada
+: 472 1 65 más
+: 474 1 55 que
+: 475 2 48 decir
+- 477
+: 477 1 58 Solo
+: 479 2 58 queda
+: 481 3 58 insistir
+- 485
+: 485 7 60 Fuiste
+: 491 2 65 tú
+- 493
+: 493 0 67 Qué
+: 494 1 53 fácil
+: 495 0 67 fue
+: 495 1 67 tocar
+: 496 0 52 el
+: 497 1 53 cielo
+- 498
+: 498 0 65 la
+: 499 2 65 primera
+: 500 0 67 vez
+- 501
+: 501 1 52 Cuando
+: 502 0 52 los
+: 503 1 52 besos
+: 504 1 52 fueron
+- 505
+: 505 0 64 el
+: 505 1 62 motor
+: 506 0 64 de
+: 506 1 60 arranque
+- 508
+: 508 0 62 Que
+: 509 1 41 encendió
+: 510 0 62 la
+: 511 0 62 luz
+- 511
+: 511 2 60 que
+: 513 2 60 hoy
+: 514 1 60 se
+: 515 5 57 desaparece
+- 521
+: 521 0 69 Así
+: 522 0 67 se
+: 522 2 69 disfraza
+: 524 0 63 el
+: 524 1 46 amor
+- 525
+: 525 1 64 para
+: 526 0 64 su
+: 526 2 63 conveniencia
+- 529
+: 529 2 52 Aceptando
+: 531 1 40 todo,
+- 532
+: 532 0 72 sin
+: 533 1 72 hacer
+: 534 1 72 preguntas
+- 535
+: 535 0 62 Y
+: 536 1 62 dejando
+: 537 0 62 al
+: 537 0 60 tiempo
+- 539
+: 539 1 48 la
+: 540 4 61 estocada
+: 544 3 53 muerte
+- 467
+: 467 2 65 Nada
+: 469 1 59 más
+: 470 1 60 que
+: 472 2 61 decir
+- 474
+: 474 1 62 Si
+: 475 5 62 quieres
+: 480 3 62 insistir
+- 486
+: 486 41 60 Fuiste
+E
