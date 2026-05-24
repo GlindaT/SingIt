@@ -3034,9 +3034,9 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   const pentagramBottom = canvas.height - 60;
   const pentagramHeight = pentagramBottom - pentagramTop;
   
-  // Rango de notas (MIDI): A3 (57) a C5 (72)
-  const midiMin = 57;
-  const midiMax = 72;
+  // Rango de notas (MIDI): G3 (55) a B4 (71)
+  const midiMin = 55;
+  const midiMax = 71;
   const midiRange = midiMax - midiMin;
 
   // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
@@ -3055,7 +3055,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   ctx.fillStyle = "#666666";
   ctx.font = "12px Arial";
   ctx.textAlign = "right";
-  const noteLabels = ["C5", "B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3"];
+  const noteLabels = ["B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3"];
   noteLabels.forEach((label, i) => {
     const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
     ctx.fillText(label, 25, y);
