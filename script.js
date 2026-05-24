@@ -954,7 +954,7 @@ async function loadVoiceOptionsInStudio() {
 
   try {
     const voces = await getLibraryItemsByType("voz");
-    const grabaciones = await getLibraryItemsByType("grabacion");
+    const grabaciones = await getLibraryItemsByType("pista");
 
     const merged = [...voces, ...grabaciones];
 
