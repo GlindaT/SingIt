@@ -414,6 +414,8 @@ let studioTrackId = null;
 let selectedVoiceBlob = null;
 let selectedVoiceId = null;
 let studioSelectedTrackBlob = null;
+let studioSelectedTrackName = "";
+let studioSelectedTrackId = null;
 
 // ==========================================
 // ESTUDIO
@@ -938,6 +940,11 @@ async function loadSelectedTrackFromLibraryStudio() {
     studioTrackFileName = item.name;
     studioTrackBlob = item.audioBlob;
     studioTrackId = item.id;
+
+    studioSelectedTrackName = item.name;
+    studioSelectedTrackBlob = item.audioBlob;
+    studioSelectedTrackId = item.id;
+    
     player.src = URL.createObjectURL(item.audioBlob);
     status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
   } catch (error) {
@@ -954,7 +961,7 @@ async function loadVoiceOptionsInStudio() {
 
   try {
     const voces = await getLibraryItemsByType("voz");
-    const grabaciones = await getLibraryItemsByType("pista");
+    const grabaciones = await getLibraryItemsByType("grabación");
 
     const merged = [...voces, ...grabaciones];
 
@@ -1140,7 +1147,7 @@ async function transcribeSelectedVoice() {
 
     // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
     try {
-      const vozOriginal = await getLibraryItem(selectedVoiceId); 
+      const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
       
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:120\n#GAP:0\n`;
