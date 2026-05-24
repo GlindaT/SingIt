@@ -3021,10 +3021,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 // --- FUNCIÓN PARA CONSTRUIR LA FRASE CON ESPACIOS DESDE LAS PALABRAS ---
 function reconstruirFraseDesdeWords(segmento) {
   if (!segmento || !Array.isArray(segmento.words)) return "";
-  
-  // 1. Mapeamos cada palabra/sílaba individual
-  // 2. Eliminamos los guiones "-" que se usan para las notas musicales flotantes
-  // 3. Unimos todo con un espacio en blanco
   return segmento.words
     .map(w => (w.text || "").replace(/-/g, "")) 
     .join(" ")
@@ -3049,9 +3045,9 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   const pentagramBottom = canvas.height - 60;
   const pentagramHeight = pentagramBottom - pentagramTop;
   
-  // Rango de notas (MIDI): G3 (55) a B4 (71)
-  const midiMin = 55;
-  const midiMax = 71;
+  // Rango de notas (MIDI): C3 (48) a C6 (84)
+  const midiMin = 48;
+  const midiMax = 84;
   const midiRange = midiMax - midiMin;
 
   // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
@@ -3070,7 +3066,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   ctx.fillStyle = "#666666";
   ctx.font = "12px Arial";
   ctx.textAlign = "right";
-  const noteLabels = ["B4", "A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3"];
+  const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
   noteLabels.forEach((label, i) => {
     const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
     ctx.fillText(label, 25, y);
@@ -3223,27 +3219,14 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   }
   
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
-
-  // =========================================================================
-  // TU RENDERIZADOR INFERIOR CORREGIDO Y ADAPTADO
-  // =========================================================================
   
-  // 1. Encontrar el índice del segmento que está sonando ahora mismo
-  const currentIndex = transcriptionSegments.findIndex(seg => 
-    currentTime >= seg.start && currentTime <= seg.end + 0.5
-  );
-
-  // Dibujar SIEMPRE el fondo negro para las letras abajo
-  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-
-  // 2. CASO A: Hay una letra sonando en este momento
+  // CASO A: Hay una letra sonando en este momento
   if (currentIndex !== -1) {
     const currentSegment = transcriptionSegments[currentIndex];
-  
+    
     // Reconstruimos la frase actual de forma limpia con espacios
     const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-  
+    
     // Dibujar la letra actual (Blanco llamativo)
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 18px Arial"; 
@@ -3264,10 +3247,9 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
       ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 8);
     }
   } 
-  // 3. CASO B: No está sonando nada en este instante (Silencio o Intro)
+  // CASO B: No está sonando nada en este instante (Silencio o Intro)
   else {
     const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
-  
     if (upcomingSegment) {
       const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
 
