@@ -3221,7 +3221,7 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
   
   // Encontrar el índice del segmento que está sonando ahora mismo
-  const currentIndex = transcriptionSegments.findIndex(seg => 
+  const currentIndex = transcriptionSegments.find(seg => 
     currentTime >= seg.start && currentTime <= seg.end + 0.5
   );
 
