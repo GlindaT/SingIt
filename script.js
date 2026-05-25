@@ -3878,21 +3878,19 @@ function cambiarEscenarioKaraoke() {
 // ==========================================
 // ESCUCHAR CAMBIOS Y CARGAR AL INICIAR (CORREGIDO)
 // ==========================================
-document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
-
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.getElementById("karaokeThemeSelect");
   if (!select) return;
 
-  // Intentamos traer el tema guardado
-  let temaGuardado = localStorage.getItem("singIt_theme");
+  // Usamos una clave ultra específica para el karaoke: "singit_escenario_v2"
+  let temaGuardado = localStorage.getItem("singit_escenario_v2");
   
-  // 🎯 Si no hay ningún tema guardado en el navegador, usamos el 'theme-clasico' por defecto
-  if (!temaGuardado) {
-    temaGuardado = "theme-clasico";
+  // Si no hay nada guardado, leemos el valor que ya viene puesto en el HTML por defecto
+  if (!temaGuardado || temaGuardado === "undefined") {
+    temaGuardado = select.value || "theme-clasico";
   }
 
-  // Asignamos el valor al menú desplegable y ejecutamos el cambio visual de forma segura
+  // Forzamos el valor en el select y ejecutamos de forma segura
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
 });
