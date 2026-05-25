@@ -372,7 +372,7 @@ function autoCorrelate(buf, sampleRate) {
   }
   rms = Math.sqrt(rms / buf.length);
 
-  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.03;
+  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.01;
 
   // Si el volumen es muy bajo, ignoramos la detección
   if (rms < umbral) return -1;
