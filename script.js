@@ -3316,19 +3316,19 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
   // 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
   // ====================================================================
   
-  // Dibujar rastro histórico Mic 1 (Corregido para evitar trazos cruzados)
+  // Dibujar rastro histórico Mic 1 (Hacia la izquierda desde la posición de canto)
   ctx.beginPath();
   ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-  ctx.lineWidth = 4; // Un poco más grueso para que destaque en Vercel
+  ctx.lineWidth = 4; 
   let started1 = false;
   
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
       const y = midiToY(frequencyToMidi(freq));
-      // Nueva fórmula X: El rastro avanza de derecha a izquierda a lo largo de todo el canvas
-      const x = width - (pitchHistoryMic1.length - i) * 4; 
+      // Volvemos a tu cálculo original en X pero asegurando el espaciado correcto hacia atrás
+      const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
-      if (x >= 0) { // Solo dibujamos si está dentro del lienzo visible
+      if (x >= 0) { 
         if (!started1) { 
           ctx.moveTo(x, y); 
           started1 = true; 
@@ -3337,21 +3337,19 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
         }
       }
     } else {
-      // Si el cantante hace una pausa, rompemos el trazo y forzamos un nuevo inicio
-      started1 = false; 
+      started1 = false; // Rompe el trazo de forma limpia si hay silencio para evitar líneas locas
     }
   });
   ctx.stroke();
 
-  // Dibujar indicador actual Mic 1
+  // Dibujar indicador actual Mic 1 (Fijo en la zona de impacto X = 40)
   if (currentFreq && currentFreq > 0) {
     const userY1 = midiToY(frequencyToMidi(currentFreq));
     ctx.beginPath();
     ctx.fillStyle = "#facc15"; 
     ctx.shadowBlur = 20;
     ctx.shadowColor = "#facc15";
-    // Posicionamos la esfera al extremo derecho del rastro visible
-    ctx.arc(width - 4, userY1, 9, 0, Math.PI * 2);
+    ctx.arc(40, userY1, 9, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0; 
   }
@@ -3360,7 +3358,7 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
   // 🐬 --- DIBUJAR LA VOZ DEL MICRÓFONO 2 (CELESTE / CIAN) ---
   // ====================================================================
   
-  // Dibujar rastro histórico Mic 2 (Corregido para silencios temporales)
+  // Dibujar rastro histórico Mic 2
   ctx.beginPath();
   ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
   ctx.lineWidth = 4;
@@ -3369,7 +3367,7 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
   pitchHistoryMic2.forEach((freq, i) => {
     if (freq && freq > 0) {
       const y = midiToY(frequencyToMidi(freq));
-      const x = width - (pitchHistoryMic2.length - i) * 4; // Misma escala X que el Mic 1
+      const x = 40 - (pitchHistoryMic2.length - i) * 3; 
       
       if (x >= 0) {
         if (!started2) { 
@@ -3392,9 +3390,8 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
     ctx.fillStyle = "#06b6d4"; 
     ctx.shadowBlur = 20;
     ctx.shadowColor = "#06b6d4";
-    // Desfasamos sutilmente a la izquierda (width - 12) para que si cantan la misma nota,
-    // la esfera cian no tape por completo a la amarilla del Mic 1.
-    ctx.arc(width - 14, userY2, 9, 0, Math.PI * 2);
+    // Desfasamos ligeramente a la derecha (X = 46) para que si cantan al unísono, ambos círculos se vean
+    ctx.arc(46, userY2, 9, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0; 
   }
