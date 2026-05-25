@@ -835,3 +835,12 @@ input[type="text"] {
   background: #06b6d4;           /* Celeste/Cian eléctrico (Igual que la voz 2 en el canvas) */
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
 }
+
+/* Color destacado para saber qué carpeta de la biblioteca está abierta */
+.folder-btn.active {
+  background-color: #3b82f6 !important; /* Azul de tu botón de carga */
+  color: #ffffff !important;
+  border: 1px solid #22c55e !important; /* Bordecito verde sutil */
+  font-weight: bold;
+  transform: scale(1.03);
+}
