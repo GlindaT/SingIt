@@ -3288,7 +3288,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
 async function startKaraokePitchDetection() {
-    // Verificar que el contexto principal esté activo
+    // Verificar que el contexto principal y el primer analizador estén listos
     if (!karaokeDuoAudioContext || !karaokeDuoAnalyser1) {
         console.error("⚠️ La grabación no está lista para iniciar la detección de pitch.");
         return;
@@ -3297,8 +3297,9 @@ async function startKaraokePitchDetection() {
     // Configuramos la máxima precisión para el Micrófono 1
     karaokeDuoAnalyser1.fftSize = 2048;
 
-    // Si el Micrófono 2 está activo en el analizador, también le subimos la precisión
-    if (karaokeDuoAnalyser2) {
+    // --- ¡AQUÍ ESTABA EL ERROR! Ponemos una protección con un IF ---
+    // Solo cambiamos el fftSize si el segundo analizador REALMENTE existe (Modo Dúo)
+    if (karaokeDuoAnalyser2 !== null && karaokeDuoAnalyser2 !== undefined) {
         karaokeDuoAnalyser2.fftSize = 2048;
     }
 
@@ -3306,27 +3307,21 @@ async function startKaraokePitchDetection() {
         const track = $("karaokeTrack");
         const currentTime = track ? track.currentTime : 0;
 
-        // -------------------------------------------------------
         // INTERCEPTAR MICRÓFONO 1
-        // -------------------------------------------------------
         const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
         karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
         const pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext.sampleRate);
 
-        // -------------------------------------------------------
-        // INTERCEPTAR MICRÓFONO 2 (Solo si existe en la mezcla)
-        // -------------------------------------------------------
-        let pitch2 = -1; // -1 significa que no hay voz o no está activo
-        if (karaokeDuoAnalyser2) {
+        // INTERCEPTAR MICRÓFONO 2 
+        // También protegemos el bucle para que no intente leer si es null
+        let pitch2 = -1; 
+        if (karaokeDuoAnalyser2 !== null && karaokeDuoAnalyser2 !== undefined) {
             const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
             karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
             pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext.sampleRate);
         }
 
-        // -------------------------------------------------------
         // ENVIAR AMBOS TONOS AL MONITOR VISUAL
-        // -------------------------------------------------------
-        // Modificamos el llamado para enviarle el pitch del Mic 1 y del Mic 2
         if (typeof drawKaraokeMonitor === 'function') {
             drawKaraokeMonitor(currentTime, pitch1, pitch2);
         }
