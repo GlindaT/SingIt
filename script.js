@@ -2318,7 +2318,7 @@ function initSettings() {
   const sensInput = $("micSensitivity");
   if (sensInput) {
     
-    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.03";
+    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.01";
     
     sensInput.addEventListener("input", (e) => {
       localStorage.setItem("singIt_sensitivity", e.target.value);
@@ -2349,12 +2349,30 @@ function initSettings() {
         if (id === "appTheme") {
           applyAppTheme(e.target.value);
         }
-      });
+        
+        // ¡AGREGA ESTE NUEVO BLOQUE AQUÍ PARA LOS ESCENARIOS!
+        if (id === "karaokeStage") {
+          const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
+          if (contenedorKaraoke) {
+            // Limpiamos cualquier escenario anterior
+            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+            todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
+            
+            // Aplicamos el nuevo escenario elegido
+            contenedorKaraoke.classList.add(e.target.value);
+          }
+        });
     }
   });
 
   // Aplicar tema guardado al iniciar
   applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
+
+  const savedStage = localStorage.getItem("singIt_stage") || "theme-clasico";
+  const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
+  if (contenedorKaraoke) {
+    contenedorKaraoke.classList.add(savedStage);
+  }
 }
 
 function applyAppTheme(theme) {
