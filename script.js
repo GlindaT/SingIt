@@ -2361,18 +2361,18 @@ function initSettings() {
             // Aplicamos el nuevo escenario elegido
             contenedorKaraoke.classList.add(e.target.value);
           }
-        });
+        }
+      });
+    }
+    // Aplicar tema guardado al iniciar
+    
+    applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
+    const savedStage = localStorage.getItem("singIt_stage") || "theme-clasico";
+    const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
+    if (contenedorKaraoke) {
+      contenedorKaraoke.classList.add(savedStage);
     }
   });
-
-  // Aplicar tema guardado al iniciar
-  applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
-
-  const savedStage = localStorage.getItem("singIt_stage") || "theme-clasico";
-  const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
-  if (contenedorKaraoke) {
-    contenedorKaraoke.classList.add(savedStage);
-  }
 }
 
 function applyAppTheme(theme) {
