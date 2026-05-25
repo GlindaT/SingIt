@@ -2912,7 +2912,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     applyKaraokeTheme();
 
-    safeAdd("karaokeStage", "change", (e) => {
+    safeAdd("karaokeThemeSelect", "change", (e) => {
       saveSetting("singIt_stage", e.target);
       applyKaraokeTheme();
     });
