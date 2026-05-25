@@ -221,26 +221,24 @@ async function toggleRecording() {
 }
 
 function aplicarCadenaDeAudio(audioCtx, source) {
-  // 1. Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
-  const highPass = audioCtx.createBiquadFilter();
-  highPass.type = "highpass";
-  highPass.frequency.value = 80;
-
-  // 2. Filtro Paso Bajo (Elimina siseos eléctricos de 1000Hz hacia arriba)
-  const lowPass = audioCtx.createBiquadFilter();
-  lowPass.type = "lowpass";
-  lowPass.frequency.value = 1000;
-
-  // 3. Control de Ganancia (Un poco de volumen extra)
-  const gainNode = audioCtx.createGain();
-  gainNode.gain.value = 1.5;
-
-  // Conectamos: Fuente -> HighPass -> LowPass -> Gain -> Salida
-  source.connect(highPass);
-  highPass.connect(lowPass);
-  lowPass.connect(gainNode);
-  
-  return gainNode; // Retornamos el último nodo para conectarlo al Analyser
+ // Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
+ const highPass = audioCtx.createBiquadFilter();
+ highPass.type = "highpass";
+ highPass.frequency.value = 80;
+ 
+ // Filtro Paso Bajo ESTRICTO (Solo sirve para detectar el Pitch matemático)
+ const lowPass = audioCtx.createBiquadFilter();
+ lowPass.type = "lowpass";
+ lowPass.frequency.value = 1000; // <--- Corta el brillo vocal, ideal solo para afinador
+ 
+ const gainNode = audioCtx.createGain();
+ gainNode.gain.value = 1.5;
+ 
+ source.connect(highPass);
+ highPass.connect(lowPass);
+ lowPass.connect(gainNode);
+ 
+ return gainNode; 
 }
 
 async function startAfinador() {
@@ -268,6 +266,34 @@ async function startAfinador() {
   setTimeout(() => {
     detectPitch();
   }, 300);
+}
+
+// ====================================================================
+// 🔥 NUEVA FUNCIÓN: CADENA DE AUDIO DE ALTA CALIDAD PARA KARAOKE Y ESTUDIO
+// ====================================================================
+function aplicarCadenaDeAudioKaraoke(audioCtx, source) {
+ // 1. Filtro Paso Alto Vocal (Suave): Elimina solo ruidos de viento o golpes al mic (< 60Hz)
+ const highPass = audioCtx.createBiquadFilter();
+ highPass.type = "highpass";
+ highPass.frequency.value = 60;
+
+ // 2. Filtro Paso Alto de Brillo (Opcional): Un sutil realce en agudos para dar presencia
+ // En lugar de cortar a 1000Hz, dejamos pasar TODO el rango vocal de forma cristalina.
+ const shelfFilter = audioCtx.createBiquadFilter();
+ shelfFilter.type = "highshelf";
+ shelfFilter.frequency.value = 4000; 
+ shelfFilter.gain.value = 2.0; // Le da un aire profesional y brillante a la voz
+
+ // 3. Ganancia limpia para la mezcla
+ const gainNode = audioCtx.createGain();
+ gainNode.gain.value = 1.2; 
+
+ // Conectamos la ruta de alta fidelidad: Fuente -> HighPass -> Brillo -> Ganancia -> Salida
+ source.connect(highPass);
+ highPass.connect(shelfFilter);
+ shelfFilter.connect(gainNode);
+ 
+ return gainNode; 
 }
 
 function stopAfinador() {
@@ -504,7 +530,7 @@ async function startStudioRecording() {
 
     // Procesar Mic 1 con tus filtros. Agregada may 25
     const source1 = duoAudioContext.createMediaStreamSource(studioStream);
-    const mic1Filtrado = aplicarCadenaDeAudio(duoAudioContext, source1);
+    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(duoAudioContext, source1);
 
     /// Control de volumen Mic 1. May 25
     const volNode1 = duoAudioContext.createGain();
@@ -539,7 +565,7 @@ async function startStudioRecording() {
 
       // Procesar Mic 2 con tus filtros. May 25
       const source2 = duoAudioContext.createMediaStreamSource(studioStream2);
-      const mic2Filtrado = aplicarCadenaDeAudio(duoAudioContext, source2);
+      const mic2Filtrado = aplicarCadenaDeAudioKaraoke(duoAudioContext, source2);
 
       // Control de volumen Mic 2. May 25
       const volNode2 = duoAudioContext.createGain();
@@ -1816,7 +1842,7 @@ async function startKaraokeRecording() {
 
     // Procesar Mic 1 con tus filtros
     const source1 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream);
-    const mic1Filtrado = aplicarCadenaDeAudio(karaokeDuoAudioContext, source1);
+    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
 
     // Control de volumen Mic 1
     const volNode1 = karaokeDuoAudioContext.createGain();
@@ -1850,7 +1876,7 @@ async function startKaraokeRecording() {
 
       // Procesar Mic 2 con tus filtros
       const source2 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream2);
-      const mic2Filtrado = aplicarCadenaDeAudio(karaokeDuoAudioContext, source2);
+      const mic2Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source2);
 
       // Control de volumen Mic 2
       const volNode2 = karaokeDuoAudioContext.createGain();
