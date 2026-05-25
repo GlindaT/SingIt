@@ -419,30 +419,27 @@ input[type="text"] {
 /* ==========================================
    ESCENARIOS DE KARAOKE (TEMAS)
 ========================================== */
-/* Clásico (El que ya teníamos) */
-.theme-clasico { background: transparent; }
+/* Clásico */
+body.theme-clasico { background: #121212; }
 
 /* Moderno (Neón Azul) */
-.theme-moderno { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
-.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
+body.theme-moderno { background: #082f49 !important; }
+body.theme-moderno #karaokeLyrics { border: 2px solid #06b6d4 !important; }
+body.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
 
-/* Disco (Fondo vibrante rosa/morado) */
-.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
-.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
+/* Disco */
+body.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
+body.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
 
-/* Acústico (Madera/Café relajante) */
-.theme-acustico { background: #451a03 !important; border: 2px solid #78350f !important; }
-.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
+/* Acústico */
+body.theme-acustico { background: #451a03 !important; }
+body.theme-acustico #karaokeLyrics { border: 2px solid #78350f !important; }
+body.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
 
-/* Fiesta (Animación loca de luces) */
-.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
-.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
+/* Fiesta */
+body.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
+body.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
 
-@keyframes luces-fiesta {
-  0% { box-shadow: inset 0 0 40px #ff007f; }
-  50% { box-shadow: inset 0 0 40px #00f0ff; }
-  100% { box-shadow: inset 0 0 40px #b700ff; }
-}
 
 /* ==========================================
    MODO CELULAR (RESPONSIVE DESIGN)
