@@ -1856,7 +1856,7 @@ async function startKaraokeRecording() {
     // Control de volumen Mic 1
     const volNode1 = karaokeDuoAudioContext.createGain();
     const sliderVol1 = $("mic1Volume"); 
-    volNode1.gain.value = sliderVol1 ? parseFloat(sliderVol1.value) : 1.0;
+    volNode1.gain.value = sliderVol1 ? (parseFloat(sliderVol1.value) *1.8) : 1.0;
     mic1Filtrado.connect(volNode1);
     currentVolNode1 = volNode1; // Guardar referencia global
 
@@ -3454,25 +3454,45 @@ async function startKaraokePitchDetection() {
         const track = $("karaokeTrack");
         const currentTime = track ? track.currentTime : 0;
 
+        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 1 (AMARILLO) ---
         let pitch1 = -1;
-        // --- LECTURA LIMPIA MICRÓFONO 1 ---
         if (karaokeDuoAnalyser1) {
             const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
             karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
-            pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
+            
+            // 1. Calculamos el volumen real (RMS) de este buffer específico antes de analizar
+            let sum1 = 0;
+            for (let i = 0; i < buffer1.length; i++) { sum1 += buffer1[i] * buffer1[i]; }
+            const rms1 = Math.sqrt(sum1 / buffer1.length);
+
+            // 2. Filtro de confianza: Si el volumen es menor a 0.015, es ruido eléctrico de fondo.
+            // Ignoramos el cálculo del pitch (-1) para evitar que la esfera se caiga al piso del canvas.
+            if (rms1 > 0.015) {
+                pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
+            } else {
+                pitch1 = -1; 
+            }
         }
 
+        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 2 (CELESTE) ---
         let pitch2 = -1; 
-        // --- LECTURA LIMPIA MICRÓFONO 2 ---
         if (karaokeDuoAnalyser2) {
             const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
             karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
-            pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
+            
+            let sum2 = 0;
+            for (let i = 0; i < buffer2.length; i++) { sum2 += buffer2[i] * buffer2[i]; }
+            const rms2 = Math.sqrt(sum2 / buffer2.length);
+
+            if (rms2 > 0.015) {
+                pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
+            } else {
+                pitch2 = -1;
+            }
         }
 
         // ENVIAR AMBOS TONOS AL MONITOR VISUAL
         if (typeof drawKaraokeMonitor === 'function') {
-            // Pasamos los valores puros detectados por el hardware independiente
             drawKaraokeMonitor(currentTime, pitch1, pitch2);
         }
 
