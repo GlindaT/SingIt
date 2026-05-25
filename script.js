@@ -1763,6 +1763,8 @@ async function startKaraokeRecording() {
 
     karaokeChunks = [];
     karaokeRecordedBlob = null;
+    karaokeDuoAnalyser1 = null; // Reseteo total
+    karaokeDuoAnalyser2 = null; // Reseteo total
     $("karaokeVoicePlayer").src = "";
 
     karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1860,8 +1862,9 @@ async function startKaraokeRecording() {
     track.currentTime = 0;
     track.play();
 
-    // IMPORTANTE: El monitor ahora leerá el flujo que ya está abierto y filtrado
-    startKaraokePitchDetection();
+    setTimeout(() => {
+        startKaraokePitchDetection();
+    }, 300)
 
     const mic1Select = $("mic1Select");
     const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
