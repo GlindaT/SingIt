@@ -1863,7 +1863,7 @@ async function startKaraokeRecording() {
     // 🔥 CAMBIO CRÍTICO 1: El analizador de Pitch se conecta DIRECTO al volumen del Mic 1
     // de forma aislada, ANTES de entrar al mezclador general.
     karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
-    karaokeDuoAnalyser1.fftSize = 256;
+    karaokeDuoAnalyser1.fftSize = 2048;
     volNode1.connect(karaokeDuoAnalyser1);
 
     // Creamos el mezclador para la grabación
@@ -1903,7 +1903,7 @@ async function startKaraokeRecording() {
       // 🔥 CAMBIO CRÍTICO 2: El analizador de Pitch del Mic 2 se conecta DIRECTO a su propio volumen aislado.
       // Jamás se cruza con el flujo del Mic 1.
       karaokeDuoAnalyser2 = karaokeDuoAudioContext.createAnalyser();
-      karaokeDuoAnalyser2.fftSize = 256;
+      karaokeDuoAnalyser2.fftSize = 2048;
       volNode2.connect(karaokeDuoAnalyser2);
 
       // Conectamos el Mic 2 filtrado al canal Derecho (1) del grabador
@@ -3450,41 +3450,29 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
 async function startKaraokePitchDetection() {
-    // 1. Ya no cancelamos la función si no está lista de inmediato.
-    // Le damos una oportunidad al sistema de inicializar en el primer frame del loop.
-
     function loop() {
         const track = $("karaokeTrack");
         const currentTime = track ? track.currentTime : 0;
 
-        // --- PROTECCIÓN PARA EL MICRÓFONO 1 ---
-        // Si el analizador 1 ya está listo, configuramos su tamaño y leemos los datos
         let pitch1 = -1;
-        if (karaokeDuoAnalyser1 !== null && karaokeDuoAnalyser1 !== undefined) {
-            // Aseguramos la precisión de 2048 para detectar la nota musical
-            if (karaokeDuoAnalyser1.fftSize !== 2048) {
-                karaokeDuoAnalyser1.fftSize = 2048;
-            }
-            
+        // --- LECTURA LIMPIA MICRÓFONO 1 ---
+        if (karaokeDuoAnalyser1) {
             const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
             karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
             pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
         }
 
-        // --- PROTECCIÓN PARA EL MICRÓFONO 2 ---
         let pitch2 = -1; 
-        if (karaokeDuoAnalyser2 !== null && karaokeDuoAnalyser2 !== undefined) {
-            if (karaokeDuoAnalyser2.fftSize !== 2048) {
-                karaokeDuoAnalyser2.fftSize = 2048;
-            }
-            
+        // --- LECTURA LIMPIA MICRÓFONO 2 ---
+        if (karaokeDuoAnalyser2) {
             const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
             karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
             pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
         }
 
-        // ENVIAR AMBOS TONOS AL MONITOR VISUAL (Solo si al menos el monitor existe)
+        // ENVIAR AMBOS TONOS AL MONITOR VISUAL
         if (typeof drawKaraokeMonitor === 'function') {
+            // Pasamos los valores puros detectados por el hardware independiente
             drawKaraokeMonitor(currentTime, pitch1, pitch2);
         }
 
