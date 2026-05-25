@@ -417,28 +417,26 @@ input[type="text"] {
 }
 
 /* ==========================================
-   ESCENARIOS DE KARAOKE (TEMAS)
+   ESCENARIOS DE KARAOKE (TEMAS VISUALES)
 ========================================== */
 /* Clásico */
-body.theme-clasico { background: #121212; }
+#karaokeLyrics.theme-clasico { background: transparent; }
 
 /* Moderno (Neón Azul) */
-body.theme-moderno { background: #082f49 !important; }
-body.theme-moderno #karaokeLyrics { border: 2px solid #06b6d4 !important; }
-body.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
+#karaokeLyrics.theme-moderno { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
+#karaokeLyrics.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
 
 /* Disco */
-body.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
-body.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
+#karaokeLyrics.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
+#karaokeLyrics.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
 
 /* Acústico */
-body.theme-acustico { background: #451a03 !important; }
-body.theme-acustico #karaokeLyrics { border: 2px solid #78350f !important; }
-body.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
+#karaokeLyrics.theme-acustico { background: #451a03 !important; border: 2px solid #78350f !important; }
+#karaokeLyrics.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
 
 /* Fiesta */
-body.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
-body.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
+#karaokeLyrics.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
+#karaokeLyrics.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
 
 
 /* ==========================================
