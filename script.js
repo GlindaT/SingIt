@@ -3109,20 +3109,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   pitchHistoryMic2.push(currentFreq2 > 0 ? currentFreq2 : null);
   if (pitchHistoryMic2.length > 60) pitchHistoryMic2.shift();
 
-  // --- CONTROL EN TIEMPO REAL DE LAS BARRAS DE VOLUMEN (CSS) ---
-  // Si la frecuencia es mayor a 0, calculamos un porcentaje basado en la presencia de voz
-  const barraVisualMic1 = document.getElementById("karaokeDuoMic1Level");
-  if (barraVisualMic1) {
-    // Si hay afinación detectada, inyectamos volumen alto. Si es 0 (silencio), baja a 0%
-    const nivelMic1 = currentFreq > 0 ? Math.min((currentFreq / 400) * 100, 95) : 0;
-    barraVisualMic1.style.width = `${nivelMic1 || 0}%`;
-  }
-
-  const barraVisualMic2 = document.getElementById("karaokeDuoMic2Level");
-  if (barraVisualMic2) {
-    const nivelMic2 = currentFreq2 > 0 ? Math.min((currentFreq2 / 400) * 100, 95) : 0;
-    barraVisualMic2.style.width = `${nivelMic2 || 0}%`;
-  }
 
   // ========================================================
   // 🎨 CONFIGURACIÓN DE COLORES DINÁMICOS SEGÚN EL TEMA
