@@ -3839,3 +3839,4 @@ function cambiarEscenarioKaraoke() {
     showSaveNotification();
   }
 }
+document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
