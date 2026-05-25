@@ -3850,7 +3850,13 @@ function cambiarEscenarioKaraoke() {
   
   if (!select || !contenedorKaraoke) return;
 
-  const nuevoTema = select.value;
+  const nuevoTema = select.value ? select.value.trim() : "";
+
+  // 🎯 NUEVA VALIDACIÓN: Si el valor está vacío, no intentamos agregarlo como clase
+  if (!nuevoTema) {
+    console.warn("⚠️ El tema seleccionado está vacío. Revisa los valores en tu HTML.");
+    return;
+  }
 
   // Lista de todos tus temas en CSS para limpiar los anteriores
   const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
