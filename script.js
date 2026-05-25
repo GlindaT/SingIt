@@ -3876,16 +3876,23 @@ function cambiarEscenarioKaraoke() {
 }
 
 // ==========================================
-// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR
+// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR (CORREGIDO)
 // ==========================================
 document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
 
 document.addEventListener("DOMContentLoaded", () => {
-  const temaGuardado = localStorage.getItem("singIt_theme");
   const select = document.getElementById("karaokeThemeSelect");
+  if (!select) return;
+
+  // Intentamos traer el tema guardado
+  let temaGuardado = localStorage.getItem("singIt_theme");
   
-  if (temaGuardado && select) {
-    select.value = temaGuardado; 
-    cambiarEscenarioKaraoke();   
+  // 🎯 Si no hay ningún tema guardado en el navegador, usamos el 'theme-clasico' por defecto
+  if (!temaGuardado) {
+    temaGuardado = "theme-clasico";
   }
+
+  // Asignamos el valor al menú desplegable y ejecutamos el cambio visual de forma segura
+  select.value = temaGuardado; 
+  cambiarEscenarioKaraoke();   
 });
