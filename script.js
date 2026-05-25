@@ -3310,63 +3310,94 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.textAlign = "center";
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
-  // =======================================================
-  // --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
-  // =======================================================
-  if (currentFreq > 0) {
-    const userY1 = midiToY(frequencyToMidi(currentFreq));
-    ctx.beginPath();
-    ctx.fillStyle = "#facc15"; // Amarillo
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#facc15";
-    ctx.arc(40, userY1, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0; // Apagar sombra
-  }
+const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
+
+  // ====================================================================
+  // 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
+  // ====================================================================
   
-  // Dibujar rastro Mic 1
+  // Dibujar rastro histórico Mic 1 (Corregido para evitar trazos cruzados)
   ctx.beginPath();
   ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4; // Un poco más grueso para que destaque en Vercel
   let started1 = false;
+  
   pitchHistoryMic1.forEach((freq, i) => {
-    if (freq) {
+    if (freq && freq > 0) {
       const y = midiToY(frequencyToMidi(freq));
-      const x = 40 - (pitchHistoryMic1.length - i) * 2;
-      if (!started1) { ctx.moveTo(x, y); started1 = true; } 
-      else { ctx.lineTo(x, y); }
+      // Nueva fórmula X: El rastro avanza de derecha a izquierda a lo largo de todo el canvas
+      const x = width - (pitchHistoryMic1.length - i) * 4; 
+      
+      if (x >= 0) { // Solo dibujamos si está dentro del lienzo visible
+        if (!started1) { 
+          ctx.moveTo(x, y); 
+          started1 = true; 
+        } else { 
+          ctx.lineTo(x, y); 
+        }
+      }
+    } else {
+      // Si el cantante hace una pausa, rompemos el trazo y forzamos un nuevo inicio
+      started1 = false; 
     }
   });
   ctx.stroke();
 
-  // =======================================================
-  // --- DIBUJAR LA VOZ DEL MICRÓFONO 2 (CELESTE / CIAN) ---
-  // =======================================================
-  if (currentFreq2 > 0) {
-    const userY2 = midiToY(frequencyToMidi(currentFreq2));
+  // Dibujar indicador actual Mic 1
+  if (currentFreq && currentFreq > 0) {
+    const userY1 = midiToY(frequencyToMidi(currentFreq));
     ctx.beginPath();
-    ctx.fillStyle = "#06b6d4"; // Celeste eléctrico
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "#06b6d4";
-    ctx.arc(40, userY2, 8, 0, Math.PI * 2);
+    ctx.fillStyle = "#facc15"; 
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#facc15";
+    // Posicionamos la esfera al extremo derecho del rastro visible
+    ctx.arc(width - 4, userY1, 9, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0; // Apagar sombra
+    ctx.shadowBlur = 0; 
   }
+
+  // ====================================================================
+  // 🐬 --- DIBUJAR LA VOZ DEL MICRÓFONO 2 (CELESTE / CIAN) ---
+  // ====================================================================
   
-  // Dibujar rastro Mic 2
+  // Dibujar rastro histórico Mic 2 (Corregido para silencios temporales)
   ctx.beginPath();
   ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   let started2 = false;
+  
   pitchHistoryMic2.forEach((freq, i) => {
-    if (freq) {
+    if (freq && freq > 0) {
       const y = midiToY(frequencyToMidi(freq));
-      const x = 40 - (pitchHistoryMic2.length - i) * 2;
-      if (!started2) { ctx.moveTo(x, y); started2 = true; } 
-      else { ctx.lineTo(x, y); }
+      const x = width - (pitchHistoryMic2.length - i) * 4; // Misma escala X que el Mic 1
+      
+      if (x >= 0) {
+        if (!started2) { 
+          ctx.moveTo(x, y); 
+          started2 = true; 
+        } else { 
+          ctx.lineTo(x, y); 
+        }
+      }
+    } else {
+      started2 = false; // Rompe el trazo de forma limpia si hay silencio
     }
   });
   ctx.stroke();
+
+  // Dibujar indicador actual Mic 2
+  if (currentFreq2 && currentFreq2 > 0) {
+    const userY2 = midiToY(frequencyToMidi(currentFreq2));
+    ctx.beginPath();
+    ctx.fillStyle = "#06b6d4"; 
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "#06b6d4";
+    // Desfasamos sutilmente a la izquierda (width - 12) para que si cantan la misma nota,
+    // la esfera cian no tape por completo a la amarilla del Mic 1.
+    ctx.arc(width - 14, userY2, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0; 
+  }
 
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
   const currentIndex = transcriptionSegments.findIndex(seg => 
