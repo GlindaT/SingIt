@@ -31,6 +31,9 @@ function safeAdd(id, event, handler) {
   if (el) el.addEventListener(event, handler);
 }
 
+let pitchHistoryMic1 = [];
+let pitchHistoryMic2 = [];
+
 // ==========================================
 // INDEXED DB - BIBLIOTECA
 // ==========================================
@@ -1969,6 +1972,10 @@ function restartKaraokeRecording() {
   karaokeRecordedBlob = null;
   $("karaokeStatus").textContent = "Estado: Esperando para grabar...";
   $("karaokeStartBtn").disabled = false;
+  
+  // ¡AQUÍ AGREGA ESTAS DOS LÍNEAS!
+  pitchHistoryMic1 = [];
+  pitchHistoryMic2 = [];
 }
 
 function syncKaraokeMonitor(currentTime) {
@@ -3038,14 +3045,18 @@ function reconstruirFraseDesdeWords(segmento) {
     .trim();
 }
 
-function drawKaraokeMonitor(currentTime, currentFreq) {
+function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   const canvas = $("karaokeCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
 
-  // Guardamos la frecuencia actual
-  pitchHistory.push(currentFreq > 0 ? currentFreq : null);
-  if (pitchHistory.length > 60) pitchHistory.shift();
+  // 1. GUARDAR HISTORIAL SEPARADO - MICRÓFONO 1
+  pitchHistoryMic1.push(currentFreq > 0 ? currentFreq : null);
+  if (pitchHistoryMic1.length > 60) pitchHistoryMic1.shift();
+
+  // 2. GUARDAR HISTORIAL SEPARADO - MICRÓFONO 2
+  pitchHistoryMic2.push(currentFreq2 > 0 ? currentFreq2 : null);
+  if (pitchHistoryMic2.length > 60) pitchHistoryMic2.shift();
 
   // Limpiamos el canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -3090,14 +3101,12 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     return pentagramTop + normalized * pentagramHeight;
   }
 
-  // --- DIBUJAR BARRAS DE NOTAS ---
+  // --- DIBUJAR BARRAS DE NOTAS DE LA CANCIÓN ---
   if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
-    
-    // Ventana de tiempo visible (5 segundos hacia adelante, 1 hacia atrás)
     const timeWindowStart = currentTime - 1;
     const timeWindowEnd = currentTime + 5;
-    const pixelsPerSecond = (canvas.width - 40) / 6; // 6 segundos de ventana
-    const lineX = 40; // Línea de tiempo actual
+    const pixelsPerSecond = (canvas.width - 40) / 6;
+    const lineX = 40;
 
     // Dibujar línea de tiempo actual
     ctx.strokeStyle = "#ef4444";
@@ -3107,83 +3116,69 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.lineTo(lineX, pentagramBottom);
     ctx.stroke();
 
-    // Recorrer todos los segmentos
     transcriptionSegments.forEach((segment) => {
       const words = Array.isArray(segment.words) ? segment.words : [];
-      
       words.forEach((word) => {
-        // Verificar si está en la ventana visible
         if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
         
-        // Calcular posición X basada en el tiempo
         const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
         const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
         const barWidth = Math.max(wordEndX - wordStartX, 30);
         
-        // Posición Y basada en la nota MIDI
-        const midi = word.midi || segment.midi || 60; // Default: C4
+        const midi = word.midi || segment.midi || 60;
         const barY = midiToY(midi);
         const barHeight = 22;
         
-        // Determinar si la palabra está activa
         const isActive = currentTime >= word.start && currentTime <= word.end;
         const isPast = currentTime > word.end;
         
-        // Determinar si el usuario está cantando la nota correcta
+        // El bloque se ilumina en verde si CUALQUIERA de los dos micrófonos acierta la nota
         let isCorrect = false;
-        if (isActive && currentFreq > 0) {
-          const userMidi = frequencyToMidi(currentFreq);
-          isCorrect = Math.abs(userMidi - midi) <= 2; // Tolerancia de 2 semitonos
+        if (isActive) {
+          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= 2) isCorrect = true;
+          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= 2) isCorrect = true;
         }
         
-        // Colores según estado
         let barColor, textColor, borderColor;
         if (isPast) {
-          barColor = "#4b5563"; // Gris
+          barColor = "#4b5563";
           textColor = "#9ca3af";
           borderColor = "#6b7280";
         } else if (isActive) {
           if (isCorrect) {
-            barColor = "#22c55e"; // Verde - ¡Correcto!
+            barColor = "#22c55e"; // Verde - ¡Alguien acertó!
             textColor = "#ffffff";
             borderColor = "#4ade80";
           } else {
-            barColor = "#3b82f6"; // Azul - Activo
+            barColor = "#3b82f6";
             textColor = "#ffffff";
             borderColor = "#60a5fa";
           }
         } else {
-          barColor = "#1e40af"; // Azul oscuro - Próximo
+          barColor = "#1e40af";
           textColor = "#93c5fd";
           borderColor = "#3b82f6";
         }
         
-        // Dibujar barra con bordes redondeados
         ctx.fillStyle = barColor;
         ctx.beginPath();
         ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 8);
         ctx.fill();
         
-        // Borde
         ctx.strokeStyle = borderColor;
         ctx.lineWidth = isActive ? 2 : 1;
         ctx.stroke();
         
-        // Texto de la palabra
         ctx.fillStyle = textColor;
         ctx.font = isActive ? "bold 14px Arial" : "12px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
-        // Truncar si es muy largo
         let displayWord = word.word || "";
-        if (displayWord.length > 10) {
-          displayWord = displayWord.substring(0, 8) + "..";
-        }
+        if (displayWord.length > 10) displayWord = displayWord.substring(0, 8) + "..";
         ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
       });
     });
-
   } else {
     ctx.fillStyle = "#666";
     ctx.font = "16px Arial";
@@ -3191,88 +3186,95 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
 
-  // --- DIBUJAR LA VOZ DEL USUARIO (LÍNEA/PUNTO) ---
+  // =======================================================
+  // --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
+  // =======================================================
   if (currentFreq > 0) {
-    const userMidi = frequencyToMidi(currentFreq);
-    const userY = midiToY(userMidi);
-    
-    // Punto grande en la posición actual
+    const userY1 = midiToY(frequencyToMidi(currentFreq));
     ctx.beginPath();
-    ctx.fillStyle = "#facc15";
+    ctx.fillStyle = "#facc15"; // Amarillo
     ctx.shadowBlur = 15;
     ctx.shadowColor = "#facc15";
-    ctx.arc(40, userY, 8, 0, Math.PI * 2);
+    ctx.arc(40, userY1, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
-    
-    // Rastro de la voz
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-    ctx.lineWidth = 3;
-    
-    let started = false;
-    pitchHistory.forEach((freq, i) => {
-      if (freq) {
-        const midi = frequencyToMidi(freq);
-        const y = midiToY(midi);
-        const x = 40 - (pitchHistory.length - i) * 2;
-        
-        if (!started) {
-          ctx.moveTo(x, y);
-          started = true;
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-    });
-    ctx.stroke();
+    ctx.shadowBlur = 0; // Apagar sombra
   }
   
-  // --- DIBUJAR LETRA ACTUAL ABAJO ---
+  // Dibujar rastro Mic 1
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+  ctx.lineWidth = 3;
+  let started1 = false;
+  pitchHistoryMic1.forEach((freq, i) => {
+    if (freq) {
+      const y = midiToY(frequencyToMidi(freq));
+      const x = 40 - (pitchHistoryMic1.length - i) * 2;
+      if (!started1) { ctx.moveTo(x, y); started1 = true; } 
+      else { ctx.lineTo(x, y); }
+    }
+  });
+  ctx.stroke();
+
+  // =======================================================
+  // --- DIBUJAR LA VOZ DEL MICRÓFONO 2 (CELESTE / CIAN) ---
+  // =======================================================
+  if (currentFreq2 > 0) {
+    const userY2 = midiToY(frequencyToMidi(currentFreq2));
+    ctx.beginPath();
+    ctx.fillStyle = "#06b6d4"; // Celeste eléctrico
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#06b6d4";
+    ctx.arc(40, userY2, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0; // Apagar sombra
+  }
   
-  // Encontrar el índice del segmento que está sonando ahora mismo
+  // Dibujar rastro Mic 2
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
+  ctx.lineWidth = 3;
+  let started2 = false;
+  pitchHistoryMic2.forEach((freq, i) => {
+    if (freq) {
+      const y = midiToY(frequencyToMidi(freq));
+      const x = 40 - (pitchHistoryMic2.length - i) * 2;
+      if (!started2) { ctx.moveTo(x, y); started2 = true; } 
+      else { ctx.lineTo(x, y); }
+    }
+  });
+  ctx.stroke();
+
+  // --- DIBUJAR LETRA ACTUAL ABAJO ---
   const currentIndex = transcriptionSegments.findIndex(seg => 
     currentTime >= seg.start && currentTime <= seg.end + 0.5
   );
 
-  // Dibujar SIEMPRE el fondo negro para las letras abajo
   ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
   ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
-  // CASO A: Hay una letra sonando en este momento
   if (currentIndex !== -1) {
     const currentSegment = transcriptionSegments[currentIndex];
-    
-    // Reconstruimos la frase actual de forma limpia con espacios
     const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
     
-    // Dibujar la letra actual (Blanco llamativo)
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 18px Arial"; 
     ctx.textAlign = "center";
     ctx.textBaseline = "top"; 
     ctx.fillText(textoActualLimpio, canvas.width / 2, canvas.height - 42);
 
-    // Buscar el siguiente segmento para la guía "Próximo:"
     const nextSegment = transcriptionSegments[currentIndex + 1];
     if (nextSegment) {
-      // Reconstruimos también el texto del siguiente verso con espacios
       const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-
-      ctx.fillStyle = "#888888"; // Gris claro sutil
+      ctx.fillStyle = "#888888";
       ctx.font = "13px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom"; 
       ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 8);
     }
-  }
-  
-  // CASO B: No está sonando nada en este instante (Silencio o Intro)
-  else {
+  } else {
     const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
     if (upcomingSegment) {
       const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
-
       ctx.fillStyle = "#888888";
       ctx.font = "15px Arial";
       ctx.textAlign = "center";
