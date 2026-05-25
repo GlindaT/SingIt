@@ -272,28 +272,37 @@ async function startAfinador() {
 // 🔥 NUEVA FUNCIÓN: CADENA DE AUDIO DE ALTA CALIDAD PARA KARAOKE Y ESTUDIO
 // ====================================================================
 function aplicarCadenaDeAudioKaraoke(audioCtx, source) {
- // 1. Filtro Paso Alto Vocal (Suave): Elimina solo ruidos de viento o golpes al mic (< 60Hz)
- const highPass = audioCtx.createBiquadFilter();
- highPass.type = "highpass";
- highPass.frequency.value = 60;
+    // 1. Filtro Paso Alto (Elimina ruidos de golpes al micrófono)
+    const highPass = audioCtx.createBiquadFilter();
+    highPass.type = "highpass";
+    highPass.frequency.value = 60;
 
- // 2. Filtro Paso Alto de Brillo (Opcional): Un sutil realce en agudos para dar presencia
- // En lugar de cortar a 1000Hz, dejamos pasar TODO el rango vocal de forma cristalina.
- const shelfFilter = audioCtx.createBiquadFilter();
- shelfFilter.type = "highshelf";
- shelfFilter.frequency.value = 4000; 
- shelfFilter.gain.value = 2.0; // Le da un aire profesional y brillante a la voz
+    // 2. 🔥 NUEVO: COMPRESOR DE AUDIO DINÁMICO
+    const compresor = audioCtx.createDynamicsCompressor();
+    compresor.threshold.setValueAtTime(-24, audioCtx.currentTime); // Límite de volumen
+    compresor.knee.setValueAtTime(30, audioCtx.currentTime);       // Transición suave
+    compresor.ratio.setValueAtTime(4, audioCtx.currentTime);        // Fuerza de compresión
+    compresor.attack.setValueAtTime(0.003, audioCtx.currentTime);   // Reacción inmediata (3ms)
+    compresor.release.setValueAtTime(0.25, audioCtx.currentTime);   // Relajación natural (250ms)
 
- // 3. Ganancia limpia para la mezcla
- const gainNode = audioCtx.createGain();
- gainNode.gain.value = 1.2; 
+    // 3. Filtro de Brillo (Realce profesional en agudos)
+    const shelfFilter = audioCtx.createBiquadFilter();
+    shelfFilter.type = "highshelf";
+    shelfFilter.frequency.value = 4000; 
+    shelfFilter.gain.value = 2.0; 
 
- // Conectamos la ruta de alta fidelidad: Fuente -> HighPass -> Brillo -> Ganancia -> Salida
- source.connect(highPass);
- highPass.connect(shelfFilter);
- shelfFilter.connect(gainNode);
- 
- return gainNode; 
+    // 4. Ganancia base para la mezcla final
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = 1.4; 
+
+    // CONEXIÓN EN CADENA INTERNA:
+    // Fuente -> Filtro Graves -> ¡COMPRESOR! -> Filtro Brillo -> Volumen -> Salida
+    source.connect(highPass);
+    highPass.connect(compresor);
+    compresor.connect(shelfFilter);
+    shelfFilter.connect(gainNode);
+    
+    return gainNode; 
 }
 
 function stopAfinador() {
