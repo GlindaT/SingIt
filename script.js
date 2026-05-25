@@ -3306,40 +3306,40 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
 async function startKaraokePitchDetection() {
-    // Verificar que el contexto principal y el primer analizador estén listos
-    if (!karaokeDuoAudioContext || !karaokeDuoAnalyser1) {
-        console.error("⚠️ La grabación no está lista para iniciar la detección de pitch.");
-        return;
-    }
-
-    // Configuramos la máxima precisión para el Micrófono 1
-    karaokeDuoAnalyser1.fftSize = 2048;
-
-    // --- ¡AQUÍ ESTABA EL ERROR! Ponemos una protección con un IF ---
-    // Solo cambiamos el fftSize si el segundo analizador REALMENTE existe (Modo Dúo)
-    if (karaokeDuoAnalyser2 !== null && karaokeDuoAnalyser2 !== undefined) {
-        karaokeDuoAnalyser2.fftSize = 2048;
-    }
+    // 1. Ya no cancelamos la función si no está lista de inmediato.
+    // Le damos una oportunidad al sistema de inicializar en el primer frame del loop.
 
     function loop() {
         const track = $("karaokeTrack");
         const currentTime = track ? track.currentTime : 0;
 
-        // INTERCEPTAR MICRÓFONO 1
-        const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
-        karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
-        const pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext.sampleRate);
-
-        // INTERCEPTAR MICRÓFONO 2 
-        // También protegemos el bucle para que no intente leer si es null
-        let pitch2 = -1; 
-        if (karaokeDuoAnalyser2 !== null && karaokeDuoAnalyser2 !== undefined) {
-            const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
-            karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
-            pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext.sampleRate);
+        // --- PROTECCIÓN PARA EL MICRÓFONO 1 ---
+        // Si el analizador 1 ya está listo, configuramos su tamaño y leemos los datos
+        let pitch1 = -1;
+        if (karaokeDuoAnalyser1 !== null && karaokeDuoAnalyser1 !== undefined) {
+            // Aseguramos la precisión de 2048 para detectar la nota musical
+            if (karaokeDuoAnalyser1.fftSize !== 2048) {
+                karaokeDuoAnalyser1.fftSize = 2048;
+            }
+            
+            const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
+            karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
+            pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
         }
 
-        // ENVIAR AMBOS TONOS AL MONITOR VISUAL
+        // --- PROTECCIÓN PARA EL MICRÓFONO 2 ---
+        let pitch2 = -1; 
+        if (karaokeDuoAnalyser2 !== null && karaokeDuoAnalyser2 !== undefined) {
+            if (karaokeDuoAnalyser2.fftSize !== 2048) {
+                karaokeDuoAnalyser2.fftSize = 2048;
+            }
+            
+            const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
+            karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
+            pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
+        }
+
+        // ENVIAR AMBOS TONOS AL MONITOR VISUAL (Solo si al menos el monitor existe)
         if (typeof drawKaraokeMonitor === 'function') {
             drawKaraokeMonitor(currentTime, pitch1, pitch2);
         }
