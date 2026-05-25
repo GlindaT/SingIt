@@ -3816,27 +3816,38 @@ async function importKaraokeFile(file) {
 
 function cambiarEscenarioKaraoke() {
   const select = document.getElementById("karaokeThemeSelect");
-  const contenedorKaraoke = document.querySelector(".karaoke-lyrics"); // Ajusta esta clase si tu caja principal tiene otro nombre
-  
-  if (!select || !contenedorKaraoke) return;
+  if (!select) return;
 
   const nuevoTema = select.value;
 
   // Lista de todos tus temas en CSS para limpiar los anteriores
   const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
   
-  // Limpiar clases viejas
-  todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
+  // Limpiamos las clases viejas del BODY para que no afecte el renderizado de letras
+  todosLosTemas.forEach(tema => document.body.classList.remove(tema));
 
-  // Aplicar el nuevo tema
-  contenedorKaraoke.classList.add(nuevoTema);
+  // Aplicar el nuevo tema al BODY
+  document.body.classList.add(nuevoTema);
 
   // Guardar en LocalStorage para recordar la selección
   localStorage.setItem("singIt_theme", nuevoTema);
   
-  // Si tienes la función de notificación de guardado activa, la disparamos
   if (typeof showSaveNotification === "function") {
     showSaveNotification();
   }
 }
+
+// ==========================================
+// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR
+// ==========================================
 document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
+
+document.addEventListener("DOMContentLoaded", () => {
+  const temaGuardado = localStorage.getItem("singIt_theme");
+  const select = document.getElementById("karaokeThemeSelect");
+  
+  if (temaGuardado && select) {
+    select.value = temaGuardado; 
+    cambiarEscenarioKaraoke();   
+  }
+});
