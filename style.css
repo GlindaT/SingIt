@@ -808,3 +808,35 @@ input[type="text"] {
 #ultrastarModal input[type="file"] {
   margin-top: 8px;
 }
+
+/* ==========================================
+   BARRAS DE VOLUMEN MODO DÚO
+========================================== */
+.mic-level-bar {
+  width: 100%;
+  height: 12px;                  /* Altura de la barra */
+  background: rgba(255, 255, 255, 0.1); /* Fondo gris oscuro de la barra vacía */
+  border-radius: 6px;            /* Bordes redondeados */
+  overflow: hidden;              /* Corta el relleno si se sale */
+  margin-top: 6px;
+  position: relative;
+  border: 1px solid var(--border);
+}
+
+.mic-level-fill {
+  width: 0%;                     /* Empieza vacía, JS cambiará esto */
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.05s ease;  /* Movimiento ultra fluido al ritmo de la voz */
+}
+
+/* Color personalizado exclusivo mediante su ID */
+#karaokeDuoMic1Level {
+  background: #facc15;           /* Amarillo brillante (Igual que la voz 1 en el canvas) */
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+}
+
+#karaokeDuoMic2Level {
+  background: #06b6d4;           /* Celeste/Cian eléctrico (Igual que la voz 2 en el canvas) */
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
