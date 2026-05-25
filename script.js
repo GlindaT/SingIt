@@ -31,10 +31,6 @@ function safeAdd(id, event, handler) {
   if (el) el.addEventListener(event, handler);
 }
 
-// AGREGAR ESTAS DOS LÍNEAS AL INICIO DEL ARCHIVO:
-let currentVolNode1 = null;
-let currentVolNode2 = null;
-
 // ==========================================
 // INDEXED DB - BIBLIOTECA
 // ==========================================
@@ -509,8 +505,7 @@ async function startStudioRecording() {
 
     /// Control de volumen Mic 1. May 25
     const volNode1 = duoAudioContext.createGain();
-    const sliderVol1 = $("mic1Volume"); 
-    volNode1.gain.value = sliderVol1 ? parseFloat(sliderVol1.value) : 1.0; 
+    volNode1.gain.value = 0.75;
     mic1Filtrado.connect(volNode1);
     currentVolNode1 = volNode1; // Guardar referencia global
 
@@ -545,8 +540,7 @@ async function startStudioRecording() {
 
       // Control de volumen Mic 2. May 25
       const volNode2 = duoAudioContext.createGain();
-      const sliderVol2 = $("mic2Volume");
-      volNode2.gain.value = sliderVol2 ? parseFloat(sliderVol2.value) : 1.0;
+      volNode2.gain.value = 0.75;
       mic2Filtrado.connect(volNode2);
       currentVolNode2 = volNode2; // Guardar referencia global
 
@@ -668,10 +662,6 @@ function stopStudioRecording() {
 
   duoAnalyser1 = null;
   duoAnalyser2 = null;
-
-  // ¡AGREGA ESTAS DOS LÍNEAS AQUÍ! May 25
-  currentVolNode1 = null;
-  currentVolNode2 = null;
 
   stopDuoLevelMonitor();
 
@@ -1951,10 +1941,6 @@ function stopKaraokeRecording() {
 
   karaokeDuoAnalyser1 = null;
   karaokeDuoAnalyser2 = null;
-
-  // ¡AGREGA ESTAS DOS LÍNEAS AQUÍ!  May 25
-  currentVolNode1 = null;
-  currentVolNode2 = null;
 
   stopKaraokeDuoLevelMonitor();
 
@@ -3784,19 +3770,5 @@ async function importKaraokeFile(file) {
   } catch (err) {
     console.error("❌ Error importando .singit:", err);
     alert("❌ Archivo .singit inválido o corrupto");
-  }
-}
-
-function actualizarVolumenMic(micNumber) {
-  const sliderId = micNumber === 1 ? "mic1Volume" : "mic2Volume"; // Asegúrate de que estos IDs coincidan con tus sliders HTML
-  const slider = $(sliderId);
-  if (!slider) return;
-
-  const nuevoVolumen = parseFloat(slider.value);
-
-  if (micNumber === 1 && currentVolNode1) {
-    currentVolNode1.gain.setTargetAtTime(nuevoVolumen, (duoAudioContext || karaokeDuoAudioContext).currentTime, 0.01);
-  } else if (micNumber === 2 && currentVolNode2) {
-    currentVolNode2.gain.setTargetAtTime(nuevoVolumen, (duoAudioContext || karaokeDuoAudioContext).currentTime, 0.01);
   }
 }
