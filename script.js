@@ -2327,7 +2327,7 @@ function initSettings() {
 
   const settings = {
     micCount: "singIt_micCount",
-    karaokeStage: "singIt_stage",
+    karaokeThemeSelect: "singIt_stage",
     difficultyLevel: "singIt_difficulty",
     userVoiceType: "singIt_voiceType",
     appTheme: "singIt_theme"
@@ -2351,7 +2351,7 @@ function initSettings() {
         }
         
         // ¡AGREGA ESTE NUEVO BLOQUE AQUÍ PARA LOS ESCENARIOS!
-        if (id === "karaokeStage") {
+        if (id === "karaokeThemeSelect") {
           const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
           if (contenedorKaraoke) {
             // Limpiamos cualquier escenario anterior
