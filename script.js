@@ -3852,23 +3852,18 @@ function cambiarEscenarioKaraoke() {
 
   const nuevoTema = select.value ? select.value.trim() : "";
 
-  // 🎯 NUEVA VALIDACIÓN: Si el valor está vacío, no intentamos agregarlo como clase
+  // Si el select está vacío momentáneamente por la carga, usamos el clásico por defecto
   if (!nuevoTema) {
-    console.warn("⚠️ El tema seleccionado está vacío. Revisa los valores en tu HTML.");
-    return;
+    return; 
   }
 
-  // Lista de todos tus temas en CSS para limpiar los anteriores
   const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
   
-  // Limpiar las clases del contenedor de letras
   todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
-
-  // Aplicar el nuevo tema EXCLUSIVAMENTE a la caja de letras
   contenedorKaraoke.classList.add(nuevoTema);
 
-  // Guardar en LocalStorage para recordar la selección
-  localStorage.setItem("singIt_theme", nuevoTema);
+  // 🎯 CLAVE EXCLUSIVA PARA EL ESCENARIO: Así no rompe el tema general de la app
+  localStorage.setItem("singIt_karaoke_theme", nuevoTema);
   
   if (typeof showSaveNotification === "function") {
     showSaveNotification();
@@ -3876,21 +3871,21 @@ function cambiarEscenarioKaraoke() {
 }
 
 // ==========================================
-// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR (CORREGIDO)
+// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR
 // ==========================================
+document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
+
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.getElementById("karaokeThemeSelect");
   if (!select) return;
 
-  // Usamos una clave ultra específica para el karaoke: "singit_escenario_v2"
-  let temaGuardado = localStorage.getItem("singit_escenario_v2");
+  // Leemos la clave exclusiva del escenario
+  let temaGuardado = localStorage.getItem("singIt_karaoke_theme");
   
-  // Si no hay nada guardado, leemos el valor que ya viene puesto en el HTML por defecto
   if (!temaGuardado || temaGuardado === "undefined") {
-    temaGuardado = select.value || "theme-clasico";
+    temaGuardado = "theme-clasico";
   }
 
-  // Forzamos el valor en el select y ejecutamos de forma segura
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
 });
