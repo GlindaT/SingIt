@@ -3816,18 +3816,20 @@ async function importKaraokeFile(file) {
 
 function cambiarEscenarioKaraoke() {
   const select = document.getElementById("karaokeThemeSelect");
-  if (!select) return;
+  const contenedorKaraoke = document.getElementById("karaokeLyrics"); 
+  
+  if (!select || !contenedorKaraoke) return;
 
   const nuevoTema = select.value;
 
   // Lista de todos tus temas en CSS para limpiar los anteriores
   const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
   
-  // Limpiamos las clases viejas del BODY para que no afecte el renderizado de letras
-  todosLosTemas.forEach(tema => document.body.classList.remove(tema));
+  // Limpiar las clases del contenedor de letras
+  todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
 
-  // Aplicar el nuevo tema al BODY
-  document.body.classList.add(nuevoTema);
+  // Aplicar el nuevo tema EXCLUSIVAMENTE a la caja de letras
+  contenedorKaraoke.classList.add(nuevoTema);
 
   // Guardar en LocalStorage para recordar la selección
   localStorage.setItem("singIt_theme", nuevoTema);
