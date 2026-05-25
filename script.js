@@ -732,8 +732,20 @@ async function renderLibrary(filter = 'todos') {
   const container = $("libraryList");
   if (!container) return;
 
-  container.innerHTML = "<p>Cargando archivos...</p>";
+  // ==========================================
+  // SOLUCIÓN 1: ILUMINAR LA CARPETA SELECCIONADA
+  // ==========================================
+  document.querySelectorAll(".folder-btn").forEach(btn => {
+    // Comprobamos si el evento onclick incluye el tipo de filtro actual
+    if (btn.getAttribute("onclick").includes(`'${filter}'`)) {
+      btn.classList.add("active"); // Ilumina la carpeta actual
+    } else {
+      btn.classList.remove("active"); // Apaga las carpetas inactivas
+    }
+  });
 
+  container.innerHTML = "<p>Cargando archivos...</p>";
+  
   try {
     let library = await getAllLibraryItems();
 
@@ -782,11 +794,10 @@ async function renderLibrary(filter = 'todos') {
             <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
           `;
         }
-
         container.appendChild(div);
       });
     }
-
+    
     // Reactivar botones de borrar
     document.querySelectorAll(".delete-library-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -795,28 +806,47 @@ async function renderLibrary(filter = 'todos') {
         renderLibrary(filter); 
       });
     });
-
-    // NUEVO: Escuchar el botón para mandar el texto de vuelta al mini monitor
+    
+    // ========================================================
+    // SOLUCIÓN 2: CORRECCIÓN DEL ID PARA CARGAR EN EL MONITOR
+    // ========================================================
     document.querySelectorAll(".load-monitor-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
         const item = library.find(i => i.id === id);
+        
         if (item && item.textoPlano) {
-          // Cambia 'miniMonitorTextArea' por el ID real de tu textarea del monitor
-          const monitor = document.getElementById("miniMonitorTextArea");
+          // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
+          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
+          
           if (monitor) {
             monitor.value = item.textoPlano;
-            alert(`✅ Letra de "${item.name}" cargada en el monitor para editar.`);
+            
+            // Si el archivo UltraStar contiene los tiempos de los taps guardados en memoria, los reactivamos
+            if (item.transcription) {
+              baseTranscriptionSegments = item.transcription;
+              transcriptionSegments = item.transcription;
+              
+              if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+              if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+            }
+
+            alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
+            
+            // Scroll suave automático directo al monitor de texto para empezar a trabajar
+            monitor.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            alert("⚠️ No se encontró el contenedor visual del monitor en esta pantalla.");
           }
         }
       });
     });
 
     // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
-    await loadVoiceOptionsInStudio();
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
-
+    if (typeof loadVoiceOptionsInStudio === "function") await loadVoiceOptionsInStudio();
+    if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
+    if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
+  
   } catch (error) {
     console.error(error);
     container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
