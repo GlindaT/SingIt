@@ -1849,7 +1849,7 @@ async function startKaraokeRecording() {
 
     karaokeStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
 
-    // Procesar Mic 1 con tus filtros
+    // Procesar Mic 1 con tus filtros Hi-Fi
     const source1 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream);
     const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
 
@@ -1860,15 +1860,21 @@ async function startKaraokeRecording() {
     mic1Filtrado.connect(volNode1);
     currentVolNode1 = volNode1; // Guardar referencia global
 
+    // 🔥 CAMBIO CRÍTICO 1: El analizador de Pitch se conecta DIRECTO al volumen del Mic 1
+    // de forma aislada, ANTES de entrar al mezclador general.
     karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
     karaokeDuoAnalyser1.fftSize = 256;
     volNode1.connect(karaokeDuoAnalyser1);
 
+    // Creamos el mezclador para la grabación
     const merger = karaokeDuoAudioContext.createChannelMerger(2);
-    karaokeDuoAnalyser1.connect(merger, 0, 0);
+    
+    // Conectamos el Mic 1 filtrado al canal Izquierdo (0) del grabador
+    volNode1.connect(merger, 0, 0);
 
     if (!isDuo) {
-      karaokeDuoAnalyser1.connect(merger, 0, 1);
+      // Si es solo, duplicamos el canal al derecho (1) para que se grabe en estéreo
+      volNode1.connect(merger, 0, 1);
     }
 
     if (isDuo && mic2Id) {
@@ -1883,7 +1889,7 @@ async function startKaraokeRecording() {
 
       karaokeStream2 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints2 });
 
-      // Procesar Mic 2 con tus filtros
+      // Procesar Mic 2 con tus filtros Hi-Fi
       const source2 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream2);
       const mic2Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source2);
 
@@ -1894,16 +1900,20 @@ async function startKaraokeRecording() {
       mic2Filtrado.connect(volNode2);
       currentVolNode2 = volNode2; // Guardar referencia global
 
+      // 🔥 CAMBIO CRÍTICO 2: El analizador de Pitch del Mic 2 se conecta DIRECTO a su propio volumen aislado.
+      // Jamás se cruza con el flujo del Mic 1.
       karaokeDuoAnalyser2 = karaokeDuoAudioContext.createAnalyser();
       karaokeDuoAnalyser2.fftSize = 256;
       volNode2.connect(karaokeDuoAnalyser2);
 
-      karaokeDuoAnalyser2.connect(merger, 0, 1);
+      // Conectamos el Mic 2 filtrado al canal Derecho (1) del grabador
+      volNode2.connect(merger, 0, 1);
 
       const duoIndicator = $("karaokeDuoIndicator");
       if (duoIndicator) duoIndicator.style.display = "block";
     }
 
+    // El mezclador (con los hilos ya independientes en L y R) va al destino de grabación
     merger.connect(destination);
     let finalStream = destination.stream;
 
@@ -1929,7 +1939,7 @@ async function startKaraokeRecording() {
 
     setTimeout(() => {
         startKaraokePitchDetection();
-    }, 300)
+    }, 300);
 
     const mic1Select = $("mic1Select");
     const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
