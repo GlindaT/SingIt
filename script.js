@@ -3109,8 +3109,46 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   pitchHistoryMic2.push(currentFreq2 > 0 ? currentFreq2 : null);
   if (pitchHistoryMic2.length > 60) pitchHistoryMic2.shift();
 
-  // Limpiamos el canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // ========================================================
+  // 🎨 CONFIGURACIÓN DE COLORES DINÁMICOS SEGÚN EL TEMA
+  // ========================================================
+  const temaActual = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
+  
+  let colorFondo = "#111827";       // Fondo por defecto (Clásico)
+  let colorLineas = "#333333";      // Líneas del pentagrama
+  let colorEtiquetas = "#666666";   // Textos A4, G4, F4...
+  let colorBarraFutura = "#1e40af"; // Azul estándar para notas futuras
+  let colorBordeFuturo = "#3b82f6";
+
+  if (temaActual === "theme-moderno") {
+    colorFondo = "#082f49";         // Azul profundo neón
+    colorLineas = "rgba(6, 182, 212, 0.2)";
+    colorEtiquetas = "#06b6d4";
+    colorBarraFutura = "#1e3a8a";
+    colorBordeFuturo = "#06b6d4";
+  } else if (temaActual === "theme-disco") {
+    colorFondo = "#2e1065";         // Morado Disco / Fiesta
+    colorLineas = "rgba(219, 39, 119, 0.25)";
+    colorEtiquetas = "#facc15";
+    colorBarraFutura = "#701a75";
+    colorBordeFuturo = "#db2777";
+  } else if (temaActual === "theme-acustico") {
+    colorFondo = "#451a03";         // Madera cálida
+    colorLineas = "rgba(120, 53, 15, 0.4)";
+    colorEtiquetas = "#fcd34d";
+    colorBarraFutura = "#78350f";
+    colorBordeFuturo = "#b45309";
+  } else if (temaActual === "theme-fiesta") {
+    // Genera un color sutil animado basado en los milisegundos para simular luces locas
+    const hue = (Date.now() / 20) % 360;
+    colorFondo = `hsl(${hue}, 40%, 12%)`;
+    colorLineas = "rgba(255, 255, 255, 0.15)";
+    colorEtiquetas = "#ff007f";
+  }
+
+  // 🎯 PINTAMOS EL FONDO DEL TEMA (En lugar de hacer clearRect transparente)
+  ctx.fillStyle = colorFondo;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Configuración del pentagrama
   const pentagramTop = 30;
@@ -3123,7 +3161,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   const midiRange = midiMax - midiMin;
 
   // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
-  ctx.strokeStyle = "#333333";
+  ctx.strokeStyle = colorLineas; // 🎯 Aplicamos color del tema
   ctx.lineWidth = 2;
   const numLines = 10;
   for (let i = 0; i <= numLines; i++) {
@@ -3135,7 +3173,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   }
 
   // --- DIBUJAR INDICADORES DE NOTAS A LA IZQUIERDA ---
-  ctx.fillStyle = "#666666";
+  ctx.fillStyle = colorEtiquetas; // 🎯 Aplicamos color del tema
   ctx.font = "12px Arial";
   ctx.textAlign = "right";
   const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
@@ -3183,7 +3221,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         const isActive = currentTime >= word.start && currentTime <= word.end;
         const isPast = currentTime > word.end;
         
-        // El bloque se ilumina en verde si CUALQUIERA de los dos micrófonos acierta la nota
         let isCorrect = false;
         if (isActive) {
           if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= 2) isCorrect = true;
@@ -3206,9 +3243,10 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
             borderColor = "#60a5fa";
           }
         } else {
-          barColor = "#1e40af";
+          // 🎯 Aplicamos los colores de notas futuras según el tema visual
+          barColor = colorBarraFutura;
           textColor = "#93c5fd";
-          borderColor = "#3b82f6";
+          borderColor = colorBordeFuturo;
         }
         
         ctx.fillStyle = barColor;
@@ -3236,7 +3274,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.textAlign = "center";
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
-
   // =======================================================
   // --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
   // =======================================================
