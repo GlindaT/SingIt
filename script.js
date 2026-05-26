@@ -3975,17 +3975,16 @@ function cambiarEscenarioKaraoke() {
 
   const nuevoTema = select.value ? select.value.trim() : "";
 
-  // Si el select está vacío momentáneamente por la carga, usamos el clásico por defecto
   if (!nuevoTema) {
     return; 
   }
 
-  const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+  // 🔥 AGREGADO: "theme-retrowave" al final de la lista
+  const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
   
   todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
   contenedorKaraoke.classList.add(nuevoTema);
 
-  // 🎯 CLAVE EXCLUSIVA PARA EL ESCENARIO: Así no rompe el tema general de la app
   localStorage.setItem("singIt_karaoke_theme", nuevoTema);
   
   if (typeof showSaveNotification === "function") {
