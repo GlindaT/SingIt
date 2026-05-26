@@ -844,3 +844,56 @@ input[type="text"] {
   font-weight: bold;
   transform: scale(1.03);
 }
+
+/* ====================================================================
+   🎨 TEMA: RETRO WAVE / CYBERPUNK (ANIMADO)
+   ==================================================================== */
+body.tema-retrowave {
+  background-color: #0b001a !important; /* Morado ultra oscuro */
+  background-image: 
+    linear-gradient(rgba(255, 0, 128, 0.1) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 2px, transparent 2px);
+  background-size: 40px 40px;
+  background-position: center bottom;
+  animation: grid-scroll 4s linear infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* El sol brillante ochentero de fondo */
+body.tema-retrowave::before {
+  content: "";
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(#ff007f, #facc15);
+  border-radius: 50%;
+  filter: blur(2px);
+  box-shadow: 0 0 60px rgba(255, 0, 127, 0.6);
+  opacity: 0.4;
+  z-index: -1;
+  animation: sun-pulse 3s ease-in-out infinite alternate;
+}
+
+/* Animación para que la cuadrícula camine hacia el frente */
+@keyframes grid-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 40px; }
+}
+
+/* Animación de pulso místico para el sol */
+@keyframes sun-pulse {
+  from { transform: translateX(-50%) scale(0.95); opacity: 0.3; }
+  to { transform: translateX(-50%) scale(1.05); opacity: 0.55; }
+}
+
+/* Estilo para las tarjetas del menú bajo este tema */
+body.tema-retrowave .card {
+  background: rgba(30, 9, 54, 0.6) !important;
+  border: 1px solid #ff007f !important;
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
+  backdrop-filter: blur(8px);
+}
