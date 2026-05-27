@@ -242,7 +242,7 @@ function aplicarCadenaDeAudio(audioCtx, source) {
 }
 
 async function startAfinador() {
-  audioContext = new AudioCtx();
+  audioContext = new audioCtx();
 
   stream = await navigator.mediaDevices.getUserMedia({
     audio: {
