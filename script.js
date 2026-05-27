@@ -225,24 +225,24 @@ function aplicarCadenaDeAudio(audioCtx, source) {
  const highPass = audioCtx.createBiquadFilter();
  highPass.type = "highpass";
  highPass.frequency.value = 80;
- 
- // Filtro Paso Bajo ESTRICTO (Solo sirve para detectar el Pitch matemático)
- const lowPass = audioCtx.createBiquadFilter();
- lowPass.type = "lowpass";
- lowPass.frequency.value = 1000; // <--- Corta el brillo vocal, ideal solo para afinador
- 
- const gainNode = audioCtx.createGain();
- gainNode.gain.value = 1.5;
- 
- source.connect(highPass);
- highPass.connect(lowPass);
- lowPass.connect(gainNode);
- 
- return gainNode; 
+  
+  // Filtro Paso Bajo ESTRICTO (Solo sirve para detectar el Pitch matemático)
+  const lowPass = audioCtx.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.value = 1000; // <--- Corta el brillo vocal, ideal solo para afinador
+  
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 1.5;
+  
+  source.connect(highPass);
+  highPass.connect(lowPass);
+  lowPass.connect(gainNode);
+  
+  return gainNode; 
 }
 
 async function startAfinador() {
-  audioContext = new AudioContext();
+  audioContext = new AudioCtx();
 
   stream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -251,18 +251,18 @@ async function startAfinador() {
       autoGainControl: false
     }
   });
-
-  const mic = audioContext.createMediaStreamSource(stream);
+  
+  const mic = audioCtx.createMediaStreamSource(stream);
   
   // --- AQUÍ APLICAMOS LA LIMPIEZA ---
-  const cadenaLimpia = aplicarCadenaDeAudio(audioContext, mic);
+  const cadenaLimpia = aplicarCadenaDeAudio(audioCtx, mic);
   
-  analyser = audioContext.createAnalyser();
+  analyser = audioCtx.createAnalyser();
   analyser.fftSize = 2048;
   
   // Conectamos la salida de la cadena al analizador
   cadenaLimpia.connect(analyser);
-
+  
   setTimeout(() => {
     detectPitch();
   }, 300);
@@ -272,37 +272,38 @@ async function startAfinador() {
 // 🔥 NUEVA FUNCIÓN: CADENA DE AUDIO DE ALTA CALIDAD PARA KARAOKE Y ESTUDIO
 // ====================================================================
 function aplicarCadenaDeAudioKaraoke(audioCtx, source) {
-    // 1. Filtro Paso Alto (Elimina ruidos de golpes al micrófono)
-    const highPass = audioCtx.createBiquadFilter();
-    highPass.type = "highpass";
-    highPass.frequency.value = 60;
-
-    // 2. 🔥 NUEVO: COMPRESOR DE AUDIO DINÁMICO
-    const compresor = audioCtx.createDynamicsCompressor();
-    compresor.threshold.setValueAtTime(-24, audioCtx.currentTime); // Límite de volumen
-    compresor.knee.setValueAtTime(30, audioCtx.currentTime);       // Transición suave
-    compresor.ratio.setValueAtTime(4, audioCtx.currentTime);        // Fuerza de compresión
-    compresor.attack.setValueAtTime(0.003, audioCtx.currentTime);   // Reacción inmediata (3ms)
-    compresor.release.setValueAtTime(0.25, audioCtx.currentTime);   // Relajación natural (250ms)
-
-    // 3. Filtro de Brillo (Realce profesional en agudos)
-    const shelfFilter = audioCtx.createBiquadFilter();
-    shelfFilter.type = "highshelf";
-    shelfFilter.frequency.value = 4000; 
-    shelfFilter.gain.value = 2.0; 
-
-    // 4. Ganancia base para la mezcla final
-    const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 1.4; 
-
-    // CONEXIÓN EN CADENA INTERNA:
-    // Fuente -> Filtro Graves -> ¡COMPRESOR! -> Filtro Brillo -> Volumen -> Salida
-    source.connect(highPass);
-    highPass.connect(compresor);
-    compresor.connect(shelfFilter);
-    shelfFilter.connect(gainNode);
-    
-    return gainNode; 
+  
+  // 1. Filtro Paso Alto (Elimina ruidos de golpes al micrófono)
+  const highPass = audioCtx.createBiquadFilter();
+  highPass.type = "highpass";
+  highPass.frequency.value = 60;
+  
+  // 2. 🔥 NUEVO: COMPRESOR DE AUDIO DINÁMICO
+  const compresor = audioCtx.createDynamicsCompressor();
+  compresor.threshold.setValueAtTime(-24, audioCtx.currentTime); // Límite de volumen
+  compresor.knee.setValueAtTime(30, audioCtx.currentTime);       // Transición suave
+  compresor.ratio.setValueAtTime(4, audioCtx.currentTime);        // Fuerza de compresión
+  compresor.attack.setValueAtTime(0.003, audioCtx.currentTime);   // Reacción inmediata (3ms)
+  compresor.release.setValueAtTime(0.25, audioCtx.currentTime);   // Relajación natural (250ms)
+  
+  // 3. Filtro de Brillo (Realce profesional en agudos)
+  const shelfFilter = audioCtx.createBiquadFilter();
+  shelfFilter.type = "highshelf";
+  shelfFilter.frequency.value = 4000; 
+  shelfFilter.gain.value = 2.0; 
+  
+  // 4. Ganancia base para la mezcla final
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 1.4; 
+  
+  // CONEXIÓN EN CADENA INTERNA:
+  // Fuente -> Filtro Graves -> ¡COMPRESOR! -> Filtro Brillo -> Volumen -> Salida
+  source.connect(highPass);
+  highPass.connect(compresor);
+  compresor.connect(shelfFilter);
+  shelfFilter.connect(gainNode);
+  
+  return gainNode; 
 }
 
 function stopAfinador() {
@@ -407,7 +408,7 @@ function autoCorrelate(buf, sampleRate) {
   }
   rms = Math.sqrt(rms / buf.length);
 
-  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.01;
+  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.05;
 
   // Si el volumen es muy bajo, ignoramos la detección
   if (rms < umbral) return -1;
@@ -2400,7 +2401,7 @@ function initSettings() {
   const sensInput = $("micSensitivity");
   if (sensInput) {
     
-    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.01";
+    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.05";
     
     sensInput.addEventListener("input", (e) => {
       localStorage.setItem("singIt_sensitivity", e.target.value);
@@ -2437,7 +2438,7 @@ function initSettings() {
           const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
           if (contenedorKaraoke) {
             // Limpiamos cualquier escenario anterior
-            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-cyberpunk"];
             todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
             
             // Aplicamos el nuevo escenario elegido
@@ -3232,12 +3233,26 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fillText(label, 25, y);
   });
 
-  // Función para convertir MIDI a posición Y
-  function midiToY(midi) {
-    if (!midi || midi < midiMin) midi = midiMin;
-    if (midi > midiMax) midi = midiMax;
-    const normalized = (midiMax - midi) / midiRange;
-    return pentagramTop + normalized * pentagramHeight;
+  // Mapeo para el Usuario 1 (Mitad Superior del Canvas)
+  function midiToY1(midiNote, height) {
+    const minMidi = 50; // Nota base ajustable
+    const maxMidi = 80; // Nota techo ajustable
+    const mitadSuperior = height / 2;
+    
+    // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
+    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
+  }
+  // Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
+  function midiToY2(midiNote, height) {
+    const minMidi = 50;
+    const maxMidi = 80;
+    const mitadInferior = height / 2;
+    
+    // Escala la nota para que viva entre la mitad del alto y el fondo total
+    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
+    return yLocal + mitadInferior; // Desfasamos hacia abajo
   }
 
   // --- DIBUJAR BARRAS DE NOTAS DE LA CANCIÓN ---
@@ -3282,6 +3297,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
           barColor = "#4b5563";
           textColor = "#9ca3af";
           borderColor = "#6b7280";
+        
         } else if (isActive) {
           if (isCorrect) {
             barColor = "#22c55e"; // Verde - ¡Alguien acertó!
@@ -3318,61 +3334,65 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
       });
     });
+    
   } else {
     ctx.fillStyle = "#666";
     ctx.font = "16px Arial";
     ctx.textAlign = "center";
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
-const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
-
+  
   // ====================================================================
   // 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
   // ====================================================================
-  
-  // Dibujar rastro histórico Mic 1 (Hacia la izquierda desde la posición de canto)
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+
+  // 1. DIBUJAR LÍNEA DIVISORIA NEÓN EN MEDIO DEL MONITOR
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.2)"; // Color --text-muted suave
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]); // Línea punteada estética
+  ctx.moveTo(0, height / 2);
+  ctx.lineTo(width, height / 2);
+  ctx.stroke();
+  ctx.setLineDash([]); // Resetear estilo de línea continuo
+
+  // =======================================================
+  // 🎙️ --- MONITOR USUARIO 1 - ARRIBA (AMARILLO) ---
+  // =======================================================
   ctx.beginPath();
   ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-  ctx.lineWidth = 4; 
+  ctx.lineWidth = 4;
   let started1 = false;
   
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
-      const y = midiToY(frequencyToMidi(freq));
-      // Volvemos a tu cálculo original en X pero asegurando el espaciado correcto hacia atrás
+      // 🔥 CAMBIO: Usa midiToY1 para la mitad de arriba
+      const y = midiToY1(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
-      if (x >= 0) { 
-        if (!started1) { 
-          ctx.moveTo(x, y); 
-          started1 = true; 
-        } else { 
-          ctx.lineTo(x, y); 
-        }
+      if (x >= 0) {
+        if (!started1) { ctx.moveTo(x, y); started1 = true; } 
+        else { ctx.lineTo(x, y); }
       }
-    } else {
-      started1 = false; // Rompe el trazo de forma limpia si hay silencio para evitar líneas locas
-    }
+    } else { started1 = false; }
   });
   ctx.stroke();
 
-  // Dibujar indicador actual Mic 1 (Fijo en la zona de impacto X = 40)
   if (currentFreq && currentFreq > 0) {
-    const userY1 = midiToY(frequencyToMidi(currentFreq));
+    const userY1 = midiToY1(frequencyToMidi(currentFreq), height);
     ctx.beginPath();
-    ctx.fillStyle = "#facc15"; 
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "#facc15";
-    ctx.arc(40, userY1, 9, 0, Math.PI * 2);
+    ctx.fillStyle = "#facc15";
+    ctx.shadowBlur = 15; ctx.shadowColor = "#facc15";
+    ctx.arc(40, userY1, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0; 
+    ctx.shadowBlur = 0;
   }
 
-  // ====================================================================
-  // 🐬 --- DIBUJAR LA VOZ DEL MICRÓFONO 2 (CELESTE / CIAN) ---
-  // ====================================================================
-  
-  // Dibujar rastro histórico Mic 2
+  // =======================================================
+  // 🐬 --- MONITOR USUARIO 2 - ABAJO (CELESTE / CIAN) ---
+  // =======================================================
   ctx.beginPath();
   ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
   ctx.lineWidth = 4;
@@ -3380,34 +3400,26 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
   
   pitchHistoryMic2.forEach((freq, i) => {
     if (freq && freq > 0) {
-      const y = midiToY(frequencyToMidi(freq));
+      // 🔥 CAMBIO: Usa midiToY2 para la mitad de abajo
+      const y = midiToY2(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic2.length - i) * 3; 
       
       if (x >= 0) {
-        if (!started2) { 
-          ctx.moveTo(x, y); 
-          started2 = true; 
-        } else { 
-          ctx.lineTo(x, y); 
-        }
+        if (!started2) { ctx.moveTo(x, y); started2 = true; } 
+        else { ctx.lineTo(x, y); }
       }
-    } else {
-      started2 = false; // Rompe el trazo de forma limpia si hay silencio
-    }
+    } else { started2 = false; }
   });
   ctx.stroke();
 
-  // Dibujar indicador actual Mic 2
   if (currentFreq2 && currentFreq2 > 0) {
-    const userY2 = midiToY(frequencyToMidi(currentFreq2));
+    const userY2 = midiToY2(frequencyToMidi(currentFreq2), height);
     ctx.beginPath();
-    ctx.fillStyle = "#06b6d4"; 
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "#06b6d4";
-    // Desfasamos ligeramente a la derecha (X = 46) para que si cantan al unísono, ambos círculos se vean
-    ctx.arc(46, userY2, 9, 0, Math.PI * 2);
+    ctx.fillStyle = "#06b6d4";
+    ctx.shadowBlur = 15; ctx.shadowColor = "#06b6d4";
+    ctx.arc(40, userY2, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0; 
+    ctx.shadowBlur = 0;
   }
 
   // --- DIBUJAR LETRA ACTUAL ABAJO ---
@@ -3454,61 +3466,58 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
 async function startKaraokePitchDetection() {
-    function loop() {
-        const track = $("karaokeTrack");
-        const currentTime = track ? track.currentTime : 0;
-
-        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 1 (AMARILLO) ---
-        let pitch1 = -1;
-        if (karaokeDuoAnalyser1) {
-            const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
-            karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
-            
-            // 1. Calculamos el volumen real (RMS) de este buffer específico antes de analizar
-            let sum1 = 0;
-            for (let i = 0; i < buffer1.length; i++) { sum1 += buffer1[i] * buffer1[i]; }
-            const rms1 = Math.sqrt(sum1 / buffer1.length);
-
-            // 2. Filtro de confianza: Si el volumen es menor a 0.015, es ruido eléctrico de fondo.
-            // Ignoramos el cálculo del pitch (-1) para evitar que la esfera se caiga al piso del canvas.
-            if (rms1 > 0.015) {
-                pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
-            } else {
-                pitch1 = -1; 
-            }
-        }
-
-        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 2 (CELESTE) ---
-        let pitch2 = -1; 
-        if (karaokeDuoAnalyser2) {
-            const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
-            karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
-            
-            let sum2 = 0;
-            for (let i = 0; i < buffer2.length; i++) { sum2 += buffer2[i] * buffer2[i]; }
-            const rms2 = Math.sqrt(sum2 / buffer2.length);
-
-            if (rms2 > 0.015) {
-                pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
-            } else {
-                pitch2 = -1;
-            }
-        }
-
-        // ENVIAR AMBOS TONOS AL MONITOR VISUAL
-        if (typeof drawKaraokeMonitor === 'function') {
-            drawKaraokeMonitor(currentTime, pitch1, pitch2);
-        }
-
-        // Control del bucle de animación
-        if (track && track.ended) return;
-
-        if (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") {
-            requestAnimationFrame(loop);
-        }
+  function loop() {
+    const track = $("karaokeTrack");
+    const currentTime = track ? track.currentTime : 0;
+    
+    // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 1 (AMARILLO) ---
+    
+    let pitch1 = -1;
+    if (karaokeDuoAnalyser1) {
+      const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
+      karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
+      
+      // 1. Calculamos el volumen real (RMS) de este buffer específico antes de analizar
+      let sum1 = 0;
+      for (let i = 0; i < buffer1.length; i++) { sum1 += buffer1[i] * buffer1[i]; }
+      const rms1 = Math.sqrt(sum1 / buffer1.length);
+      
+      // 2. Filtro de confianza: Si el volumen es menor a 0.015, es ruido eléctrico de fondo.
+      // Ignoramos el cálculo del pitch (-1) para evitar que la esfera se caiga al piso del canvas.
+      if (rms1 > 0.015) {
+        pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
+      } else {
+        pitch1 = -1; 
+      }
     }
-
-    loop();
+    
+    // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 2 (CELESTE) ---
+    let pitch2 = -1; 
+    if (karaokeDuoAnalyser2) {
+      const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
+      karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
+      let sum2 = 0;
+      for (let i = 0; i < buffer2.length; i++) { sum2 += buffer2[i] * buffer2[i]; }
+      const rms2 = Math.sqrt(sum2 / buffer2.length);
+      if (rms2 > 0.015) {
+        pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
+      } else {
+        pitch2 = -1;
+      }
+    }
+    
+    // ENVIAR AMBOS TONOS AL MONITOR VISUAL
+    if (typeof drawKaraokeMonitor === 'function') {
+      drawKaraokeMonitor(currentTime, pitch1, pitch2);
+    }
+    
+    // Control del bucle de animación
+    if (track && track.ended) return;
+    if (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") {
+      requestAnimationFrame(loop);
+    }
+  }
+  loop();
 }
 
 function parseUltrastarTxt(content) {
