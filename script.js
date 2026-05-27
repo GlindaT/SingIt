@@ -196,6 +196,22 @@ function showTab(tabId) {
   if (activeBtn) activeBtn.classList.add("active");
 }
 
+function inicializarMenuSensibilidad() {
+  const select = document.getElementById("sensitivitySelect");
+  if (!select) return;
+
+  // Leemos lo que haya guardado en el disco del navegador
+  const sensibilidadGuardada = localStorage.getItem("singIt_sensitivity");
+
+  // Si el usuario ya había guardado algo antes, forzamos al menú a mostrar esa opción
+  if (sensibilidadGuardada) {
+    select.value = sensibilidatGuardada;
+  } else {
+    // Si la app es nueva para el usuario, forzamos al menú a marcar la recomendada
+    select.value = "0.015"; 
+  }
+}
+
 // ==========================================
 // AFINADOR
 // ==========================================
@@ -410,7 +426,7 @@ function autoCorrelate(buf, sampleRate) {
   }
   rms = Math.sqrt(rms / buf.length);
 
-  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.05;
+  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.015;
 
   // Si el volumen es muy bajo, ignoramos la detección
   if (rms < umbral) return -1;
@@ -2408,7 +2424,7 @@ function initSettings() {
   const sensInput = $("micSensitivity");
   if (sensInput) {
     
-    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.05";
+    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.015";
     
     sensInput.addEventListener("input", (e) => {
       localStorage.setItem("singIt_sensitivity", e.target.value);
