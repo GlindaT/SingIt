@@ -897,3 +897,23 @@ body.tema-retrowave .card {
   box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
   backdrop-filter: blur(8px);
 }
+
+/* DISEÑO INTERFAZ DE LETRAS DOBLES EN MODO DÚO */
+.modo-duo-activo #karaokeLyrics {
+  display: grid;
+  grid-template-rows: 1fr 1fr; /* Divide el contenedor exactamente en dos partes iguales */
+  height: auto;
+  gap: 20px;
+}
+
+/* Letras del cantante amarillo (Arriba) */
+.modo-duo-activo .lyric-user-1 {
+  align-self: end;
+  color: #facc15;
+}
+
+/* Letras del cantante celeste (Abajo) */
+.modo-duo-activo .lyric-user-2 {
+  align-self: start;
+  color: #06b6d4;
+}
