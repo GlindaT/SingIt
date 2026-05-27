@@ -3171,10 +3171,17 @@ function midiToY2(midiNote, height) {
   return yLocal + mitadInferior; // Desfasamos hacia abajo
 }
 
+// ==========================================
+// MONITOR DE KARAOKE (CANVAS-DRAW)
+// ==========================================
+
 function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   const canvas = $("karaokeCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
+
+  const width = canvas.width;
+  const height = canvas.height;
 
   // 1. GUARDAR HISTORIAL SEPARADO - MICRÓFONO 1
   pitchHistoryMic1.push(currentFreq > 0 ? currentFreq : null);
@@ -3183,7 +3190,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // 2. GUARDAR HISTORIAL SEPARADO - MICRÓFONO 2
   pitchHistoryMic2.push(currentFreq2 > 0 ? currentFreq2 : null);
   if (pitchHistoryMic2.length > 60) pitchHistoryMic2.shift();
-
 
   // ========================================================
   // 🎨 CONFIGURACIÓN DE COLORES DINÁMICOS SEGÚN EL TEMA
@@ -3215,63 +3221,73 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     colorBarraFutura = "#78350f";
     colorBordeFuturo = "#b45309";
   } else if (temaActual === "theme-fiesta") {
-    // Genera un color sutil animado basado en los milisegundos para simular luces locas
     const hue = (Date.now() / 20) % 360;
     colorFondo = `hsl(${hue}, 40%, 12%)`;
     colorLineas = "rgba(255, 255, 255, 0.15)";
     colorEtiquetas = "#ff007f";
+  } else if (temaActual === "theme-retrowave") {
+    colorFondo = "#0b001a";         // Sincronía opcional con tu nuevo tema cyberpunk
+    colorLineas = "rgba(255, 0, 128, 0.15)";
+    colorEtiquetas = "#ff007f";
+    colorBarraFutura = "#4c0519";
+    colorBordeFuturo = "#ff007f";
   }
 
-  // 🎯 PINTAMOS EL FONDO DEL TEMA (En lugar de hacer clearRect transparente)
+  // 🎯 PINTAMOS EL FONDO DEL TEMA
   ctx.fillStyle = colorFondo;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, width, height);
 
-  // Configuración del pentagrama
-  const pentagramTop = 30;
-  const pentagramBottom = canvas.height - 60;
-  const pentagramHeight = pentagramBottom - pentagramTop;
-  
-  // Rango de notas (MIDI): C3 (48) a C6 (84)
-  const midiMin = 48;
-  const midiMax = 84;
-  const midiRange = midiMax - midiMin;
+  // ====================================================================
+  // 📏 --- RENDERING ESTRUCTURAL: PENTAGRAMAS DOBLES Y ADAPTACIÓN ---
+  // ====================================================================
+  const numLines = 5; // Ajustado a 5 líneas por cada mitad para no sobrecargar visualmente
+  ctx.strokeStyle = colorLineas;
+  ctx.lineWidth = 1.5;
 
-  // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
-  ctx.strokeStyle = colorLineas; // 🎯 Aplicamos color del tema
-  ctx.lineWidth = 2;
-  const numLines = 10;
+  // Pentagrama 1 - Mitad Superior (Usuario 1)
   for (let i = 0; i <= numLines; i++) {
-    const y = pentagramTop + (pentagramHeight / numLines) * i;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
-    ctx.stroke();
+    const y = (height / 2) * 0.15 + ((height / 2) * 0.7 / numLines) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
   }
 
-  // --- DIBUJAR INDICADORES DE NOTAS A LA IZQUIERDA ---
-  ctx.fillStyle = colorEtiquetas; // 🎯 Aplicamos color del tema
-  ctx.font = "12px Arial";
+  // Pentagrama 2 - Mitad Inferior (Usuario 2)
+  for (let i = 0; i <= numLines; i++) {
+    const y = (height / 2) + (height / 2) * 0.15 + ((height / 2) * 0.7 / numLines) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+  }
+
+  // --- INDICADORES DE NOTAS IZQUIERDA (Duplicados por panel) ---
+  ctx.fillStyle = colorEtiquetas;
+  ctx.font = "11px Arial";
   ctx.textAlign = "right";
-  const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
-  noteLabels.forEach((label, i) => {
-    const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
+  const noteLabelsSuperior = ["A4", "G4", "F4", "E4", "D4", "C4"];
+  const noteLabelsInferior = ["B3", "A3", "G3", "F3", "E3", "D3"];
+
+  noteLabelsSuperior.forEach((label, i) => {
+    const y = (height / 2) * 0.15 + ((height / 2) * 0.7 / numLines) * i + 4;
     ctx.fillText(label, 25, y);
   });
-  
-  // --- DIBUJAR BARRAS DE NOTAS DE LA CANCIÓN ---
+
+  noteLabelsInferior.forEach((label, i) => {
+    const y = (height / 2) + (height / 2) * 0.15 + ((height / 2) * 0.7 / numLines) * i + 4;
+    ctx.fillText(label, 25, y);
+  });
+
+  // ====================================================================
+  // 🎵 --- DIBUJAR BARRAS DE NOTAS DE LA CANCIÓN (BIFOCAL) ---
+  // ====================================================================
   if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
     const timeWindowStart = currentTime - 1;
     const timeWindowEnd = currentTime + 5;
-    const pixelsPerSecond = (canvas.width - 40) / 6;
+    const pixelsPerSecond = (width - 40) / 6;
     const lineX = 40;
 
-    // Dibujar línea de tiempo actual
+    // Dibujar líneas de tiempo actual independientes (Arriba y Abajo)
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(lineX, pentagramTop);
-    ctx.lineTo(lineX, pentagramBottom);
-    ctx.stroke();
+    
+    ctx.beginPath(); ctx.moveTo(lineX, 0); ctx.lineTo(lineX, height / 2); ctx.stroke(); // Línea lectora 1
+    ctx.beginPath(); ctx.moveTo(lineX, height / 2); ctx.lineTo(lineX, height); ctx.stroke(); // Línea lectora 2
 
     transcriptionSegments.forEach((segment) => {
       const words = Array.isArray(segment.words) ? segment.words : [];
@@ -3283,95 +3299,108 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         const barWidth = Math.max(wordEndX - wordStartX, 30);
         
         const midi = word.midi || segment.midi || 60;
-        const barY = midiToY(midi);
-        const barHeight = 22;
+        const barHeight = 18; // Ligeramente más compacta para caber en las mitades
         
         const isActive = currentTime >= word.start && currentTime <= word.end;
         const isPast = currentTime > word.end;
         
-        let isCorrect = false;
+        // Detección estricta de aciertos por canal
+        let isCorrectMic1 = false;
+        let isCorrectMic2 = false;
+        
         if (isActive) {
-          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= 2) isCorrect = true;
-          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= 2) isCorrect = true;
+          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= 2) isCorrectMic1 = true;
+          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= 2) isCorrectMic2 = true;
         }
         
-        let barColor, textColor, borderColor;
+        // --- PROCESAR E INYECTAR EN PANEL 1 (ARRIBA - USUARIO 1) ---
+        let barColor1, textColor1, borderColor1;
         if (isPast) {
-          barColor = "#4b5563";
-          textColor = "#9ca3af";
-          borderColor = "#6b7280";
-        
+          barColor1 = "#4b5563"; textColor1 = "#9ca3af"; borderColor1 = "#6b7280";
         } else if (isActive) {
-          if (isCorrect) {
-            barColor = "#22c55e"; // Verde - ¡Alguien acertó!
-            textColor = "#ffffff";
-            borderColor = "#4ade80";
+          if (isCorrectMic1) {
+            barColor1 = "#22c55e"; textColor1 = "#ffffff"; borderColor1 = "#4ade80";
           } else {
-            barColor = "#3b82f6";
-            textColor = "#ffffff";
-            borderColor = "#60a5fa";
+            barColor1 = "#3b82f6"; textColor1 = "#ffffff"; borderColor1 = "#60a5fa";
           }
         } else {
-          // 🎯 Aplicamos los colores de notas futuras según el tema visual
-          barColor = colorBarraFutura;
-          textColor = "#93c5fd";
-          borderColor = colorBordeFuturo;
+          barColor1 = colorBarraFutura; textColor1 = "#93c5fd"; borderColor1 = colorBordeFuturo;
         }
-        
-        ctx.fillStyle = barColor;
-        ctx.beginPath();
-        ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 8);
-        ctx.fill();
-        
-        ctx.strokeStyle = borderColor;
+
+        const barY1 = midiToY1(midi, height);
+        ctx.fillStyle = barColor1;
+        ctx.strokeStyle = borderColor1;
         ctx.lineWidth = isActive ? 2 : 1;
-        ctx.stroke();
+        ctx.beginPath();
+        ctx.roundRect(wordStartX, barY1 - barHeight/2, barWidth, barHeight, 6);
+        ctx.fill(); ctx.stroke();
         
-        ctx.fillStyle = textColor;
-        ctx.font = isActive ? "bold 14px Arial" : "12px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        
+        ctx.fillStyle = textColor1;
+        ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
         let displayWord = word.word || "";
         if (displayWord.length > 10) displayWord = displayWord.substring(0, 8) + "..";
-        ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
+        ctx.fillText(displayWord, wordStartX + barWidth/2, barY1);
+
+        // --- PROCESAR E INYECTAR EN PANEL 2 (ABAJO - USUARIO 2) ---
+        let barColor2, textColor2, borderColor2;
+        if (isPast) {
+          barColor2 = "#4b5563"; textColor2 = "#9ca3af"; borderColor2 = "#6b7280";
+        } else if (isActive) {
+          if (isCorrectMic2) {
+            barColor2 = "#22c55e"; textColor2 = "#ffffff"; borderColor2 = "#4ade80";
+          } else {
+            barColor2 = "#3b82f6"; textColor2 = "#ffffff"; borderColor2 = "#60a5fa";
+          }
+        } else {
+          barColor2 = colorBarraFutura; textColor2 = "#93c5fd"; borderColor2 = colorBordeFuturo;
+        }
+
+        const barY2 = midiToY2(midi, height);
+        ctx.fillStyle = barColor2;
+        ctx.strokeStyle = borderColor2;
+        ctx.lineWidth = isActive ? 2 : 1;
+        ctx.beginPath();
+        ctx.roundRect(wordStartX, barY2 - barHeight/2, barWidth, barHeight, 6);
+        ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = textColor2;
+        ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
+        ctx.fillText(displayWord, wordStartX + barWidth/2, barY2);
       });
     });
     
   } else {
     ctx.fillStyle = "#666";
-    ctx.font = "16px Arial";
+    ctx.font = "15px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
+    ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", width / 2, height / 2 - 40);
+    ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", width / 2, height / 2 + 40);
   }
-  
-  // ====================================================================
-  // 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
-  // ====================================================================
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
 
-  // 1. DIBUJAR LÍNEA DIVISORIA NEÓN EN MEDIO DEL MONITOR
+  // ====================================================================
+  // ⚡ --- CAPA INTERMEDIA: LÍNEA DIVISORIA ELECTRÓNICA ---
+  // ====================================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.2)"; // Color --text-muted suave
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)"; 
   ctx.lineWidth = 2;
-  ctx.setLineDash([5, 5]); // Línea punteada estética
+  ctx.setLineDash([6, 6]); 
   ctx.moveTo(0, height / 2);
   ctx.lineTo(width, height / 2);
   ctx.stroke();
-  ctx.setLineDash([]); // Resetear estilo de línea continuo
+  ctx.setLineDash([]); 
 
-  // =======================================================
-  // 🎙️ --- MONITOR USUARIO 1 - ARRIBA (AMARILLO) ---
-  // =======================================================
+  // ====================================================================
+  // 🎙️ --- MONITOR CANAL 1 ACTUAL: JUGADOR 1 (ARRIBA - AMARILLO) ---
+  // ====================================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+  ctx.strokeStyle = "rgba(250, 204, 21, 0.65)";
   ctx.lineWidth = 4;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
   let started1 = false;
   
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
-      // 🔥 CAMBIO: Usa midiToY1 para la mitad de arriba
       const y = midiToY1(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
