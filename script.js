@@ -221,7 +221,7 @@ async function toggleRecording() {
 }
 
 async function startAfinador() {
-  audioContext = new audioCtx();
+  audioContext = new audioContext();
 
   stream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -231,12 +231,12 @@ async function startAfinador() {
     }
   });
   
-  const mic = audioCtx.createMediaStreamSource(stream);
+  const mic = audioContext.createMediaStreamSource(stream);
   
   // --- AQUÍ APLICAMOS LA LIMPIEZA ---
-  const cadenaLimpia = aplicarCadenaDeAudio(audioCtx, mic);
+  const cadenaLimpia = aplicarCadenaDeAudio(audioContext, mic);
   
-  analyser = audioCtx.createAnalyser();
+  analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
   
   // Conectamos la salida de la cadena al analizador
@@ -247,26 +247,27 @@ async function startAfinador() {
   }, 300);
 }
 
-
 function aplicarCadenaDeAudio(audioCtx, source) {
- // Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
- const highPass = audioCtx.createBiquadFilter();
- highPass.type = "highpass";
- highPass.frequency.value = 80;
-  
-  // Filtro Paso Bajo ESTRICTO (Solo sirve para detectar el Pitch matemático)
+  // 1. Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
+  const highPass = audioCtx.createBiquadFilter();
+  highPass.type = "highpass";
+  highPass.frequency.value = 80;
+
+  // 2. Filtro Paso Bajo (Elimina siseos eléctricos de 1000Hz hacia arriba)
   const lowPass = audioCtx.createBiquadFilter();
   lowPass.type = "lowpass";
-  lowPass.frequency.value = 1000; // <--- Corta el brillo vocal, ideal solo para afinador
-  
+  lowPass.frequency.value = 1000;
+
+  // 3. Control de Ganancia (Un poco de volumen extra)
   const gainNode = audioCtx.createGain();
   gainNode.gain.value = 1.5;
-  
+
+  // Conectamos: Fuente -> HighPass -> LowPass -> Gain -> Salida
   source.connect(highPass);
   highPass.connect(lowPass);
   lowPass.connect(gainNode);
   
-  return gainNode; 
+  return gainNode; // Retornamos el último nodo para conectarlo al Analyser
 }
 
 // ====================================================================
