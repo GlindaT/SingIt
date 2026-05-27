@@ -3342,7 +3342,9 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         if (displayWord.length > 10) displayWord = displayWord.substring(0, 8) + "..";
         ctx.fillText(displayWord, wordStartX + barWidth/2, barY1);
 
-        // --- PROCESAR E INYECTAR EN PANEL 2 (ABAJO - USUARIO 2) ---
+        // ====================================================================
+        // --- PROCESAR E INYECTAR EN PANEL 2 (ABAJO - JUGADOR 2) ---
+        // ====================================================================
         let barColor2, textColor2, borderColor2;
         if (isPast) {
           barColor2 = "#4b5563"; textColor2 = "#9ca3af"; borderColor2 = "#6b7280";
@@ -3362,11 +3364,20 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         ctx.lineWidth = isActive ? 2 : 1;
         ctx.beginPath();
         ctx.roundRect(wordStartX, barY2 - barHeight/2, barWidth, barHeight, 6);
-        ctx.fill(); ctx.stroke();
+        ctx.fill(); 
+        ctx.stroke();
 
+        // 🎯 CORRECCIÓN: Configuración y dibujado de la letra para el Jugador 2
         ctx.fillStyle = textColor2;
         ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
-        ctx.fillText(displayWord, wordStartX + barWidth/2, barY2);
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle";
+        
+        let displayWord2 = word.word || "";
+        if (displayWord2.length > 10) displayWord2 = displayWord2.substring(0, 8) + "..";
+        
+        // Aquí se pinta físicamente la palabra abajo
+        ctx.fillText(displayWord2, wordStartX + barWidth/2, barY2); 
       });
     });
     
@@ -3453,47 +3464,8 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fill();
     ctx.shadowBlur = 0;
   }
-
-  // --- DIBUJAR LETRA ACTUAL ABAJO ---
-  const currentIndex = transcriptionSegments.findIndex(seg => 
-    currentTime >= seg.start && currentTime <= seg.end + 0.5
-  );
-
-  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-
-  if (currentIndex !== -1) {
-    const currentSegment = transcriptionSegments[currentIndex];
-    const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-    
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 18px Arial"; 
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top"; 
-    ctx.fillText(textoActualLimpio, canvas.width / 2, canvas.height - 42);
-
-    const nextSegment = transcriptionSegments[currentIndex + 1];
-    if (nextSegment) {
-      const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-      ctx.fillStyle = "#888888";
-      ctx.font = "13px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom"; 
-      ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 8);
-    }
-  } else {
-    const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
-    if (upcomingSegment) {
-      const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
-      ctx.fillStyle = "#888888";
-      ctx.font = "15px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle"; 
-      ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 25);
-    }
-  }
 }
-
+  
 // ==========================================
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
