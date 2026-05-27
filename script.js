@@ -3166,14 +3166,23 @@ function midiToY1(midiNote, height) {
 
 // Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
 function midiToY2(midiNote, height) {
-  const minMidi = 50;
-  const maxMidi = 80;
-  const mitadInferior = height / 2;
-  
-  // Escala la nota para que viva entre la mitad del alto y el fondo total
-  const pct = (midiNote - minMidi) / (maxMidi - minMidi);
-  const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
-  return yLocal + mitadInferior; // Desfasamos hacia abajo
+    // Reducimos ligeramente el rango MIDI base para dar mayor margen vertical
+    const minMidi = 40; // Bajamos el piso a 40 para capturar tonos graves amplificados
+    const maxMidi = 80; 
+    
+    const mitadInferior = height / 2;
+    
+    // Calculamos el porcentaje de la nota dentro del rango
+    let pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    
+    // Limitamos el porcentaje entre 0 y 1 para que NUNCA se salga del canvas
+    pct = Math.max(0, Math.min(1, pct));
+    
+    // Centramos la señal comprimiendo su escala al 70% del espacio del carril
+    const yLocal = mitadInferior - (pct * mitadInferior * 0.7) - (mitadInferior * 0.15);
+    
+    // Desfasamos el resultado final para que empiece exactamente a la mitad del alto
+    return yLocal + mitadInferior;
 }
 
 // ==========================================
