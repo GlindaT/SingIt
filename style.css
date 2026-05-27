@@ -917,3 +917,77 @@ body.tema-retrowave .card {
   align-self: start;
   color: #06b6d4;
 }
+
+/* ====================================================================
+   ⚡ INTERFAZ ULTRA-COMPACTA: MÁXIMO ESPACIO PARA EL MONITOR
+   ==================================================================== */
+
+/* 1. Forzamos a que el lienzo del juego sea más alto y visible */
+#karaokeCanvas {
+  width: 100% !important;
+  height: 380px !important; /* Incrementado para albergar holgadamente el dúo */
+  margin-bottom: 12px !important;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+/* 2. Reducimos el aire de las tarjetas de los 3 pasos inferiores */
+.tab #paso-1, 
+.tab #paso-2, 
+.tab #paso-3,
+.tab .card {
+  padding: 10px 16px !important; /* Margen interno recortado a la mitad */
+  margin-bottom: 8px !important;  /* Cajas pegadas entre sí */
+  border-radius: 10px !important;
+}
+
+/* 3. Minimizamos los encabezados de los pasos (1, 2, 3) */
+.tab h3, 
+.tab h4,
+.tab .card h3,
+.tab .card h4 {
+  font-size: 13px !important; /* Texto de los pasos pequeño y discreto */
+  margin-top: 0 !important;
+  margin-bottom: 4px !important;
+  color: var(--text-main);
+  font-weight: bold;
+}
+
+/* 4. Achicamos los textos de instrucciones y estados de la grabación */
+.tab p, 
+#studioStatus, 
+#karaokeStatus {
+  font-size: 11px !important;
+  margin: 2px 0 !important;
+  color: var(--text-muted);
+}
+
+/* 5. Ponemos los botones de control de audio en una fila horizontal compacta */
+.tab .button-group,
+.tab div[class*="controls"] {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 6px !important;
+  margin-top: 4px !important;
+}
+
+/* 6. Reducimos los botones para que no ocupen bloques gigantes */
+.tab button {
+  padding: 6px 12px !important; /* Botones más chaparritos */
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+
+/* 7. Reducimos la barra nativa del reproductor de audio */
+.tab audio {
+  height: 30px !important; /* Barra de audio estilizada y delgada */
+  margin-top: 4px !important;
+}
+
+/* 8. Estilización mini para selectores de archivos e inputs dentro del karaoke */
+.tab input[type="file"],
+.tab select {
+  padding: 6px 10px !important;
+  margin-top: 4px !important;
+  font-size: 11px !important;
+}
