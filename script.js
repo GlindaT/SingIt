@@ -221,7 +221,7 @@ async function toggleRecording() {
 }
 
 async function startAfinador() {
-  audioContext = new audioContext();
+  audioContext = new AudioContext();
 
   stream = await navigator.mediaDevices.getUserMedia({
     audio: {
