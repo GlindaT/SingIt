@@ -220,27 +220,6 @@ async function toggleRecording() {
   }
 }
 
-function aplicarCadenaDeAudio(audioCtx, source) {
- // Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
- const highPass = audioCtx.createBiquadFilter();
- highPass.type = "highpass";
- highPass.frequency.value = 80;
-  
-  // Filtro Paso Bajo ESTRICTO (Solo sirve para detectar el Pitch matemático)
-  const lowPass = audioCtx.createBiquadFilter();
-  lowPass.type = "lowpass";
-  lowPass.frequency.value = 1000; // <--- Corta el brillo vocal, ideal solo para afinador
-  
-  const gainNode = audioCtx.createGain();
-  gainNode.gain.value = 1.5;
-  
-  source.connect(highPass);
-  highPass.connect(lowPass);
-  lowPass.connect(gainNode);
-  
-  return gainNode; 
-}
-
 async function startAfinador() {
   audioContext = new audioCtx();
 
@@ -266,6 +245,28 @@ async function startAfinador() {
   setTimeout(() => {
     detectPitch();
   }, 300);
+}
+
+
+function aplicarCadenaDeAudio(audioCtx, source) {
+ // Filtro Paso Alto (Elimina zumbidos graves de 80Hz hacia abajo)
+ const highPass = audioCtx.createBiquadFilter();
+ highPass.type = "highpass";
+ highPass.frequency.value = 80;
+  
+  // Filtro Paso Bajo ESTRICTO (Solo sirve para detectar el Pitch matemático)
+  const lowPass = audioCtx.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.value = 1000; // <--- Corta el brillo vocal, ideal solo para afinador
+  
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 1.5;
+  
+  source.connect(highPass);
+  highPass.connect(lowPass);
+  lowPass.connect(gainNode);
+  
+  return gainNode; 
 }
 
 // ====================================================================
