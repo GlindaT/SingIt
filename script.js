@@ -3146,6 +3146,29 @@ function reconstruirFraseDesdeWords(segmento) {
     .trim();
 }
 
+// Mapeo para el Usuario 1 (Mitad Superior del Canvas)
+function midiToY1(midiNote, height) {
+  const minMidi = 50; // Nota base ajustable
+  const maxMidi = 80; // Nota techo ajustable
+  const mitadSuperior = height / 2;
+  
+  // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
+  const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+  return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
+}
+
+// Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
+function midiToY2(midiNote, height) {
+  const minMidi = 50;
+  const maxMidi = 80;
+  const mitadInferior = height / 2;
+  
+  // Escala la nota para que viva entre la mitad del alto y el fondo total
+  const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+  const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
+  return yLocal + mitadInferior; // Desfasamos hacia abajo
+}
+
 function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   const canvas = $("karaokeCanvas");
   if (!canvas) return;
@@ -3232,29 +3255,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     const y = pentagramTop + (pentagramHeight / numLines) * i + 4;
     ctx.fillText(label, 25, y);
   });
-
-  // Mapeo para el Usuario 1 (Mitad Superior del Canvas)
-  function midiToY1(midiNote, height) {
-    const minMidi = 50; // Nota base ajustable
-    const maxMidi = 80; // Nota techo ajustable
-    const mitadSuperior = height / 2;
-    
-    // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
-    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
-    return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
-  }
-  // Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
-  function midiToY2(midiNote, height) {
-    const minMidi = 50;
-    const maxMidi = 80;
-    const mitadInferior = height / 2;
-    
-    // Escala la nota para que viva entre la mitad del alto y el fondo total
-    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
-    const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
-    return yLocal + mitadInferior; // Desfasamos hacia abajo
-  }
-
+  
   // --- DIBUJAR BARRAS DE NOTAS DE LA CANCIÓN ---
   if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
     const timeWindowStart = currentTime - 1;
