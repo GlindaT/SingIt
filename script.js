@@ -3482,6 +3482,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fill();
     ctx.shadowBlur = 0;
   }
+}
  
 // ==========================================
 // DETECCIÓN DE PITCH PARA KARAOKE
