@@ -3175,28 +3175,6 @@ function reconstruirFraseDesdeWords(segmento) {
     .trim();
 }
 
-// Mapeo para el Usuario 1 (Mitad Superior del Canvas)
-function midiToY1(midiNote, height) {
-    const minMidi = 50; // Nota base ajustable
-    const maxMidi = 80; // Nota techo ajustable
-    const mitadSuperior = height / 2;
-    
-    // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
-    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
-    return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
-}
-
-// Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
-function midiToY2(midiNote, height) {
-    const minMidi = 50;
-    const maxMidi = 80;
-    const mitadInferior = height / 2;
-    
-    // Escala la nota para que viva entre la mitad del alto y el fondo total
-    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
-    const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
-    return yLocal + mitadInferior; // Desfasamos hacia abajo
-}
 
 // ==========================================
 // MONITOR DE KARAOKE (CANVAS-DRAW)
@@ -3209,6 +3187,28 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
 
   const width = canvas.width;
   const height = canvas.height;
+
+  function midiToY1(midiNote, height) {
+    const minMidi = 50; // Nota base ajustable
+    const maxMidi = 80; // Nota techo ajustable
+    const mitadSuperior = height / 2;
+    
+    // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
+    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
+  }
+  
+  // Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
+  function midiToY2(midiNote, height) {
+    const minMidi = 50;
+    const maxMidi = 80;
+    const mitadInferior = height / 2;
+    
+    // Escala la nota para que viva entre la mitad del alto y el fondo total
+    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
+    return yLocal + mitadInferior; // Desfasamos hacia abajo
+  }
 
   // 1. GUARDAR HISTORIAL SEPARADO - MICRÓFONO 1
   pitchHistoryMic1.push(currentFreq > 0 ? currentFreq : null);
@@ -3405,32 +3405,31 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.font = "15px Arial";
     ctx.textAlign = "center";
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", width / 2, height / 2 - 40);
-    ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", width / 2, height / 2 + 40);
   }
 
   // ====================================================================
   // ⚡ --- CAPA INTERMEDIA: LÍNEA DIVISORIA ELECTRÓNICA ---
   // ====================================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)"; 
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.2)"; // Color --text-muted suave
   ctx.lineWidth = 2;
-  ctx.setLineDash([6, 6]); 
+  ctx.setLineDash([5, 5]); // Línea punteada estética
   ctx.moveTo(0, height / 2);
   ctx.lineTo(width, height / 2);
   ctx.stroke();
-  ctx.setLineDash([]); 
+  ctx.setLineDash([]); // Resetear estilo de línea continuo
 
-  // ====================================================================
-  // 🎙️ --- MONITOR CANAL 1 ACTUAL: JUGADOR 1 (ARRIBA - AMARILLO) ---
-  // ====================================================================
+  // =======================================================
+  // 🎙️ --- MONITOR USUARIO 1 - ARRIBA (AMARILLO) ---
+  // =======================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(250, 204, 21, 0.65)";
+  ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
   ctx.lineWidth = 4;
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
   let started1 = false;
   
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
+      // 🔥 CAMBIO: Usa midiToY1 para la mitad de arriba
       const y = midiToY1(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
@@ -3483,7 +3482,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fill();
     ctx.shadowBlur = 0;
   }
-}
  
 // ==========================================
 // DETECCIÓN DE PITCH PARA KARAOKE
