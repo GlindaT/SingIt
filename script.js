@@ -4088,17 +4088,36 @@ function cambiarEscenarioKaraoke() {
 // ==========================================
 document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
 
-document.addEventListener("DOMContentLoaded", () => {
-  const select = document.getElementById("karaokeThemeSelect");
-  if (!select) return;
-
-  // Leemos la clave exclusiva del escenario
-  let temaGuardado = localStorage.getItem("singIt_karaoke_theme");
+// 🎯 AGREGADO: Escuchador nativo para el Tema de la App
+document.getElementById("appTheme")?.addEventListener("change", (e) => {
+  const nuevoTema = e.target.value;
   
-  if (!temaGuardado || temaGuardado === "undefined") {
-    temaGuardado = "theme-clasico";
+  // Cambiamos el atributo en el HTML para aplicar los estilos de tu CSS [data-theme]
+  document.documentElement.setAttribute("data-theme", nuevoTema);
+  
+  // Guardamos en el almacenamiento local con tu llave exacta
+  localStorage.setItem("singIt_theme", nuevoTema);
+  
+  if (typeof showSaveNotification === "function") {
+    showSaveNotification();
+  }
+});
+
+// Carga inicial al abrir la página
+document.addEventListener("DOMContentLoaded", () => {
+  // Inicialización de Escenarios...
+  const selectEscenario = document.getElementById("karaokeThemeSelect");
+  if (selectEscenario) {
+    let temaGuardado = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
+    selectEscenario.value = temaGuardado;
+    cambiarEscenarioKaraoke();
   }
 
-  select.value = temaGuardado; 
-  cambiarEscenarioKaraoke();   
+  // 🎯 AGREGADO: Inicialización del Tema de la App al cargar la página
+  const selectTema = document.getElementById("appTheme");
+  if (selectTema) {
+    const temaGuardado = localStorage.getItem("singIt_theme") || "oscuro";
+    selectTema.value = temaGuardado;
+    document.documentElement.setAttribute("data-theme", temaGuardado);
+  }
 });
