@@ -1856,59 +1856,43 @@ function cargarLetrasEnMonitor() {
 
 async function startKaraokeRecording() {
   const track = $("karaokeTrack");
-  if (!track || !track.src) { alert("⚠️ Primero sube una pista instrumental."); return; }
-
+  if (!track || !track.src) {
+    alert("⚠️ Primero sube una pista instrumental en el Paso 1.");
+    return;
+  }
+    
   try {
     const micCount = $("micCount");
     const isDuo = micCount && micCount.value === "2";
 
-    karaokeChunks = []; 
+    karaokeChunks = [];
+    karaokeRecordedBlob = null;
     $("karaokeVoicePlayer").src = "";
 
-    karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const destination = karaokeDuoAudioContext.createMediaStreamDestination();
-
+    // Obtener micrófonos seleccionados
     const mic1Id = getSelectedMicId(1);
     const mic2Id = getSelectedMicId(2);
-    
+
     const audioConstraints1 = {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-        channelCount: 1,
-        sampleRate: 48000
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
+      sampleRate: 48000
     };
+      
     if (mic1Id) {
       audioConstraints1.deviceId = { exact: mic1Id };
     }
-    
-    karaokeStream = await navigator.mediaDevices.getUserMedia({ 
-      audio: audioConstraints1 
+      
+    // Obtener stream del Mic 1
+    karaokeStream = await navigator.mediaDevices.getUserMedia({
+      audio: audioConstraints1
     });
 
     let finalStream = karaokeStream;
-    
-    // Procesar Mic 1 de forma totalmente independiente
-    const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream);
-    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
-    
-    // Control de volumen Mic 1
-    const volNode1 = karaokeDuoAudioContext.createGain();
-    mic1Filtrado.connect(volNode1);
-    currentVolNode1 = volNode1; 
-    
-    // Inicializamos el analizador de Pitch del Mic 1 en 2048 para máxima fidelidad
-    karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
-    karaokeDuoAnalyser1.fftSize = 2048;
-    volNode1.connect(karaokeDuoAnalyser1);
-    
-    const merger = karaokeDuoAudioContext.createChannelMerger(2);
-    karaokeDuoAnaliser1.connect(merger, 0, 0);
 
-    if (!isDuo) {
-      karaokeDuoAnaliser1.connect(merger, 0, 1);
-    }
-
+    // Si es DÚO, obtener y mezclar Mic 2
     if (isDuo && mic2Id) {
       const audioConstraints2 = {
         echoCancellation: false,
@@ -1918,35 +1902,48 @@ async function startKaraokeRecording() {
         sampleRate: 48000,
         deviceId: { exact: mic2Id }
       };
-      
-      karaokeStream2 = await navigator.mediaDevices.getUserMedia({ 
-        audio: audioConstraints2 
+      karaokeStream2 = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints2
       });
+        
+      // Crear contexto de audio para mezclar
+      karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source1 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream);
+      const source2 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream2);
 
-      const source2 = karaokeDuoAudioContext.createMediaStreamSource(stream2);
-      const mic2Filtrado = aplicarCadenaDeAudio(karaokeDuoAudioContext, source2);
-      
-      const volNode2 = karaokeDuoAudioContext.createGain();
-      mic2Filtrado.connect(volNode2);
-      currentVolNode2 = volNode2; 
-      
-      // Conexión al analizador de Pitch
+      // Crear analizadores para visualización
+      karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
       karaokeDuoAnalyser2 = karaokeDuoAudioContext.createAnalyser();
-      karaokeDuoAnalyser2.fftSize = 2048;
-      volNode2.connect(karaokeDuoAnalyser2);
+      karaokeDuoAnalyser1.fftSize = 256;
+      karaokeDuoAnalyser2.fftSize = 256;
+        
+      // Crear mezclador
+      const merger = karaokeDuoAudioContext.createChannelMerger(2);
+      const destination = karaokeDuoAudioContext.createMediaStreamDestination();
+        
+      // Conectar: fuentes -> analizadores -> mezclador -> destino
+      source1.connect(karaokeDuoAnalyser1);
+      source2.connect(karaokeDuoAnalyser2);
+      karaokeDuoAnalyser1.connect(merger, 0, 0);
+      karaokeDuoAnalyser2.connect(merger, 0, 1);
+      merger.connect(destination);
 
-      karaokeDuoAnaliser2.connect(merger, 0, 1);
+      finalStream = destination.stream;
 
+      // Mostrar indicador de dúo
       const duoIndicator = $("karaokeDuoIndicator");
-      if (duoIndicator) duoIndicator.style.display = "block";
+      if (duoIndicator) {
+        duoIndicator.style.display = "block";
+      }
+
+      // Iniciar visualización de niveles
+      startKaraokeDuoLevelMonitor();
     }
-
-    merger.connect(destination);
-    let finalStream = destination.stream;
-
-    startKaraokeDuoLevelMonitor();
-
-    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
+      
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? { mimeType: "audio/webm;codecs=opus" }
+      : {};
+      
     karaokeMediaRecorder = new MediaRecorder(finalStream, options);
 
     karaokeMediaRecorder.ondataavailable = (e) => {
@@ -1957,6 +1954,13 @@ async function startKaraokeRecording() {
       karaokeRecordedBlob = new Blob(karaokeChunks, { type: "audio/webm" });
       $("karaokeVoicePlayer").src = URL.createObjectURL(karaokeRecordedBlob);
       $("karaokeStatus").textContent = "Estado: Grabación finalizada ✅";
+        
+      // Ocultar indicador dúo
+      const duoIndicator = $("karaokeDuoIndicator");
+      if (duoIndicator) {
+        duoIndicator.style.display = "none";
+      }
+        
       stopKaraokeDuoLevelMonitor();
     };
 
@@ -1964,13 +1968,13 @@ async function startKaraokeRecording() {
     track.currentTime = 0;
     track.play();
 
-    // Le damos un margen sutil de estabilidad antes de arrancar el motor de dibujo
-    setTimeout(() => {
-        startKaraokePitchDetection();
-    }, 300);
+    // ¡AQUÍ ACTIVAMOS EL MONITOR!
+    startKaraokePitchDetection();
 
+    // Mostrar estado
     const mic1Select = $("mic1Select");
     const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
+
     if (isDuo && mic2Id) {
       const mic2Select = $("mic2Select");
       const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
@@ -1978,10 +1982,12 @@ async function startKaraokeRecording() {
     } else {
       $("karaokeStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
     }
+
     $("karaokeStartBtn").disabled = true;
+  
   } catch (err) {
     console.error(err);
-    alert("❌ Error al acceder al micrófono.");
+    alert("❌ Error al acceder al micrófono. Verifica en Configuración.");
   }
 }
 
