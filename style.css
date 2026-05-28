@@ -28,6 +28,7 @@ body {
   font-family: Arial, sans-serif;
   background: var(--bg-main);
   color: var(--text-main);
+  font-size: 13px; /* REDUCIDO: Fuente general más pequeña para ganar espacio */
 }
 
 /* ==========================================
@@ -39,16 +40,17 @@ body {
 }
 
 .sidebar {
-  width: 220px;
+  width: 180px; /* REDUCIDO: Barra lateral más angosta */
   background: var(--bg-sidebar);
-  padding: 20px;
+  padding: 12px; /* REDUCIDO: Menos espacio interno */
   display: flex;
   flex-direction: column;
   overflow-y: auto;
 }
 
 .sidebar h2 {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
+  font-size: 16px; /* REDUCIDO */
 }
 
 /* ==========================================
@@ -58,11 +60,12 @@ body {
   background: none;
   border: none;
   color: var(--text-muted);
-  padding: 12px;
+  padding: 8px 10px; /* REDUCIDO: Botones de navegación más compactos */
   text-align: left;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: 0.2s;
+  font-size: 12px; /* REDUCIDO */
 }
 
 .sidebar button:hover,
@@ -76,7 +79,7 @@ body {
 ========================================== */
 .content {
   flex: 1;
-  padding: clamp(16px, 4vw, 40px);
+  padding: 15px; /* REDUCIDO: Menos espacio en los bordes de la pantalla */
   overflow-y: auto;
 }
 
@@ -93,9 +96,15 @@ body {
 ========================================== */
 .card {
   background: var(--bg-card);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 8px;
+  padding: 12px 16px; /* REDUCIDO: Bloques mucho más delgados verticalmente */
+  margin-bottom: 10px; /* REDUCIDO: Menos separación entre bloques */
+}
+
+.card h1, .card h2, .card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 14px; /* REDUCIDO: Títulos de secciones más pequeños */
 }
 
 /* ==========================================
@@ -103,11 +112,12 @@ body {
 ========================================== */
 button {
   border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
+  border-radius: 6px;
+  padding: 6px 12px; /* REDUCIDO: Botones de acción más compactos */
   font-weight: bold;
   cursor: pointer;
   transition: 0.2s;
+  font-size: 12px; /* REDUCIDO */
 }
 
 /* Botón principal */
@@ -142,9 +152,10 @@ textarea {
   background: var(--bg-main);
   color: var(--text-main);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  margin-top: 8px;
+  border-radius: 6px;
+  padding: 6px 10px; /* REDUCIDO */
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 textarea {
@@ -161,22 +172,24 @@ input::placeholder {
 ========================================== */
 audio {
   width: 100%;
-  margin-top: 10px;
+  max-width: 500px; /* OPTIMIZADO: Evita que la barra de audio sea gigante a lo ancho */
+  height: 32px; /* REDUCIDO: Altura del reproductor nativo */
+  margin-top: 6px;
 }
 
 /* ==========================================
    AFINADOR
 ========================================== */
 #noteDisplay {
-  font-size: 120px;
+  font-size: 80px; /* REDUCIDO */
   font-weight: 900;
   margin: 0;
   transition: color 0.3s ease;
 }
 
 #guideText {
-  font-size: 32px;
-  margin: 20px 0;
+  font-size: 20px; /* REDUCIDO */
+  margin: 10px 0;
   font-weight: bold;
   text-align: center;
 }
@@ -184,8 +197,8 @@ audio {
 #recordBtn {
   background-color: #22c55e !important;
   color: white !important;
-  padding: 10px 40px;
-  font-size: 18px;
+  padding: 8px 24px; /* REDUCIDO */
+  font-size: 14px; /* REDUCIDO */
 }
 
 #recordBtn.recording {
@@ -197,14 +210,14 @@ audio {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  height: 60vh;
+  gap: 12px; /* REDUCIDO */
+  height: 40vh; /* REDUCIDO: Ocupa menos pantalla */
   text-align: center;
 }
 
 .success {
   color: #22c55e !important;
-  transform: scale(1.2);
+  transform: scale(1.1);
 }
 
 /* ==========================================
@@ -213,13 +226,13 @@ audio {
 .studio-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 8px; /* REDUCIDO */
+  margin-top: 10px;
 }
 
 #studioStatus,
 #selectedVoiceStatus {
-  margin-top: 15px;
+  margin-top: 8px;
   color: var(--text-muted);
   font-weight: bold;
 }
@@ -227,9 +240,9 @@ audio {
 #libraryList div,
 .library-item {
   background: var(--bg-card);
-  padding: 16px;
-  border-radius: 10px;
-  margin-bottom: 12px;
+  padding: 10px; /* REDUCIDO */
+  border-radius: 8px;
+  margin-bottom: 8px;
   border: 1px solid var(--border);
 }
 
@@ -242,21 +255,20 @@ audio {
    MONITORES DE LETRAS (ESTUDIO)
 ========================================= */
 .karaoke-lyrics {
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 12px;
+  padding: 12px; /* REDUCIDO */
   background: var(--bg-main);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  max-height: 320px;
+  border-radius: 8px;
+  max-height: 220px; /* REDUCIDO: Menos altura para que no empuje lo demás abajo */
   overflow-y: auto;
-  /* CORRECCIÓN SCROLL FLUIDO: Sincroniza el suavizado del auto-scroll */
   scroll-behavior: smooth; 
 }
 
 .karaoke-line {
-  font-size: 22px;
-  line-height: 1.6;
-  margin: 14px 0;
+  font-size: 16px; /* REDUCIDO */
+  line-height: 1.4;
+  margin: 8px 0; /* REDUCIDO */
   text-align: center;
   color: var(--text-muted);
   transition: all 0.25s ease;
@@ -265,7 +277,7 @@ audio {
 .karaoke-line.active {
   color: #22c55e;
   font-weight: bold;
-  transform: scale(1.03);
+  transform: scale(1.02);
 }
 
 .karaoke-line.past {
@@ -276,9 +288,9 @@ audio {
    MONITOR REPRODUCTOR ULTRASTAR (KARAOKE)
 ========================================== */
 .karaoke-live-line {
-  font-size: 26px;
+  font-size: 18px; /* REDUCIDO */
   color: #475569;
-  margin: 10px 0;
+  margin: 6px 0;
   text-align: center;
   transition: all 0.2s ease;
   opacity: 0.5;
@@ -286,17 +298,17 @@ audio {
 
 .karaoke-live-line.active {
   color: #22c55e;
-  font-size: 34px;
+  font-size: 24px; /* REDUCIDO: El texto activo sigue siendo grande pero moderado */
   font-weight: 900;
   opacity: 1;
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
-  transform: scale(1.05);
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+  transform: scale(1.03);
 }
 
 .karaoke-live-line.past {
   color: #ffffff;
   opacity: 0.8;
-  font-size: 26px;
+  font-size: 18px; /* REDUCIDO */
 }
 
 /* ==========================================
@@ -315,12 +327,10 @@ audio {
 .karaoke-live-word.active-word {
   color: #facc15 !important;
   font-weight: 800;
-  text-shadow: 0 0 12px rgba(250, 204, 21, 0.8);
-  transform: scale(1.08);
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+  transform: scale(1.05);
 }
 
-/* CORRECCIÓN: Las palabras que ya pasaron toman un gris limpio translúcido 
-   para no confundirse con el verde de la línea activa general */
 .karaoke-word.past-word,
 .karaoke-live-word.past-word {
   color: rgba(255, 255, 255, 0.4) !important;
@@ -331,37 +341,37 @@ audio {
 /* ==========================================
    🔥 COMPONENTE: ESCENARIOS / TEMAS VISUALES INTERACTIVOS
 ========================================== */
-/* Tema Clásico (Por defecto) */
+/* Tema Clásico */
 .karaoke-lyrics.theme-clasico {
   background: #0f172a;
   border-color: #334155;
 }
 
-/* Tema Moderno (Cian Neón) */
+/* Tema Moderno */
 .karaoke-lyrics.theme-moderno {
   background: #082f49 !important;
   border-color: #06b6d4 !important;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
 }
 .karaoke-lyrics.theme-moderno .karaoke-live-line.active,
 .karaoke-lyrics.theme-moderno .karaoke-line.active {
   color: #06b6d4 !important;
-  text-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+  text-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
 }
 
-/* Tema Disco / Fiesta (Magenta Vibrante) */
+/* Tema Disco / Fiesta */
 .karaoke-lyrics.theme-disco {
   background: #2e1065 !important;
   border-color: #db2777 !important;
-  box-shadow: 0 0 15px rgba(219, 39, 119, 0.3);
+  box-shadow: 0 0 10px rgba(219, 39, 119, 0.3);
 }
 .karaoke-lyrics.theme-disco .karaoke-live-line.active,
 .karaoke-lyrics.theme-disco .karaoke-line.active {
   color: #db2777 !important;
-  text-shadow: 0 0 10px rgba(219, 39, 119, 0.6);
+  text-shadow: 0 0 8px rgba(219, 39, 119, 0.6);
 }
 
-/* Tema Acústico (Madera Cálida) */
+/* Tema Acústico */
 .karaoke-lyrics.theme-acustico {
   background: #451a03 !important;
   border-color: #b45309 !important;
@@ -372,27 +382,27 @@ audio {
   text-shadow: none;
 }
 
-/* Tema Fiesta Animada (Fondo manejado por JS, texto eléctrico) */
+/* Tema Fiesta Animada */
 .karaoke-lyrics.theme-fiesta .karaoke-live-line.active,
 .karaoke-lyrics.theme-fiesta .karaoke-line.active {
   color: #ff007f !important;
-  text-shadow: 0 0 12px #ff007f;
+  text-shadow: 0 0 10px #ff007f;
 }
 
-/* NUEVA CARACTERÍSTICA: Tema Retrowave (Synthwave ochentero) */
+/* Tema Retrowave */
 .karaoke-lyrics.theme-retrowave {
   background: #1e0b36 !important;
   border-color: #ff007f !important;
-  box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
 }
 .karaoke-lyrics.theme-retrowave .karaoke-live-line.active,
 .karaoke-lyrics.theme-retrowave .karaoke-line.active {
   color: #39ff14 !important; /* Verde Cyberpunk */
-  text-shadow: 0 0 10px #39ff14, 0 0 20px #ff007f;
+  text-shadow: 0 0 8px #39ff14, 0 0 15px #ff007f; /* OPTIMIZADO: Brillo ligeramente más compacto */
 }
 .karaoke-lyrics.theme-retrowave .active-word {
   color: #ff007f !important;
-  text-shadow: 0 0 8px #ff007f;
+  text-shadow: 0 0 6px #ff007f; /* OPTIMIZADO: Brillo reducido */
 }
 
 /* ==========================================
@@ -412,16 +422,16 @@ audio {
 }
 
 .settings-group {
-  margin-bottom: 20px;
+  margin-bottom: 12px; /* REDUCIDO: Menos separación vertical */
   display: flex;
   flex-direction: column;
 }
 
 .settings-group label {
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 6px; /* REDUCIDO */
   color: var(--text-main);
-  font-size: 16px;
+  font-size: 13px; /* REDUCIDO: Etiquetas de configuración más discretas */
 }
 
 .save-notification {
@@ -429,8 +439,8 @@ audio {
   font-weight: bold;
   opacity: 0;
   transition: opacity 0.3s ease;
-  margin-top: 15px;
-  font-size: 14px;
+  margin-top: 8px; /* REDUCIDO */
+  font-size: 12px; /* REDUCIDO */
 }
 
 .save-notification.show {
@@ -441,7 +451,7 @@ audio {
    SCROLL PERSONALIZADO
 ========================================== */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px; /* REDUCIDO: Barra de scroll más delgada */
 }
 
 ::-webkit-scrollbar-thumb {
@@ -454,14 +464,14 @@ audio {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  height: 60vh;
-  text-align: center; /* Esto ayuda a que el texto no se rompa */
+  gap: 12px; /* REDUCIDO */
+  height: 40vh; /* REDUCIDO: Mantiene consistencia con el primer bloque */
+  text-align: center; 
 }
 
 .success {
-  color: #22c55e !important; /* Verde */
-  transform: scale(1.2);
+  color: #22c55e !important; 
+  transform: scale(1.1); /* REDUCIDO: Efecto visual más moderado */
 }
 
 /* ==========================================
@@ -470,14 +480,15 @@ audio {
 .studio-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 8px; /* REDUCIDO */
+  margin-top: 10px; /* REDUCIDO */
 }
 
 #studioStatus {
-  margin-top: 15px;
+  margin-top: 10px; /* REDUCIDO */
   color: var(--text-muted);
   font-weight: bold;
+  font-size: 12px; /* REDUCIDO */
 }
 
 textarea {
@@ -485,19 +496,21 @@ textarea {
   background: var(--bg-main);
   color: var(--text-main);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 6px; /* REDUCIDO */
+  padding: 8px; /* REDUCIDO: Caja de texto más compacta */
   resize: vertical;
-  margin-top: 10px;
+  margin-top: 6px; /* REDUCIDO */
   font-family: Arial, sans-serif;
+  font-size: 12px; /* REDUCIDO */
 }
 
 .library-item {
   background: var(--bg-card);
-  padding: 16px;
-  border-radius: 10px;
-  margin-bottom: 12px;
+  padding: 10px; /* REDUCIDO: Elementos de la biblioteca más delgados */
+  border-radius: 8px; /* REDUCIDO */
+  margin-bottom: 8px; /* REDUCIDO */
   border: 1px solid var(--border);
+  font-size: 12px; /* REDUCIDO */
 }
 
 select,
@@ -506,35 +519,39 @@ input[type="text"] {
   background: var(--bg-main);
   color: var(--text-main);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  margin-top: 8px;
+  border-radius: 6px; /* REDUCIDO */
+  padding: 6px 10px; /* REDUCIDO */
+  margin-top: 4px; /* REDUCIDO */
+  font-size: 12px; /* REDUCIDO */
 }
+
 #selectedVoiceStatus {
-  margin-top: 15px;
+  margin-top: 10px; /* REDUCIDO */
   color: var(--text-muted);
   font-weight: bold;
+  font-size: 12px; /* REDUCIDO */
 }
 
 .karaoke-lyrics {
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 12px; /* REDUCIDO */
+  padding: 12px; /* REDUCIDO: Caja de letras más compacta */
   background: var(--bg-main);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  max-height: 320px;
+  border-radius: 8px; /* REDUCIDO */
+  max-height: 220px; /* REDUCIDO: Menos altura para optimizar el monitor */
   overflow-y: auto;
 }
 
 .karaoke-placeholder {
   color: var(--text-muted);
   margin: 0;
+  font-size: 12px; /* REDUCIDO */
 }
 
 .karaoke-line {
-  font-size: 22px;
-  line-height: 1.6;
-  margin: 14px 0;
+  font-size: 16px; /* REDUCIDO: Letras del monitor de estudio más pequeñas */
+  line-height: 1.4; /* REDUCIDO: Líneas de texto más juntas */
+  margin: 8px 0; /* REDUCIDO: Menos separación entre versos */
   text-align: center;
   color: var(--text-muted);
   transition: all 0.25s ease;
@@ -550,46 +567,47 @@ input[type="text"] {
 
 /* Oculta por completo la sección si tiene la clase .oculto */
 .contenido-desplegable.oculto {
-    display: none !important;
+  display: none !important;
 }
 
 /* Rota la flecha 90 grados apuntando abajo cuando el menú esté desplegado */
 .flecha.rotada {
-    transform: rotate(90deg);
+  transform: rotate(90deg);
 }
 
 /* ==========================================
    CONFIGURACIÓN
 ========================================== */
 .settings-group {
-  margin-bottom: 20px;
+  margin-bottom: 12px; /* REDUCIDO */
   display: flex;
   flex-direction: column;
 }
 
 .settings-group label {
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 6px; /* REDUCIDO */
   color: var(--text-main);
-  font-size: 16px;
+  font-size: 13px; /* REDUCIDO */
 }
 
 .save-notification {
   color: var(--accent);
   font-weight: bold;
-  opacity: 0; /* Oculto por defecto */
+  opacity: 0; 
   transition: opacity 0.3s ease;
-  margin-top: 15px;
-  font-size: 14px;
+  margin-top: 8px; /* REDUCIDO */
+  font-size: 12px; /* REDUCIDO */
 }
 
 .save-notification.show {
-  opacity: 1; /* Se hace visible cuando JS le pone esta clase */
+  opacity: 1; 
 }
+
 .karaoke-line.active {
   color: #22c55e;
   font-weight: bold;
-  transform: scale(1.05);
+  transform: scale(1.02); /* REDUCIDO: Escala visual más sutil para no desbordar */
 }
 
 /* ==========================================
@@ -607,8 +625,8 @@ input[type="text"] {
 .karaoke-live-word.active-word {
   color: #facc15;
   font-weight: 800;
-  text-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
-  transform: scale(1.08);
+  text-shadow: 0 0 8px rgba(250, 204, 21, 0.7); /* REDUCIDO */
+  transform: scale(1.04); /* REDUCIDO: Evita saltos bruscos en textos pequeños */
 }
 
 .karaoke-word.past-word,
@@ -620,33 +638,32 @@ input[type="text"] {
    MONITOR KARAOKE ULTRASTAR
 ========================================== */
 .karaoke-live-line {
-  font-size: 26px;
-  color: #475569; /* Gris oscuro para las que no han sonado */
-  margin: 10px 0;
+  font-size: 18px; /* REDUCIDO: Letra base del monitor UltraStar */
+  color: #475569; 
+  margin: 6px 0; /* REDUCIDO: Menos margen vertical */
   text-align: center;
   transition: all 0.2s ease;
   opacity: 0.5;
 }
 
 .karaoke-live-line.active {
-  color: #22c55e; /* Verde neón brillante */
-  font-size: 34px;
+  color: #22c55e; 
+  font-size: 24px; /* REDUCIDO: El texto activo es grande pero controlado */
   font-weight: 900;
   opacity: 1;
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6); /* Brillo neón */
-  transform: scale(1.1);
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6); 
+  transform: scale(1.03); /* REDUCIDO */
 }
 
 .karaoke-live-line.past {
-  color: #ffffff; /* Blanco para las que ya pasaron */
+  color: #ffffff; 
   opacity: 0.8;
-  font-size: 26px;
+  font-size: 18px; /* REDUCIDO */
 }
 
 /* ==========================================
-   ESCENARIOS DE KARAOKE (TEMAS VISUALES - CORREGIDO)
+   ESCENARIOS DE KARAOKE (TEMAS VISUALES)
 ========================================== */
-/* CORRECCIÓN: Apuntamos al ID real de tu monitor unificado "#karaokeLiveLyrics" o ".karaoke-lyrics" */
 #karaokeLiveLyrics.theme-clasico,
 .karaoke-lyrics.theme-clasico { 
   background: transparent; 
@@ -656,34 +673,34 @@ input[type="text"] {
 #karaokeLiveLyrics.theme-moderno,
 .karaoke-lyrics.theme-moderno { 
   background: #082f49 !important; 
-  border: 2px solid #06b6d4 !important; 
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+  border: 1px solid #06b6d4 !important; /* REDUCIDO: Borde más fino */
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); /* REDUCIDO */
 }
 #karaokeLiveLyrics.theme-moderno .karaoke-live-line.active,
 .karaoke-lyrics.theme-moderno .karaoke-line.active { 
   color: #06b6d4 !important; 
-  text-shadow: 0 0 15px #06b6d4 !important; 
+  text-shadow: 0 0 10px #06b6d4 !important; /* REDUCIDO */
 }
 
 /* Disco (Gradiente Vibrante) */
 #karaokeLiveLyrics.theme-disco,
 .karaoke-lyrics.theme-disco { 
   background: linear-gradient(45deg, #4c1d95, #be185d) !important; 
-  border: 2px solid #db2777 !important;
-  box-shadow: 0 0 15px rgba(219, 39, 119, 0.4);
+  border: 1px solid #db2777 !important; /* REDUCIDO */
+  box-shadow: 0 0 10px rgba(219, 39, 119, 0.4); /* REDUCIDO */
 }
 #karaokeLiveLyrics.theme-disco .karaoke-live-line.active,
 .karaoke-lyrics.theme-disco .karaoke-line.active { 
   color: #facc15 !important; 
-  text-shadow: 0 0 12px #facc15 !important; 
-  font-size: 34px !important; 
+  text-shadow: 0 0 8px #facc15 !important; /* REDUCIDO */
+  font-size: 24px !important; /* REDUCIDO para igualar la línea activa base */
 }
 
 /* Acústico (Madera Cálida) */
 #karaokeLiveLyrics.theme-acustico,
 .karaoke-lyrics.theme-acustico { 
   background: #451a03 !important; 
-  border: 2px solid #78350f !important; 
+  border: 1px solid #78350f !important; /* REDUCIDO */
 }
 #karaokeLiveLyrics.theme-acustico .karaoke-live-line.active,
 .karaoke-lyrics.theme-acustico .karaoke-line.active { 
@@ -692,37 +709,36 @@ input[type="text"] {
   font-style: italic; 
 }
 
-/* Fiesta Animada (Fondo con luces locas) */
+/* Fiesta Animada */
 #karaokeLiveLyrics.theme-fiesta,
 .karaoke-lyrics.theme-fiesta { 
-  border: 2px solid #ff007f !important;
-  /* CORRECCIÓN: Enlazamos el ciclo de animaciones de luces neón */
+  border: 1px solid #ff007f !important; /* REDUCIDO */
   animation: luces-fiesta 4s infinite alternate !important; 
 }
 #karaokeLiveLyrics.theme-fiesta .karaoke-live-line.active,
 .karaoke-lyrics.theme-fiesta .karaoke-line.active { 
   color: #ff007f !important; 
-  text-shadow: 0 0 20px #ff007f !important; 
+  text-shadow: 0 0 12px #ff007f !important; /* REDUCIDO */
 }
 
-/* NUEVA CARACTERÍSTICA: Escenario Retrowave (Synthwave Ochentero) */
+/* Escenario Retrowave (Synthwave Ochentero) */
 #karaokeLiveLyrics.theme-retrowave,
 .karaoke-lyrics.theme-retrowave {
   background: #1e0b36 !important;
-  border: 2px solid #ff007f !important;
-  box-shadow: 0 0 20px rgba(255, 0, 127, 0.5);
+  border: 1px solid #ff007f !important; /* REDUCIDO */
+  box-shadow: 0 0 12px rgba(255, 0, 127, 0.5); /* REDUCIDO */
 }
 #karaokeLiveLyrics.theme-retrowave .karaoke-live-line.active,
 .karaoke-lyrics.theme-retrowave .karaoke-line.active {
-  color: #39ff14 !important; /* Verde Cyberpunk */
-  text-shadow: 0 0 10px #39ff14, 0 0 20px #ff007f !important;
+  color: #39ff14 !important; 
+  text-shadow: 0 0 8px #39ff14, 0 0 12px #ff007f !important; /* REDUCIDO */
 }
 
-/* CORRECCIÓN ANIMACIÓN FIESTA: Estructuramos los fotogramas para simular luces de discoteca */
+/* ANIMACIÓN FIESTA OPTIMIZADA */
 @keyframes luces-fiesta {
-  0% { background-color: #1e1b4b; box-shadow: 0 0 15px rgba(99, 102, 241, 0.3); }
-  50% { background-color: #311042; box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); }
-  100% { background-color: #062f22; box-shadow: 0 0 15px rgba(34, 197, 94, 0.3); }
+  0% { background-color: #1e1b4b; box-shadow: 0 0 10px rgba(99, 102, 241, 0.3); }
+  50% { background-color: #311042; box-shadow: 0 0 12px rgba(236, 72, 153, 0.4); }
+  100% { background-color: #062f22; box-shadow: 0 0 10px rgba(34, 197, 94, 0.3); }
 }
 
 /* ==========================================
@@ -737,8 +753,8 @@ input[type="text"] {
 
   .sidebar {
     width: 100%;
-    height: 70px;
-    padding: 5px 10px;
+    height: 54px; /* REDUCIDO: Barra inferior más delgada en móviles */
+    padding: 4px 8px; /* REDUCIDO */
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
@@ -753,19 +769,19 @@ input[type="text"] {
 
   .sidebar button {
     text-align: center;
-    padding: 10px;
-    font-size: 14px;
+    padding: 6px; /* REDUCIDO */
+    font-size: 12px; /* REDUCIDO */
     flex: 1;
     margin: 0 2px;
   }
 
   .content {
-    height: calc(100vh - 70px); 
-    padding: 15px;
+    height: calc(100vh - 54px); /* AJUSTADO */
+    padding: 10px; /* REDUCIDO */
   }
 
   #noteDisplay {
-    font-size: 80px; 
+    font-size: 60px; /* REDUCIDO */
   }
 }
 
@@ -774,25 +790,25 @@ input[type="text"] {
 ========================================== */
 .folder-controls {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 8px; /* REDUCIDO */
+    margin-bottom: 12px; /* REDUCIDO */
     flex-wrap: wrap;
     justify-content: center;
     background: var(--bg-main);
-    padding: 15px;
-    border-radius: 12px;
+    padding: 10px; /* REDUCIDO */
+    border-radius: 8px; /* REDUCIDO */
     border: 1px solid var(--border);
 }
 
 .folder-btn {
-    padding: 10px 20px;
-    /* CORRECCIÓN VARIABLES: Mapeamos a tus nombres reales de variables globales */
+    padding: 6px 14px; /* REDUCIDO: Botones de carpeta más compactos */
     background: var(--bg-card);
     border: 1px solid var(--border);
     color: var(--text-main);
-    border-radius: 8px;
+    border-radius: 6px; /* REDUCIDO */
     cursor: pointer;
     font-weight: 600;
+    font-size: 12px; /* REDUCIDO */
     transition: all 0.3s ease;
 }
 
@@ -801,30 +817,31 @@ input[type="text"] {
     background: var(--accent);
     color: black;
     border-color: var(--accent-hover);
-    transform: translateY(-2px);
+    transform: translateY(-1px); /* REDUCIDO */
 }
 
 .library-item {
     background: var(--bg-main);
     border: 1px solid var(--border);
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 10px;
+    padding: 10px; /* REDUCIDO */
+    border-radius: 8px; /* REDUCIDO */
+    margin-bottom: 8px; /* REDUCIDO */
+    font-size: 12px; /* REDUCIDO */
     transition: box-shadow 0.3s ease;
 }
 
 .library-item:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
 .delete-library-btn {
     background: #444;
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 4px 8px; /* REDUCIDO */
+    border-radius: 4px; /* REDUCIDO */
     cursor: pointer;
-    font-size: 12px;
+    font-size: 11px; /* REDUCIDO */
     font-weight: bold;
     transition: background 0.2s ease;
 }
@@ -837,9 +854,9 @@ input[type="text"] {
     background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
     display: block;
     width: 100%;
-    height: 300px;
-    border-radius: 8px;
-    border: 2px solid #3b82f6;
+    height: 200px; /* REDUCIDO: Menos altura para dar mucho más espacio al monitor general */
+    border-radius: 6px; /* REDUCIDO */
+    border: 1px solid #3b82f6; /* REDUCIDO */
 }
 
 /* ==========================================
@@ -937,20 +954,20 @@ input[type="text"] {
 }
 [data-theme="neon"] .sidebar h2 {
   color: #a855f7;
-  text-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7;
+  text-shadow: 0 0 8px #a855f7, 0 0 15px #a855f7; /* REDUCIDO */
 }
 [data-theme="neon"] button {
   background: #a855f7;
   color: white;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.5); /* REDUCIDO */
 }
 [data-theme="neon"] button:hover {
   background: #9333ea;
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.8); /* REDUCIDO */
 }
 [data-theme="neon"] .card {
   border: 1px solid #a855f7;
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2); /* REDUCIDO */
 }
 
 /* TEMA NATURALEZA */
@@ -985,15 +1002,15 @@ input[type="text"] {
 }
 
 /* ==========================================
-   VÚMETROS DE HARDWARE DE MICRÓFONOS
+   NÚMERO DE HARDWARE DE MICRÓFONOS
 ========================================== */
 .mic-level-bar {
   width: 100%;
-  height: 12px;
+  height: 8px; /* REDUCIDO: Vúmetros más delgados */
   background: var(--bg-main);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  margin-top: 10px;
+  border-radius: 4px; /* REDUCIDO */
+  margin-top: 6px; /* REDUCIDO */
   overflow: hidden;
 }
 
@@ -1001,7 +1018,7 @@ input[type="text"] {
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, #22c55e, #84cc16, #facc15, #f97316, #ef4444);
-  border-radius: 6px;
+  border-radius: 4px; /* REDUCIDO */
   transition: width 0.05s ease-out;
 }
 
@@ -1016,8 +1033,8 @@ input[type="text"] {
 
 #mic2Group {
   border-top: 1px dashed var(--border);
-  padding-top: 20px;
-  margin-top: 10px;
+  padding-top: 10px; /* REDUCIDO: Menos espacio de separación */
+  margin-top: 6px; /* REDUCIDO */
 }
 
 /* ==========================================
@@ -1027,17 +1044,18 @@ input[type="text"] {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
+  padding: 6px 12px; /* REDUCIDO: Filas de canciones mucho más delgadas */
   background: var(--bg-main);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 8px;
+  border-radius: 6px; /* REDUCIDO */
+  margin-bottom: 6px; /* REDUCIDO */
+  font-size: 12px; /* REDUCIDO: Texto base del catálogo más compacto */
   transition: all 0.2s ease;
 }
 
 .catalog-item:hover, .my-karaoke-item:hover {
   border-color: var(--accent);
-  transform: translateX(5px);
+  transform: translateX(3px); /* REDUCIDO */
 }
 
 .catalog-item-info, .my-karaoke-item-info {
@@ -1047,59 +1065,57 @@ input[type="text"] {
 .catalog-item-title, .my-karaoke-item-title {
   font-weight: bold;
   color: var(--text-main);
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0; /* REDUCIDO */
 }
 
 .catalog-item-artist, .my-karaoke-item-artist {
-  font-size: 13px;
+  font-size: 11px; /* REDUCIDO */
   color: var(--text-muted);
   margin: 0;
 }
 
 .catalog-item-actions, .my-karaoke-item-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px; /* REDUCIDO */
 }
 
 .catalog-item-actions button, .my-karaoke-item-actions button {
-  padding: 8px 15px;
-  font-size: 13px;
+  padding: 4px 10px; /* REDUCIDO: Botones de lista de reproducción más pequeños */
+  font-size: 11px; /* REDUCIDO */
 }
 
 /* Modales e Inputs de carga */
 #ultrastarModal .settings-group {
-  margin-bottom: 15px;
+  margin-bottom: 10px; /* REDUCIDO */
 }
 
 #ultrastarModal input[type="file"] {
-  margin-top: 8px;
+  margin-top: 4px; /* REDUCIDO */
 }
 
 /* ==========================================
    BARRAS DE VOLUMEN MODO DÚO (INTEGRADO VISUAL)
 ========================================== */
-/* CORRECCIÓN: Usamos especificidad avanzada para que convivan en armonía
-   las barras fijas del Karaoke con el vúmetro multicolor del test de hardware */
 .mic-level-bar {
   position: relative;
   width: 100%;
-  height: 12px;                  
+  height: 8px; /* REDUCIDO: Se mantiene a la par del vúmetro general */
   background: rgba(255, 255, 255, 0.1) !important; 
   border: 1px solid var(--border);
-  border-radius: 6px;            
+  border-radius: 4px; /* REDUCIDO */
   overflow: hidden;              
-  margin-top: 6px;
+  margin-top: 4px; /* REDUCIDO */
 }
 
 /* Color personalizado y sombreado exclusivo mediante su ID */
 #karaokeDuoMic1Level {
   background: #facc15 !important;           
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.6); /* REDUCIDO */
 }
 
 #karaokeDuoMic2Level {
   background: #06b6d4 !important;           
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.6); /* REDUCIDO */
 }
 
 /* Color destacado para saber qué carpeta de la biblioteca está abierta */
@@ -1108,14 +1124,12 @@ input[type="text"] {
   color: #ffffff !important;
   border: 1px solid #22c55e !important; 
   font-weight: bold;
-  transform: scale(1.03);
+  transform: scale(1.01); /* REDUCIDO */
 }
 
 /* ====================================================================
    🎨 TEMA GLOBAL ORIGINAL: RETRO WAVE / CYBERPUNK (ANIMADO)
    ==================================================================== */
-/* CORRECCIÓN INTERFAZ: Adaptamos el selector para que responda al 
-   sistema de atributos data-theme unificado de tu motor JS */
 [data-theme="retrowave"] {
   --bg-main: #0b001a;
   --bg-sidebar: #1e0936;
@@ -1131,9 +1145,9 @@ input[type="text"] {
 [data-theme="retrowave"] body {
   background-color: #0b001a !important; 
   background-image: 
-    linear-gradient(rgba(255, 0, 128, 0.1) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 2px, transparent 2px) !important;
-  background-size: 40px 40px;
+    linear-gradient(rgba(255, 0, 128, 0.1) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 1.5px, transparent 1.5px) !important; /* REDUCIDO: Líneas de cuadrícula más finas */
+  background-size: 30px 30px; /* REDUCIDO: Rejilla más pequeña para dar sensación de amplitud */
   background-position: center bottom;
   animation: grid-scroll 4s linear infinite !important;
   position: relative;
@@ -1147,13 +1161,13 @@ input[type="text"] {
   bottom: 20%;
   left: 50%;
   transform: translateX(-50%);
-  width: 300px;
-  height: 300px;
+  width: 180px; /* REDUCIDO: Sol más chico para que no opaque los textos compactos */
+  height: 180px; /* REDUCIDO */
   background: linear-gradient(#ff007f, #facc15);
   border-radius: 50%;
   filter: blur(2px);
-  box-shadow: 0 0 60px rgba(255, 0, 127, 0.6);
-  opacity: 0.4;
+  box-shadow: 0 0 40px rgba(255, 0, 127, 0.6); /* REDUCIDO */
+  opacity: 0.3; /* REDUCIDO: Más discreto */
   z-index: -1;
   animation: sun-pulse 3s ease-in-out infinite alternate;
 }
@@ -1162,19 +1176,19 @@ input[type="text"] {
 [data-theme="retrowave"] .card {
   background: rgba(30, 9, 54, 0.6) !important;
   border: 1px solid #ff007f !important;
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.2); /* REDUCIDO */
   backdrop-filter: blur(8px);
 }
 
 [data-theme="retrowave"] button {
   background: #ff007f;
   color: white;
-  box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
+  box-shadow: 0 0 6px rgba(255, 0, 127, 0.4); /* REDUCIDO */
 }
 
 [data-theme="retrowave"] button:hover {
   background: #db2777;
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.7);
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.7); /* REDUCIDO */
 }
 
 [data-theme="retrowave"] .sidebar button:hover,
@@ -1187,10 +1201,10 @@ input[type="text"] {
 /* --- ANIMACIONES NATIVAS RETROWAVE --- */
 @keyframes grid-scroll {
   from { background-position: 0 0; }
-  to { background-position: 0 40px; }
+  to { background-position: 0 30px; } /* AJUSTADO */
 }
 
 @keyframes sun-pulse {
-  from { transform: translateX(-50%) scale(0.95); opacity: 0.3; }
-  to { transform: translateX(-50%) scale(1.05); opacity: 0.55; }
+  from { transform: translateX(-50%) scale(0.97); opacity: 0.25; }
+  to { transform: translateX(-50%) scale(1.03); opacity: 0.4; }
 }
