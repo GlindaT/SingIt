@@ -1461,7 +1461,7 @@ async function analyzePitchForSegments(audioBlob, segments) {
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
     
     const sampleRate = audioBuffer.sampleRate;
-    const channelData = buffer.numberOfChannels > 0 ? audioBuffer.getChannelData(0) : new Float32Array(0);
+    const channelData = audioBuffer.numberOfChannels > 0 ? audioBuffer.getChannelData(0) : new Float32Array(0);
     
     console.log("🎵 Analizando pitch de", segments.length, "segmentos...");
 
