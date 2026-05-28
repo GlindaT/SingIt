@@ -1977,7 +1977,7 @@ async function startKaraokeRecording() {
     
   } catch (err) {
     console.error(err);
-    alert(" Error al acceder al micrófono. Verifica en Configuración."); ❌
+    alert(" Error al acceder al micrófono. Verifica en Configuración."); 
   }
 }
 
