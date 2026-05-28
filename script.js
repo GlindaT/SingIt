@@ -4084,15 +4084,17 @@ function cambiarEscenarioKaraoke() {
 }
 
 // ==========================================
-// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR
+// 🎨 ESCUCHAR CAMBIOS DE TEMAS Y ESCENARIOS (NATIVO)
 // ==========================================
+
+// 1. Escuchador para el Escenario de Karaoke (Canvas)
 document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
 
-// 🎯 AGREGADO: Escuchador nativo para el Tema de la App
+// 2. Escuchador para el Tema de la Interfaz Completa (App)
 document.getElementById("appTheme")?.addEventListener("change", (e) => {
   const nuevoTema = e.target.value;
   
-  // Cambiamos el atributo en el HTML para aplicar los estilos de tu CSS [data-theme]
+  // 🔥 SOLUCIÓN CRÍTICA: Inyectamos el atributo en la etiqueta raíz del HTML
   document.documentElement.setAttribute("data-theme", nuevoTema);
   
   // Guardamos en el almacenamiento local con tu llave exacta
@@ -4103,9 +4105,9 @@ document.getElementById("appTheme")?.addEventListener("change", (e) => {
   }
 });
 
-// Carga inicial al abrir la página
+// 3. Carga inicial automatizada al abrir la página por primera vez
 document.addEventListener("DOMContentLoaded", () => {
-  // Inicialización de Escenarios...
+  // Inicialización de Escenarios (Canvas)
   const selectEscenario = document.getElementById("karaokeThemeSelect");
   if (selectEscenario) {
     let temaGuardado = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
@@ -4113,11 +4115,13 @@ document.addEventListener("DOMContentLoaded", () => {
     cambiarEscenarioKaraoke();
   }
 
-  // 🎯 AGREGADO: Inicialización del Tema de la App al cargar la página
+  // 🔥 SOLUCIÓN CRÍTICA: Inicialización del Tema de la App al cargar el sitio
   const selectTema = document.getElementById("appTheme");
   if (selectTema) {
     const temaGuardado = localStorage.getItem("singIt_theme") || "oscuro";
     selectTema.value = temaGuardado;
+    
+    // Forzamos al navegador a pintar los colores guardados desde el segundo cero
     document.documentElement.setAttribute("data-theme", temaGuardado);
   }
 });
