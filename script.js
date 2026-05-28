@@ -3488,7 +3488,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
       const y = midiToY1(frequencyToMidi(freq), height);
-      const x = 40 - (pitchHistoryMic1.length - i) * 3; 
+      const x = lineX + (i - pitchHistoryMic1.length) * (pixelsPerSecond / 60) + 40; 
       
       if (x >= 0) {
         if (!started1) { ctx.moveTo(x, y); started1 = true; } 
