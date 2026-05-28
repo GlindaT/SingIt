@@ -1871,11 +1871,11 @@ async function startKaraokeRecording() {
   try {
     const micCount = $("micCount");
     const isDuo = micCount && micCount.value === "2";
-
+    
     // 1. LIMPIEZA ABSOLUTA DE HARDWARE ANTES DE EMPEZAR
     // Si había flujos abiertos del Afinador o Estudio, los apagamos para liberar los canales
     if (window.karaokeStream && typeof window.karaokeStream.getTracks === 'function') {
-        window.karaokeStream.getTracks().forEach(t => t.stop());
+      window.karaokeStream.getTracks().forEach(t => t.stop());
     }
     if (window.karaokeStream2 && typeof window.karaokeStream2.getTracks === 'function') {
         window.karaokeStream2.getTracks().forEach(t => t.stop());
@@ -1892,19 +1892,20 @@ async function startKaraokeRecording() {
 
     const mic1Id = getSelectedMicId(1);
     const mic2Id = getSelectedMicId(2);
-
+    
+    if (isDuo && mic1Id) {
     const audioConstraints1 = {
       echoCancellation: false,
       noiseSuppression: false,
       autoGainControl: false,
       channelCount: 1,
       sampleRate: 48000
+      deviceId: { exact: mic1Id }
     };
+    
     if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
-
-    // 🔥 CORRECCIÓN 1: Declaramos una constante local limpia (stream1) para aislar el hardware
     const stream1 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
-    window.karaokeStream = stream1; // Guardamos la referencia global para detenerlo después si es necesario
+    window.karaokeStream = stream1; 
 
     // Procesar Mic 1 de forma totalmente independiente
     const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream1);
@@ -1912,8 +1913,8 @@ async function startKaraokeRecording() {
 
     // Control de volumen Mic 1
     const volNode1 = karaokeDuoAudioContext.createGain();
-    const sliderVol1 = $("mic1Volume"); 
-    volNode1.gain.value = sliderVol1 ? parseFloat(sliderVol1.value) : 1.0;
+    volNode1.gain.value = 3.0;
+  
     mic1Filtrado.connect(volNode1);
     currentVolNode1 = volNode1; 
 
@@ -1928,6 +1929,8 @@ async function startKaraokeRecording() {
     if (!isDuo) {
       volNode1.connect(merger, 0, 1);
     }
+    const duoIndicator = $("karaokeDuoIndicator");
+      if (duoIndicator) duoIndicator.style.display = "block";
     
     if (isDuo && mic2Id) {
       const audioConstraints2 = {
@@ -1945,12 +1948,8 @@ async function startKaraokeRecording() {
       const source2 = karaokeDuoAudioContext.createMediaStreamSource(stream2);
       const mic2Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source2);
 
-      // === PREAMPLIFICADOR DIGITAL AUTOMÁTICO PARA MIC 2 ===
       const volNode2 = karaokeDuoAudioContext.createGain();
       
-      // 🔥 SOLUCIÓN DEFINITIVA: Como no hay sliders en la app, 
-      // forzamos un multiplicador automático de x3.0 a la señal.
-      // Esto rescata el volumen bajo sin importar cómo esté configurado Windows.
       volNode2.gain.value = 3.0; 
       
       mic2Filtrado.connect(volNode2);
