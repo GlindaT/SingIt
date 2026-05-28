@@ -1857,22 +1857,20 @@ function cargarLetrasEnMonitor() {
 async function startKaraokeRecording() {
   const track = $("karaokeTrack");
   if (!track || !track.src) {
-    alert("⚠️ Primero sube una pista instrumental en el Paso 1.");
+    alert(" Primero sube una pista instrumental en el Paso 1."); ⚠
     return;
   }
-    
+ 
   try {
     const micCount = $("micCount");
     const isDuo = micCount && micCount.value === "2";
-
     karaokeChunks = [];
     karaokeRecordedBlob = null;
     $("karaokeVoicePlayer").src = "";
-
-    // Obtener micrófonos seleccionados
+    
     const mic1Id = getSelectedMicId(1);
     const mic2Id = getSelectedMicId(2);
-
+    
     const audioConstraints1 = {
       echoCancellation: false,
       noiseSuppression: false,
@@ -1880,19 +1878,34 @@ async function startKaraokeRecording() {
       channelCount: 1,
       sampleRate: 48000
     };
-      
-    if (mic1Id) {
-      audioConstraints1.deviceId = { exact: mic1Id };
-    }
-      
-    // Obtener stream del Mic 1
-    karaokeStream = await navigator.mediaDevices.getUserMedia({
-      audio: audioConstraints1
-    });
-
+ 
+    if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
+ 
+    karaokeStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
+    
+    // Inicializamos el contexto maestro de karaoke
+    karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Procesamos Mic 1 con tu cadena profesional (Filtro paso alto + Compresor + Brillo)
+    const source1 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream);
+    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
+    
+    // Nodo de ganancia base Mic 1
+    const volNode1 = karaokeDuoAudioContext.createGain();
+    volNode1.gain.value = 1.0;
+    mic1Filtrado.connect(volNode1);
+    
+    karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
+    karaokeDuoAnalyser1.fftSize = 2048;
+    volNode1.connect(karaokeDuoAnalyser1);
+ 
+    const merger = karaokeDuoAudioContext.createChannelMerger(2);
+    const destination = karaokeDuoAudioContext.createMediaStreamDestination();
+    
+    volNode1.connect(merger, 0, 0);
     let finalStream = karaokeStream;
-
-    // Si es DÚO, obtener y mezclar Mic 2
+ 
+    // === CONFIGURACIÓN QUIRÚRGICA DEL MICRÓFONO 2 (DÚO ESPEJO) ===
     if (isDuo && mic2Id) {
       const audioConstraints2 = {
         echoCancellation: false,
@@ -1902,92 +1915,69 @@ async function startKaraokeRecording() {
         sampleRate: 48000,
         deviceId: { exact: mic2Id }
       };
-      karaokeStream2 = await navigator.mediaDevices.getUserMedia({
-        audio: audioConstraints2
-      });
-        
-      // Crear contexto de audio para mezclar
-      karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const source1 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream);
+      
+      karaokeStream2 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints2 });
+      
       const source2 = karaokeDuoAudioContext.createMediaStreamSource(karaokeStream2);
-
-      // Crear analizadores para visualización
-      karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
+      const mic2Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source2);
+      
+      // 🔥 PREAMPLIFICADOR DIGITAL DE SOFTWARE FIXED PARA MICROFONO 2
+      const volNode2 = karaokeDuoAudioContext.createGain();
+      volNode2.gain.value = 3.0; // Multiplicamos x3 la señal para rescatar el bajo volumen de Windows
+      mic2Filtrado.connect(volNode2);
+ 
       karaokeDuoAnalyser2 = karaokeDuoAudioContext.createAnalyser();
-      karaokeDuoAnalyser1.fftSize = 2048;
       karaokeDuoAnalyser2.fftSize = 2048;
-        
-      // Crear mezclador
-      const merger = karaokeDuoAudioContext.createChannelMerger(2);
-      const destination = karaokeDuoAudioContext.createMediaStreamDestination();
-        
-      // Conectar: fuentes -> analizadores -> mezclador -> destino
-      source1.connect(karaokeDuoAnalyser1);
-      source2.connect(karaokeDuoAnalyser2);
-      karaokeDuoAnalyser1.connect(merger, 0, 0);
-      karaokeDuoAnalyser2.connect(merger, 0, 1);
-      merger.connect(destination);
-
-      finalStream = destination.stream;
-
-      // Mostrar indicador de dúo
+      volNode2.connect(karaokeDuoAnalyser2);
+ 
+      volNode2.connect(merger, 0, 1);
+      
       const duoIndicator = $("karaokeDuoIndicator");
-      if (duoIndicator) {
-        duoIndicator.style.display = "block";
-      }
-
-      // Iniciar visualización de niveles
+      if (duoIndicator) duoIndicator.style.display = "block";
+      
       startKaraokeDuoLevelMonitor();
     }
-      
-    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      ? { mimeType: "audio/webm;codecs=opus" }
-      : {};
-      
+    
+    finalStream = destination.stream;
+ 
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
     karaokeMediaRecorder = new MediaRecorder(finalStream, options);
-
+    
     karaokeMediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) karaokeChunks.push(e.data);
     };
-
+    
     karaokeMediaRecorder.onstop = () => {
       karaokeRecordedBlob = new Blob(karaokeChunks, { type: "audio/webm" });
       $("karaokeVoicePlayer").src = URL.createObjectURL(karaokeRecordedBlob);
       $("karaokeStatus").textContent = "Estado: Grabación finalizada ✅";
-        
-      // Ocultar indicador dúo
       const duoIndicator = $("karaokeDuoIndicator");
-      if (duoIndicator) {
-        duoIndicator.style.display = "none";
-      }
-        
+      if (duoIndicator) duoIndicator.style.display = "none";
       stopKaraokeDuoLevelMonitor();
     };
-
+    
     karaokeMediaRecorder.start();
     track.currentTime = 0;
     track.play();
-
-    // ¡AQUÍ ACTIVAMOS EL MONITOR!
+    
+    // 🔥 ARRANQUE DEL DETECTOR DE PITCH BIFOCAL
     startKaraokePitchDetection();
-
-    // Mostrar estado
+ 
+    // Gestión estricta de nombres de micrófonos en interfaz
     const mic1Select = $("mic1Select");
     const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
-
     if (isDuo && mic2Id) {
       const mic2Select = $("mic2Select");
       const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
-      $("karaokeStatus").textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
+      $("karaokeStatus").textContent = `Estado: Grabando DÚO (${mic1Name} + 🔴 ${mic2Name})...`;
     } else {
-      $("karaokeStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
+      $("karaokeStatus").textContent = `Estado: Grabando con ${mic1Name}...`; 🔴
     }
-
     $("karaokeStartBtn").disabled = true;
-  
+    
   } catch (err) {
     console.error(err);
-    alert("❌ Error al acceder al micrófono. Verifica en Configuración.");
+    alert(" Error al acceder al micrófono. Verifica en Configuración."); ❌
   }
 }
 
@@ -2067,6 +2057,45 @@ function stopKaraokeRecording() {
   if (track) track.pause();
 
   $("karaokeStartBtn").disabled = false;
+}
+
+function startKaraokePitchDetection() {
+  if (!karaokeMediaRecorder || karaokeMediaRecorder.state !== "recording") return;
+
+  const track = $("karaokeTrack");
+  const currentPlaybackTime = track ? track.currentTime : 0;
+
+  // buffers temporales locales aislados para evitar colisiones
+  const bufferMic1 = new Float32Array(2048);
+  const bufferMic2 = new Float32Array(2048);
+
+  let pitch1 = -1;
+  let pitch2 = -1;
+
+  // Analizar canal del Usuario 1
+  if (karaokeDuoAnalyser1) {
+    karaokeDuoAnalyser1.getFloatTimeDomainData(bufferMic1);
+    pitch1 = autoCorrelate(bufferMic1, karaokeDuoAudioContext.sampleRate);
+  }
+
+  // Analizar canal del Usuario 2
+  if (karaokeDuoAnalyser2) {
+    karaokeDuoAnalyser2.getFloatTimeDomainData(bufferMic2);
+    pitch2 = autoCorrelate(bufferMic2, karaokeDuoAudioContext.sampleRate);
+  }
+
+  // 🪞 RENDER BIFOCAL: Enviamos los dos estímulos de voz al monitor simultáneamente
+  if (typeof drawKaraokeMonitor === "function") {
+    drawKaraokeMonitor(currentPlaybackTime, pitch1, pitch2);
+  }
+
+  // Sincronizamos las letras iluminadas de abajo al mismo tiempo
+  if (typeof syncKaraokeMonitor === "function") {
+    syncKaraokeMonitor(currentPlaybackTime);
+  }
+
+  // Re-ciclar el bucle en el siguiente refresco de pantalla del navegador
+  requestAnimationFrame(startKaraokePitchDetection);
 }
 
 function restartKaraokeRecording() {
@@ -3492,6 +3521,27 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fill();
     ctx.shadowBlur = 0;
   }
+}
+
+function midiToY1(midiNote, height) {
+  const minMidi = 48; 
+  const maxMidi = 84; 
+  const mitadSuperior = height / 2;
+  let pct = (midiNote - minMidi) / (maxMidi - minMidi);
+  pct = Math.max(0, Math.min(1, pct));
+  return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
+}
+
+// Mapeo Usuario 2 (Mitad Inferior): INVERTIDO EN ESPEJO (Agudos abajo, graves arriba)
+function midiToY2(midiNote, height) {
+  const minMidi = 48; 
+  const maxMidi = 84; 
+  const mitadInferior = height / 2;
+  let pct = (midiNote - minMidi) / (maxMidi - minMidi);
+  pct = Math.max(0, Math.min(1, pct));
+  // Efecto espejo: invertimos el porcentaje local del sub-panel
+  const yLocalInvertido = (1 - pct) * mitadInferior * 0.8 + (mitadInferior * 0.1);
+  return yLocalInvertido + mitadInferior;
 }
  
 // ==========================================
