@@ -212,6 +212,33 @@ function inicializarMenuSensibilidad() {
   }
 }
 
+function guardarSensibilidadGlobal(nuevoValor) {
+  // Convertimos a flotante para asegurar que se guarde de forma numérica pura
+  localStorage.setItem("singIt_sensitivity", parseFloat(nuevoValor));
+  
+  // Si tienes tu notificación de guardado, se activa
+  if (typeof showSaveNotification === "function") {
+    showSaveNotification();
+  }
+}
+
+function cargarConfiguracionesVisuales() {
+  const slider = document.getElementById("micSensitivity");
+  if (!slider) return;
+
+  // Leemos el disco del navegador
+  const sensibilidadGuardada = localStorage.getItem("singIt_sensitivity");
+
+  if (sensibilidadGuardada) {
+    // Si ya existe un valor guardado, forzamos al slider a posicionarse ahí
+    slider.value = sensibilidadGuardada;
+  } else {
+    // Si es la primera vez del usuario, forzamos a que el slider inicie en tu recomendado
+    slider.value = "0.015";
+    localStorage.setItem("singIt_sensitivity", 0.015);
+  }
+}
+
 // ==========================================
 // AFINADOR
 // ==========================================
