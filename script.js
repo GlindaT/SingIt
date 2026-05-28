@@ -4084,44 +4084,78 @@ function cambiarEscenarioKaraoke() {
 }
 
 // ==========================================
-// 🎨 ESCUCHAR CAMBIOS DE TEMAS Y ESCENARIOS (NATIVO)
+// ⚙️ ESCUCHADORES DE EVENTOS NATIVOS DE CONFIGURACIÓN
 // ==========================================
 
-// 1. Escuchador para el Escenario de Karaoke (Canvas)
+// 1. Escenario de Karaoke
 document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
 
-// 2. Escuchador para el Tema de la Interfaz Completa (App)
+// 2. Tema Visual de la Aplicación
 document.getElementById("appTheme")?.addEventListener("change", (e) => {
   const nuevoTema = e.target.value;
-  
-  // 🔥 SOLUCIÓN CRÍTICA: Inyectamos el atributo en la etiqueta raíz del HTML
   document.documentElement.setAttribute("data-theme", nuevoTema);
-  
-  // Guardamos en el almacenamiento local con tu llave exacta
   localStorage.setItem("singIt_theme", nuevoTema);
-  
-  if (typeof showSaveNotification === "function") {
-    showSaveNotification();
-  }
+  if (typeof showSaveNotification === "function") showSaveNotification();
 });
 
-// 3. Carga inicial automatizada al abrir la página por primera vez
+// 3. Dificultad para el Afinador
+document.getElementById("difficultyLevel")?.addEventListener("change", (e) => {
+  localStorage.setItem("singIt_difficulty", e.target.value);
+  if (typeof showSaveNotification === "function") showSaveNotification();
+});
+
+// 4. Dificultad para el Pentagrama
+document.getElementById("pentagramDifficulty")?.addEventListener("change", (e) => {
+  localStorage.setItem("singIt_pentagramDiff", e.target.value);
+  if (typeof showSaveNotification === "function") showSaveNotification();
+});
+
+// 5. Deslizador de Sensibilidad (Se guarda al arrastrar)
+document.getElementById("micSensitivity")?.addEventListener("input", (e) => {
+  localStorage.setItem("singIt_sensitivity", parseFloat(e.target.value));
+});
+
+// ==========================================
+// 📥 CARGA E INICIALIZACIÓN AL ABRIR LA APP
+// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-  // Inicialización de Escenarios (Canvas)
+  // Inicializar Escenario
   const selectEscenario = document.getElementById("karaokeThemeSelect");
   if (selectEscenario) {
-    let temaGuardado = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
-    selectEscenario.value = temaGuardado;
+    const guardado = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
+    selectEscenario.value = guardado;
     cambiarEscenarioKaraoke();
   }
 
-  // 🔥 SOLUCIÓN CRÍTICA: Inicialización del Tema de la App al cargar el sitio
+  // Inicializar Tema de la App
   const selectTema = document.getElementById("appTheme");
   if (selectTema) {
-    const temaGuardado = localStorage.getItem("singIt_theme") || "oscuro";
-    selectTema.value = temaGuardado;
-    
-    // Forzamos al navegador a pintar los colores guardados desde el segundo cero
-    document.documentElement.setAttribute("data-theme", temaGuardado);
+    const guardado = localStorage.getItem("singIt_theme") || "oscuro";
+    selectTema.value = guardado;
+    document.documentElement.setAttribute("data-theme", guardado);
+  }
+
+  // Inicializar Dificultad Afinador
+  const selectDiffAfinador = document.getElementById("difficultyLevel");
+  if (selectDiffAfinador) {
+    selectDiffAfinador.value = localStorage.getItem("singIt_difficulty") || "medio";
+  }
+
+  // Inicializar Dificultad Pentagrama
+  const selectDiffPentagrama = document.getElementById("pentagramDifficulty");
+  if (selectDiffPentagrama) {
+    selectDiffPentagrama.value = localStorage.getItem("singIt_pentagramDiff") || "medio";
+  }
+
+  // Inicializar Deslizador de Sensibilidad
+  const sliderSensibilidad = document.getElementById("micSensitivity");
+  if (sliderSensibilidad) {
+    const guardado = localStorage.getItem("singIt_sensitivity");
+    if (guardado && guardado !== "0.05") {
+      sliderSensibilidad.value = guardado;
+    } else {
+      sliderSensibilidad.value = "0.012";
+      localStorage.setItem("singIt_sensitivity", 0.012);
+    }
   }
 });
