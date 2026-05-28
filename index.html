@@ -467,10 +467,11 @@
         </div>
         
         <div class="settings-group">
-          <label for="micSensitivity">🎚️ Sensibilidad del Micrófono (Umbral)</label>
-          <input type="range" id="micSensitivity" min="0.000" max="0.050" step="0.001" value="0.010">
-          <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
-        </div>
+  <label for="micSensitivity">🎚️ Sensibilidad del Micrófono (Umbral)</label>
+  <!-- 🔥 AGREGA EL ONINPUT AQUÍ -->
+  <input type="range" id="micSensitivity" min="0.000" max="0.050" step="0.001" value="0.015" oninput="guardarSensibilidadGlobal(this.value)">
+  <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
+</div>
         
         <div class="settings-group">
           <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
