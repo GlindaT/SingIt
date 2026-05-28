@@ -7,7 +7,10 @@ const pitchBuffer = new Float32Array(2048);
 const state = {
   instrumentalUrl: null,
   letraLrc: "",
-  isRecording: false
+  isRecording: false,
+  tapSyncLines: [],
+  tapSyncTimestamps: [],
+  tapSyncCurrentIndex: 0
 };
 
 let db = null;
@@ -436,94 +439,6 @@ function getNoteFrequency(note) {
 
   const semitoneOffset = notes[noteName] + (octave - 4) * 12;
   return 440 * Math.pow(2, semitoneOffset / 12);
-}
-
-function autoCorrelate(buffer, sampleRate) {
-  const SIZE = buffer.length;
-  
-  // 1. Calcular la energía de la señal (RMS - Root Mean Square)
-  let rms = 0;
-  for (let i = 0; i < SIZE; i++) {
-    const val = buffer[i];
-    rms += val * val;
-  }
-  rms = Math.sqrt(rms / SIZE);
-
-  // Umbral de silencio: Si la señal es muy débil, no intentamos detectar el pitch
-  // (Evita que el ruido ambiente devuelva notas aleatorias)
-  if (rms < 0.01) {
-    return -1;
-  }
-
-  // 2. Recortar la señal para aislar las frecuencias fundamentales (Autocorrelation Clipping)
-  // Buscamos los límites donde la señal es lo suficientemente fuerte
-  let r1 = 0;
-  let r2 = SIZE - 1;
-  const thres = 0.2; // Umbral de corte de amplitud
-  
-  for (let i = 0; i < SIZE / 2; i++) {
-    if (Math.abs(buffer[i]) < thres) {
-      r1 = i;
-      break;
-    }
-  }
-  for (let i = SIZE - 1; i >= SIZE / 2; i--) {
-    if (Math.abs(buffer[i]) < thres) {
-      r2 = i;
-      break;
-    }
-  }
-
-  // Usamos el fragmento central del buffer que contiene la onda limpia
-  const signal = buffer.subarray(r1, r2);
-  const signalLength = signal.length;
-
-  // 3. Algoritmo de Autocorrelación
-  // Creamos un array para almacenar las correlaciones por cada desfase (lag)
-  const c = new Float32Array(signalLength);
-  
-  for (let lag = 0; lag < signalLength; lag++) {
-    let sum = 0;
-    for (let i = 0; i < signalLength - lag; i++) {
-      sum += signal[i] * signal[i + lag];
-    }
-    c[lag] = sum;
-  }
-
-  // 4. Encontrar el primer pico máximo después de que la onda caiga (desfase cero)
-  // El lag 0 siempre será el punto más alto porque la onda se multiplica por sí misma.
-  // Buscamos el punto donde la correlación empieza a subir de nuevo.
-  let d = 0;
-  while (d < signalLength - 1 && c[d] > c[d + 1]) {
-    d++;
-  }
-
-  // Ahora buscamos el valor máximo absoluto (el pico de la cresta de la onda)
-  let maxVal = -1;
-  let maxLag = -1;
-  
-  for (let i = d; i < signalLength; i++) {
-    if (c[i] > maxVal) {
-      maxVal = c[i];
-      maxLag = i;
-    }
-  }
-
-  // 5. Conversión de desfase (Lag) a Frecuencia (Hz)
-  let frequency = -1;
-  if (maxLag !== -1) {
-    // La frecuencia es la tasa de muestreo dividida entre el desfase del periodo
-    frequency = sampleRate / maxLag;
-  }
-
-  // 6. Validación de rangos para la voz humana
-  // Un rango estándar va desde los 50 Hz (bajos profundos) hasta los 2000 Hz (sopranos altas)
-  if (frequency > 50 && frequency < 2000) {
-    return frequency;
-  }
-
-  // Si la frecuencia está fuera de rango o el resultado no es confiable
-  return -1;
 }
 
 // ==========================================
@@ -4144,18 +4059,21 @@ function cambiarEscenarioKaraoke() {
 }
 
 // ==========================================
-// ⚙️ ESCUCHADORES DE EVENTOS NATIVOS DE CONFIGURACIÓN
+// ESCUCHAR CAMBIOS Y CARGAR AL INICIAR
 // ==========================================
-
-// 1. Escenario de Karaoke
 document.getElementById("karaokeThemeSelect")?.addEventListener("change", cambiarEscenarioKaraoke);
 
-// 2. Tema Visual de la Aplicación
-document.getElementById("appTheme")?.addEventListener("change", (e) => {
-  const nuevoTema = e.target.value;
-  document.documentElement.setAttribute("data-theme", nuevoTema);
-  localStorage.setItem("singIt_theme", nuevoTema);
-  if (typeof showSaveNotification === "function") showSaveNotification();
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.getElementById("karaokeThemeSelect");
+  if (!select) return;
+  
+  let temaGuardado = localStorage.getItem("singIt_karaoke_theme");
+  if (temaGuardado) {
+    const contenedorKaraoke = document.getElementById("karaokeLyrics");
+    if (contenedorKaraoke) {
+      contenedorKaraoke.classList.add(temaGuardado);
+    }
+  }
 });
 
 // 3. Dificultad para el Afinador
@@ -4219,3 +4137,82 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+// ============================================================================
+// ALGORITMO DE AUTOCORRELACIÓN (REPARACIÓN DE FUNCIÓN INCOMPLETA)
+// ============================================================================
+function autoCorrelate(buffer, sampleRate) {
+  const SIZE = buffer.length;
+  
+  // 1. Calcular la energía de la señal (RMS)
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) {
+    const val = buffer[i];
+    rms += val * val;
+  }
+  rms = Math.sqrt(rms / SIZE);
+
+  // Filtro de silencio
+  if (rms < 0.01) {
+    return -1; 
+  }
+
+  // 2. Recortar extremos débiles de la señal (Clipping)
+  let r1 = 0;
+  let r2 = SIZE - 1;
+  const thres = 0.2;
+  
+  for (let i = 0; i < SIZE / 2; i++) {
+    if (Math.abs(buffer[i]) < thres) {
+      r1 = i;
+      break;
+    }
+  }
+  for (let i = SIZE - 1; i >= SIZE / 2; i--) {
+    if (Math.abs(buffer[i]) < thres) {
+      r2 = i;
+      break;
+    }
+  }
+
+  const signal = buffer.subarray(r1, r2);
+  const signalLength = signal.length;
+
+  // 3. Procesamiento de Autocorrelación por desfases (lags)
+  const c = new Float32Array(signalLength);
+  for (let lag = 0; lag < signalLength; lag++) {
+    let sum = 0;
+    for (let i = 0; i < signalLength - lag; i++) {
+      sum += signal[i] * signal[i + lag];
+    }
+    c[lag] = sum;
+  }
+
+  // 4. Encontrar el primer pico tras el punto de origen (desfase cero)
+  let d = 0;
+  while (d < signalLength - 1 && c[d] > c[d + 1]) {
+    d++;
+  }
+
+  let maxVal = -1;
+  let maxLag = -1;
+  for (let i = d; i < signalLength; i++) {
+    if (c[i] > maxVal) {
+      maxVal = c[i];
+      maxLag = i;
+    }
+  }
+
+  // 5. Conversión matemática a frecuencia fundamental (Hz)
+  let frequency = -1;
+  if (maxLag !== -1) {
+    frequency = sampleRate / maxLag;
+  }
+
+  // 6. Validación para limitar la respuesta a rangos de canto humano
+  if (frequency > 50 && frequency < 2000) {
+    return frequency;
+  }
+
+  return -1;
+}
