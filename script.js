@@ -3449,6 +3449,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // =======================================================
   // 🐬 --- MONITOR USUARIO 2 - ABAJO (CELESTE / CIAN) ---
   // =======================================================
+  const isPast = currentTime > word.end;
   let barColor2, textColor2, borderColor2;
   if (isPast) {
     barColor2 = "#4b5563"; textColor2 = "#9ca3af"; borderColor2 = "#6b7280";
