@@ -1857,7 +1857,7 @@ function cargarLetrasEnMonitor() {
 async function startKaraokeRecording() {
   const track = $("karaokeTrack");
   if (!track || !track.src) {
-    alert(" Primero sube una pista instrumental en el Paso 1."); ⚠
+    alert(" Primero sube una pista instrumental en el Paso 1.");
     return;
   }
  
