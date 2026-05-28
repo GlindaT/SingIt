@@ -1900,7 +1900,6 @@ async function startKaraokeRecording() {
       autoGainControl: false,
       channelCount: 1,
       sampleRate: 48000
-      deviceId: { exact: mic1Id }
     };
     
     if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
