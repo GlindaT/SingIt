@@ -2460,10 +2460,12 @@ function initSettings() {
 
   const settings = {
     micCount: "singIt_micCount",
-    karaokeThemeSelect: "singIt_stage",
+    karaokeThemeSelect: "singIt_karaoke_theme",
     difficultyLevel: "singIt_difficulty",
     userVoiceType: "singIt_voiceType",
-    appTheme: "singIt_theme"
+    appTheme: "singIt_theme",
+    micSensitivity: "singIt_sensitivity",
+    pentagramDifficulty: "singIt_pentagramDiff"
   };
 
   Object.entries(settings).forEach(([id, storageKey]) => {
@@ -3295,9 +3297,25 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   ctx.fillRect(0, 0, width, height);
 
   // ====================================================================
+  // 🔥 CONFIGURACIÓN DE DIFICULTAD ADAPTATIVA PARA EL PENTAGRAMA DÚO
+  // ====================================================================
+  // Leemos la dificultad directamente usando tu mapa de configuración maestro
+  const diffPentagrama = localStorage.getItem("singIt_pentagramDiff") || "medio";
+  
+  // Margen de error en semitonos (MIDI) para decidir si el usuario le atinó a la barra musical
+  let margenAciertoMidi = 2; // Modo "medio" por defecto (Tolerancia estándar de ±2 semitonos)
+  
+  if (diffPentagrama === "facil") {
+    margenAciertoMidi = 3.5; // Muy tolerante, ideal para principiantes o micrófonos inestables
+  } else if (diffPentagrama === "dificil") {
+    margenAciertoMidi = 1.0; // Estricto, requiere precisión de estudio
+  }
+
+
+  // ====================================================================
   // 📏 --- RENDERING ESTRUCTURAL: PENTAGRAMAS DOBLES Y ADAPTACIÓN ---
   // ====================================================================
-  const numLines = 5; // Ajustado a 5 líneas por cada mitad para no sobrecargar visualmente
+  const numLines = 6; // Ajustado a  líneas por cada mitad para no sobrecargar visualmente
   ctx.strokeStyle = colorLineas;
   ctx.lineWidth = 1.5;
 
@@ -3317,8 +3335,8 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   ctx.fillStyle = colorEtiquetas;
   ctx.font = "11px Arial";
   ctx.textAlign = "right";
-  const noteLabelsSuperior = ["A4", "G4", "F4", "E4", "D4", "C4"];
-  const noteLabelsInferior = ["B3", "A3", "G3", "F3", "E3", "D3"];
+  const noteLabelsSuperior = ["G4", "F4", "E4", "D4", "C4", "B3"];
+  const noteLabelsInferior = ["A3", "G3", "F3", "E3", "D3", "C3"];
 
   noteLabelsSuperior.forEach((label, i) => {
     const y = (height / 2) * 0.15 + ((height / 2) * 0.7 / numLines) * i + 4;
@@ -3366,8 +3384,8 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         let isCorrectMic2 = false;
         
         if (isActive) {
-          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= 2) isCorrectMic1 = true;
-          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= 2) isCorrectMic2 = true;
+          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= margenAciertoMidi) isCorrectMic1 = true;
+          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= margenAciertoMidi) isCorrectMic2 = true;
         }
         
         // --- PROCESAR E INYECTAR EN PANEL 1 (ARRIBA - USUARIO 1) ---
