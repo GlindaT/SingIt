@@ -1886,10 +1886,15 @@ async function startKaraokeRecording() {
         channelCount: 1,
         sampleRate: 48000
     };
-    if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
+    if (mic1Id) {
+      audioConstraints1.deviceId = { exact: mic1Id };
+    }
     
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
-      window.karaokeStream = stream; 
+    karaokeStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: audioConstraints1 
+    });
+
+    let finalStream = karaokeStream;
     
     // Procesar Mic 1 de forma totalmente independiente
     const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream);
@@ -1922,7 +1927,9 @@ async function startKaraokeRecording() {
         deviceId: { exact: mic2Id }
       };
       
-      karaokeStream2 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints2 });
+      karaokeStream2 = await navigator.mediaDevices.getUserMedia({ 
+        audio: audioConstraints2 
+      });
 
       const source2 = karaokeDuoAudioContext.createMediaStreamSource(stream2);
       const mic2Filtrado = aplicarCadenaDeAudio(karaokeDuoAudioContext, source2);
