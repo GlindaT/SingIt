@@ -3512,13 +3512,13 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // 🐬 --- MONITOR USUARIO 2 - ABAJO (CELESTE / CIAN) ---
   // =======================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
+  ctx.strokeStyle = "rgba(6, 182, 212, 0.65)";
   ctx.lineWidth = 4;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
   let started2 = false;
   
   pitchHistoryMic2.forEach((freq, i) => {
     if (freq && freq > 0) {
-      // 🔥 CAMBIO: Usa midiToY2 para la mitad de abajo
       const y = midiToY2(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic2.length - i) * 3; 
       
@@ -3537,8 +3537,70 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.shadowBlur = 15; ctx.shadowColor = "#06b6d4";
     ctx.arc(40, userY2, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur = 0; // Resetear brillo
   }
+  // ====================================================================
+  // 📝 --- SUBTÍTULOS BIFOCALES: FRASES ACTUALES Y PRÓXIMAS ---
+  // ====================================================================
+  const currentIndex = transcriptionSegments.findIndex(seg => 
+    currentTime >= seg.start && currentTime <= seg.end + 0.5
+  );
+
+  // Configuración de sombra de alta legibilidad para el texto flotante
+  ctx.shadowColor = "#000000";
+  ctx.shadowBlur = 6;
+  ctx.textAlign = "center";
+
+  if (currentIndex !== -1) {
+    const currentSegment = transcriptionSegments[currentIndex];
+    const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
+    
+    // --- 🎙️ FRASES USUARIO 1 (Mitad Superior del Lienzo) ---
+    ctx.fillStyle = "#ffffff"; 
+    ctx.font = "bold 16px Arial"; 
+    ctx.textBaseline = "top"; 
+    ctx.fillText(textoActualLimpio, width / 2, 10); 
+
+    // --- 🐬 FRASES USUARIO 2 (Mitad Inferior del Lienzo) ---
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 16px Arial"; 
+    ctx.textBaseline = "bottom"; 
+    ctx.fillText(textoActualLimpio, width / 2, height - 30); 
+
+    // --- RASTREO DE LA PRÓXIMA FRASE ---
+    const nextSegment = transcriptionSegments[currentIndex + 1];
+    if (nextSegment) {
+      const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
+      
+      // Próxima línea - Arriba
+      ctx.fillStyle = "rgba(156, 163, 175, 0.7)"; 
+      ctx.font = "12px Arial";
+      ctx.textBaseline = "top"; 
+      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, 32);
+
+      // Próxima línea - Abajo
+      ctx.fillStyle = "rgba(156, 163, 175, 0.7)";
+      ctx.font = "12px Arial";
+      ctx.textBaseline = "bottom"; 
+      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, height - 10);
+    }
+  } else {
+    // --- MODO DE ESPERA (Intermedios musicales o silencios largos) ---
+    const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
+    if (upcomingSegment) {
+      const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
+      
+      ctx.fillStyle = "rgba(156, 163, 175, 0.8)";
+      ctx.font = "italic 14px Arial";
+      ctx.textBaseline = "middle"; 
+      
+      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, (height / 2) / 2); 
+      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, (height / 2) + (height / 2) / 2); 
+    }
+  }
+
+  // 🎯 APAGADO DE SOMBRAS DE SEGURIDAD ANTES DE SALIR
+  ctx.shadowBlur = 0;
 }
   
 // ==========================================
