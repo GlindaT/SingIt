@@ -3493,24 +3493,43 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // =======================================================
   // 🐬 --- MONITOR USUARIO 2 - ABAJO (CELESTE / CIAN) ---
   // =======================================================
-  ctx.beginPath();
-  ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
-  ctx.lineWidth = 4;
-  let started2 = false;
+  let barColor2, textColor2, borderColor2;
+  if (isPast) {
+    barColor2 = "#4b5563"; textColor2 = "#9ca3af"; borderColor2 = "#6b7280";
+  } else if (isActive) {
+    if (isCorrectMic2) {
+      barColor2 = "#22c55e"; textColor2 = "#ffffff"; borderColor2 = "#4ade80";
+    } else {
+      barColor2 = "#3b82f6"; textColor2 = "#ffffff"; borderColor2 = "#60a5fa";
+    }
+  } else {
+    barColor2 = colorBarraFutura; textColor2 = "#93c5fd"; borderColor2 = colorBordeFuturo;
+  }
   
-  pitchHistoryMic2.forEach((freq, i) => {
-    if (freq && freq > 0) {
-      // 🔥 CAMBIO: Usa midiToY2 para la mitad de abajo
-      const y = midiToY2(frequencyToMidi(freq), height);
-      const x = 40 - (pitchHistoryMic2.length - i) * 3; 
-      
-      if (x >= 0) {
-        if (!started2) { ctx.moveTo(x, y); started2 = true; } 
-        else { ctx.lineTo(x, y); }
-      }
-    } else { started2 = false; }
-  });
+  // 🎯 AQUÍ ESTÁ EL CAMBIO: Forzamos la posición vertical en espejo de abajo
+  const barY2 = midiToY2(midi, height); 
+  
+  ctx.fillStyle = barColor2;
+  ctx.strokeStyle = borderColor2;
+  ctx.lineWidth = isActive ? 2 : 1;
+  ctx.beginPath();
+  
+  // 🔥 CORRECCIÓN CRÍTICA: Reemplaza cualquier "barY" antiguo por "barY2" aquí adentro
+  ctx.roundRect(wordStartX, barY2 - barHeight/2, barWidth, barHeight, 6);
+  ctx.fill(); 
   ctx.stroke();
+  
+  // Configuración y dibujado de la letra para el Jugador 2
+  ctx.fillStyle = textColor2;
+  ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
+  ctx.textAlign = "center"; 
+  ctx.textBaseline = "middle";
+  
+  let displayWord2 = word.word || "";
+  if (displayWord2.length > 10) displayWord2 = displayWord2.substring(0, 8) + "..";
+  
+  // 🔥 CORRECCIÓN CRÍTICA: La letra debe pintarse sobre "barY2" para no flotar arriba
+  ctx.fillText(displayWord2, wordStartX + barWidth/2, barY2); 
 
   if (currentFreq2 && currentFreq2 > 0) {
     const userY2 = midiToY2(frequencyToMidi(currentFreq2), height);
