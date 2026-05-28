@@ -34,16 +34,17 @@ function safeAdd(id, event, handler) {
 let pitchHistoryMic1 = [];
 let pitchHistoryMic2 = [];
 
-// ==========================================
+
 // INDEXED DB - BIBLIOTECA
-// ==========================================
+
 function initDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("SingItDB", 1);
-
+    
     request.onupgradeneeded = function (event) {
+      
       const database = event.target.result;
-
+      
       if (!database.objectStoreNames.contains("library")) {
         const store = database.createObjectStore("library", {
           keyPath: "id",
@@ -59,25 +60,9 @@ function initDB() {
       db = event.target.result;
       resolve(db);
     };
-
+    
     request.onerror = function () {
-      reject("❌ Error al abrir IndexedDB");
-    };
-  });
-}
-
-function addLibraryItem(item) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(["library"], "readwrite");
-    const store = transaction.objectStore("library");
-    const request = store.add(item);
-
-    request.onsuccess = function () {
-      resolve();
-    };
-
-    request.onerror = function () {
-      reject("❌ Error al guardar en IndexedDB");
+      reject("X Error al abrir IndexedDB");
     };
   });
 }
@@ -87,16 +72,15 @@ function getAllLibraryItems() {
     const transaction = db.transaction(["library"], "readonly");
     const store = transaction.objectStore("library");
     const request = store.getAll();
-
     request.onsuccess = function () {
       resolve(request.result);
     };
-
     request.onerror = function () {
-      reject("❌ Error al leer Biblioteca");
+      reject("X Error al leer Biblioteca");
     };
   });
 }
+
 
 function updateLibraryItem(id, changes) {
   return new Promise((resolve, reject) => {
@@ -205,7 +189,7 @@ function inicializarMenuSensibilidad() {
 
   // Si el usuario ya había guardado algo antes, forzamos al menú a mostrar esa opción
   if (sensibilidadGuardada) {
-    select.value = sensibilidatGuardada;
+    select.value = sensibilidadGuardada;
   } else {
     // Si la app es nueva para el usuario, forzamos al menú a marcar la recomendada
     select.value = "0.015"; 
@@ -360,8 +344,16 @@ function detectPitch() {
   if (!state.isRecording || !analyser) return;
 
   // Usamos el buffer global en lugar de crear uno nuevo cada 16ms
-  analyser.getFloatTimeDomainData(pitchBuffer);
-  const pitch = autoCorrelate(pitchBuffer, audioContext.sampleRate);
+  const sampleRate = audioContext.sampleRate; // Usualmente 44100 o 48000
+  const pitch = autoCorrelate(pitchBuffer, sampleRate);
+  
+  if (pitch !== -1) {
+    // Frecuencia detectada con éxito. Aquí ejecutas la lógica de tu afinador o karaoke
+    console.log("Frecuencia detectada: " + pitch.toFixed(2) + " Hz");
+  } else {
+    // El usuario no está cantando/hablando, o hay puro silencio
+    console.log("Silencio o indetectable");
+  }
   
   if (document.getElementById("karaokeCanvas")) {
     // Asegúrate de que esta función esté definida o comentada para evitar errores
@@ -446,45 +438,94 @@ function getNoteFrequency(note) {
   return 440 * Math.pow(2, semitoneOffset / 12);
 }
 
-function autoCorrelate(buf, sampleRate) {
+function autoCorrelate(buffer, sampleRate) {
+  const SIZE = buffer.length;
+  
+  // 1. Calcular la energía de la señal (RMS - Root Mean Square)
   let rms = 0;
-  for (let i = 0; i < buf.length; i++) {
-    rms += buf[i] * buf[i];
+  for (let i = 0; i < SIZE; i++) {
+    const val = buffer[i];
+    rms += val * val;
   }
-  rms = Math.sqrt(rms / buf.length);
+  rms = Math.sqrt(rms / SIZE);
 
-  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.015;
-
-  // Si el volumen es muy bajo, ignoramos la detección
-  if (rms < umbral) return -1;
-
-  let bestOffset = -1;
-  let bestCorrelation = 0;
-
-  for (let offset = 8; offset < 1000; offset++) {
-    let correlation = 0;
-
-    for (let i = 0; i < buf.length - offset; i++) {
-      correlation += Math.abs(buf[i] - buf[i + offset]);
-    }
-
-    correlation = 1 - (correlation / (buf.length - offset));
-
-    if (correlation > bestCorrelation) {
-      bestCorrelation = correlation;
-      bestOffset = offset;
-    }
+  // Umbral de silencio: Si la señal es muy débil, no intentamos detectar el pitch
+  // (Evita que el ruido ambiente devuelva notas aleatorias)
+  if (rms < 0.01) {
+    return -1;
   }
 
-  if (bestCorrelation < 0.85 || bestOffset === -1) return -1;
+  // 2. Recortar la señal para aislar las frecuencias fundamentales (Autocorrelation Clipping)
+  // Buscamos los límites donde la señal es lo suficientemente fuerte
+  let r1 = 0;
+  let r2 = SIZE - 1;
+  const thres = 0.2; // Umbral de corte de amplitud
+  
+  for (let i = 0; i < SIZE / 2; i++) {
+    if (Math.abs(buffer[i]) < thres) {
+      r1 = i;
+      break;
+    }
+  }
+  for (let i = SIZE - 1; i >= SIZE / 2; i--) {
+    if (Math.abs(buffer[i]) < thres) {
+      r2 = i;
+      break;
+    }
+  }
 
-  const frequency = sampleRate / bestOffset;
+  // Usamos el fragmento central del buffer que contiene la onda limpia
+  const signal = buffer.subarray(r1, r2);
+  const signalLength = signal.length;
 
-  // Ignorar frecuencias absurdas para voz humana cantada
-  if (frequency < 60 || frequency > 1200) return -1;
+  // 3. Algoritmo de Autocorrelación
+  // Creamos un array para almacenar las correlaciones por cada desfase (lag)
+  const c = new Float32Array(signalLength);
+  
+  for (let lag = 0; lag < signalLength; lag++) {
+    let sum = 0;
+    for (let i = 0; i < signalLength - lag; i++) {
+      sum += signal[i] * signal[i + lag];
+    }
+    c[lag] = sum;
+  }
 
-  return frequency;
+  // 4. Encontrar el primer pico máximo después de que la onda caiga (desfase cero)
+  // El lag 0 siempre será el punto más alto porque la onda se multiplica por sí misma.
+  // Buscamos el punto donde la correlación empieza a subir de nuevo.
+  let d = 0;
+  while (d < signalLength - 1 && c[d] > c[d + 1]) {
+    d++;
+  }
+
+  // Ahora buscamos el valor máximo absoluto (el pico de la cresta de la onda)
+  let maxVal = -1;
+  let maxLag = -1;
+  
+  for (let i = d; i < signalLength; i++) {
+    if (c[i] > maxVal) {
+      maxVal = c[i];
+      maxLag = i;
+    }
+  }
+
+  // 5. Conversión de desfase (Lag) a Frecuencia (Hz)
+  let frequency = -1;
+  if (maxLag !== -1) {
+    // La frecuencia es la tasa de muestreo dividida entre el desfase del periodo
+    frequency = sampleRate / maxLag;
+  }
+
+  // 6. Validación de rangos para la voz humana
+  // Un rango estándar va desde los 50 Hz (bajos profundos) hasta los 2000 Hz (sopranos altas)
+  if (frequency > 50 && frequency < 2000) {
+    return frequency;
+  }
+
+  // Si la frecuencia está fuera de rango o el resultado no es confiable
+  return -1;
 }
+
 // ==========================================
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
