@@ -3200,34 +3200,25 @@ function reconstruirFraseDesdeWords(segmento) {
 
 // Mapeo para el Usuario 1 (Mitad Superior del Canvas)
 function midiToY1(midiNote, height) {
-  const minMidi = 50; // Nota base ajustable
-  const maxMidi = 80; // Nota techo ajustable
-  const mitadSuperior = height / 2;
-  
-  // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
-  const pct = (midiNote - minMidi) / (maxMidi - minMidi);
-  return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
+    const minMidi = 50; // Nota base ajustable
+    const maxMidi = 80; // Nota techo ajustable
+    const mitadSuperior = height / 2;
+    
+    // Escala la nota para que viva únicamente entre el píxel 0 y la mitad del alto
+    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    return mitadSuperior - (pct * mitadSuperior * 0.8) - (mitadSuperior * 0.1);
 }
 
 // Mapeo para el Usuario 2 (Mitad Inferior del Canvas)
 function midiToY2(midiNote, height) {
-    // Reducimos ligeramente el rango MIDI base para dar mayor margen vertical
-    const minMidi = 40; // Bajamos el piso a 40 para capturar tonos graves amplificados
-    const maxMidi = 80; 
-    
+    const minMidi = 50;
+    const maxMidi = 80;
     const mitadInferior = height / 2;
     
-    // Calculamos el porcentaje de la nota dentro del rango
-    let pct = (midiNote - minMidi) / (maxMidi - minMidi);
-    
-    // Limitamos el porcentaje entre 0 y 1 para que NUNCA se salga del canvas
-    pct = Math.max(0, Math.min(1, pct));
-    
-    // Centramos la señal comprimiendo su escala al 70% del espacio del carril
-    const yLocal = mitadInferior - (pct * mitadInferior * 0.7) - (mitadInferior * 0.15);
-    
-    // Desfasamos el resultado final para que empiece exactamente a la mitad del alto
-    return yLocal + mitadInferior;
+    // Escala la nota para que viva entre la mitad del alto y el fondo total
+    const pct = (midiNote - minMidi) / (maxMidi - minMidi);
+    const yLocal = mitadInferior - (pct * mitadInferior * 0.8) - (mitadInferior * 0.1);
+    return yLocal + mitadInferior; // Desfasamos hacia abajo
 }
 
 // ==========================================
@@ -3468,26 +3459,30 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // ====================================================================
   // ⚡ --- CAPA INTERMEDIA: LÍNEA DIVISORIA ELECTRÓNICA ---
   // ====================================================================
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+
+  // 1. DIBUJAR LÍNEA DIVISORIA NEÓN EN MEDIO DEL MONITOR
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)"; 
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.2)"; // Color --text-muted suave
   ctx.lineWidth = 2;
-  ctx.setLineDash([6, 6]); 
+  ctx.setLineDash([5, 5]); // Línea punteada estética
   ctx.moveTo(0, height / 2);
   ctx.lineTo(width, height / 2);
   ctx.stroke();
-  ctx.setLineDash([]); 
+  ctx.setLineDash([]); // Resetear estilo de línea continuo
 
   // ====================================================================
   // 🎙️ --- MONITOR CANAL 1 ACTUAL: JUGADOR 1 (ARRIBA - AMARILLO) ---
   // ====================================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(250, 204, 21, 0.65)";
+  ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
   ctx.lineWidth = 4;
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
   let started1 = false;
   
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
+      // 🔥 CAMBIO: Usa midiToY1 para la mitad de arriba
       const y = midiToY1(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
@@ -3513,13 +3508,13 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // 🐬 --- MONITOR USUARIO 2 - ABAJO (CELESTE / CIAN) ---
   // =======================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(6, 182, 212, 0.65)";
+  ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
   ctx.lineWidth = 4;
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
   let started2 = false;
   
   pitchHistoryMic2.forEach((freq, i) => {
     if (freq && freq > 0) {
+      // 🔥 CAMBIO: Usa midiToY2 para la mitad de abajo
       const y = midiToY2(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic2.length - i) * 3; 
       
@@ -3538,72 +3533,10 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.shadowBlur = 15; ctx.shadowColor = "#06b6d4";
     ctx.arc(40, userY2, 8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0; // Resetear brillo
+    ctx.shadowBlur = 0;
   }
-  // ====================================================================
-  // 📝 --- SUBTÍTULOS BIFOCALES: FRASES ACTUALES Y PRÓXIMAS ---
-  // ====================================================================
-  const currentIndex = transcriptionSegments.findIndex(seg => 
-    currentTime >= seg.start && currentTime <= seg.end + 0.5
-  );
-
-  // Configuración de sombra de alta legibilidad para el texto flotante
-  ctx.shadowColor = "#000000";
-  ctx.shadowBlur = 6;
-  ctx.textAlign = "center";
-
-  if (currentIndex !== -1) {
-    const currentSegment = transcriptionSegments[currentIndex];
-    const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-    
-    // --- 🎙️ FRASES USUARIO 1 (Mitad Superior del Lienzo) ---
-    ctx.fillStyle = "#ffffff"; 
-    ctx.font = "bold 16px Arial"; 
-    ctx.textBaseline = "top"; 
-    ctx.fillText(textoActualLimpio, width / 2, 10); 
-
-    // --- 🐬 FRASES USUARIO 2 (Mitad Inferior del Lienzo) ---
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 16px Arial"; 
-    ctx.textBaseline = "bottom"; 
-    ctx.fillText(textoActualLimpio, width / 2, height - 30); 
-
-    // --- RASTREO DE LA PRÓXIMA FRASE ---
-    const nextSegment = transcriptionSegments[currentIndex + 1];
-    if (nextSegment) {
-      const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-      
-      // Próxima línea - Arriba
-      ctx.fillStyle = "rgba(156, 163, 175, 0.7)"; 
-      ctx.font = "12px Arial";
-      ctx.textBaseline = "top"; 
-      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, 32);
-
-      // Próxima línea - Abajo
-      ctx.fillStyle = "rgba(156, 163, 175, 0.7)";
-      ctx.font = "12px Arial";
-      ctx.textBaseline = "bottom"; 
-      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, height - 10);
-    }
-  } else {
-    // --- MODO DE ESPERA (Intermedios musicales o silencios largos) ---
-    const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
-    if (upcomingSegment) {
-      const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
-      
-      ctx.fillStyle = "rgba(156, 163, 175, 0.8)";
-      ctx.font = "italic 14px Arial";
-      ctx.textBaseline = "middle"; 
-      
-      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, (height / 2) / 2); 
-      ctx.fillText("Próximo: " + textoProximoLimpio, width / 2, (height / 2) + (height / 2) / 2); 
-    }
-  }
-
-  // 🎯 APAGADO DE SOMBRAS DE SEGURIDAD ANTES DE SALIR
-  ctx.shadowBlur = 0;
 }
-  
+ 
 // ==========================================
 // DETECCIÓN DE PITCH PARA KARAOKE
 // ==========================================
