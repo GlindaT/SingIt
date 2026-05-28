@@ -1930,8 +1930,7 @@ async function startKaraokeRecording() {
     }
     const duoIndicator = $("karaokeDuoIndicator");
       if (duoIndicator) duoIndicator.style.display = "block";
-    
-    if (isDuo && mic2Id) {
+
       const audioConstraints2 = {
         echoCancellation: false,
         noiseSuppression: false,
@@ -2004,7 +2003,6 @@ async function startKaraokeRecording() {
       $("karaokeStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
     }
     $("karaokeStartBtn").disabled = true;
-
   } catch (err) {
     console.error(err);
     alert("❌ Error al acceder al micrófono.");
