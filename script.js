@@ -3297,8 +3297,8 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   ctx.fillStyle = colorEtiquetas;
   ctx.font = "11px Arial";
   ctx.textAlign = "right";
-  const noteLabelsSuperior = ["G4", "F4", "E4", "D4", "C4", "B3"];
-  const noteLabelsInferior = ["A3", "G3", "F3", "E3", "D3", "C3"];
+  const noteLabelsSuperior = ["A4", "G4", "F4", "E4", "D4", "C4",];
+  const noteLabelsInferior = ["B3", "A3", "G3", "F3", "E3", "D3",];
 
   noteLabelsSuperior.forEach((label, i) => {
     const y = (height / 2) * 0.15 + ((height / 2) * 0.7 / numLines) * i + 4;
