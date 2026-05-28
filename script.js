@@ -489,7 +489,6 @@ function autoCorrelate(buf, sampleRate) {
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
 let studioMediaRecorder = null;
-let studioStream = null;
 let studioChunks = [];
 let studioRecordedBlob = null;
 let studioTrackFileName = "";
@@ -548,6 +547,7 @@ let duoAudioContext = null;
 let duoAnalyser1 = null;
 let duoAnalyser2 = null;
 let duoAnimationId = null;
+let studioStream = null;
 
 async function startStudioRecording() {
   try {
@@ -661,7 +661,7 @@ async function startStudioRecording() {
     
     // Mostrar estado
     const mic1Select = $("mic1Select");
-    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
+    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Mic 1";
     
     if (isDuo && mic2Id) {
       const mic2Select = $("mic2Select");
@@ -1894,43 +1894,37 @@ async function startKaraokeRecording() {
     const mic2Id = getSelectedMicId(2);
     
     if (isDuo && mic1Id) {
-    const audioConstraints1 = {
-      echoCancellation: false,
-      noiseSuppression: false,
-      autoGainControl: false,
-      channelCount: 1,
-      sampleRate: 48000
-    };
-    
-    if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
-    const stream1 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
-    window.karaokeStream = stream1; 
-
-    // Procesar Mic 1 de forma totalmente independiente
-    const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream1);
-    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
-
-    // Control de volumen Mic 1
-    const volNode1 = karaokeDuoAudioContext.createGain();
-    volNode1.gain.value = 3.0;
-  
-    mic1Filtrado.connect(volNode1);
-    currentVolNode1 = volNode1; 
-
-    // Inicializamos el analizador de Pitch del Mic 1 en 2048 para máxima fidelidad
-    karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
-    karaokeDuoAnalyser1.fftSize = 2048;
-    volNode1.connect(karaokeDuoAnalyser1);
-
-    const merger = karaokeDuoAudioContext.createChannelMerger(2);
-    volNode1.connect(merger, 0, 0);
-
-    if (!isDuo) {
-      volNode1.connect(merger, 0, 1);
-    }
-    const duoIndicator = $("karaokeDuoIndicator");
-      if (duoIndicator) duoIndicator.style.display = "block";
-
+      const audioConstraints1 = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+        sampleRate: 48000
+      };
+      
+      if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
+      const stream1 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
+      window.karaokeStream = stream1; 
+      
+      // Procesar Mic 1 de forma totalmente independiente
+      const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream1);
+      const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
+      
+      // Control de volumen Mic 1
+      const volNode1 = karaokeDuoAudioContext.createGain();
+      
+      mic1Filtrado.connect(volNode1);
+      currentVolNode1 = volNode1; 
+      
+      // Inicializamos el analizador de Pitch del Mic 1 en 2048 para máxima fidelidad
+      karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
+      karaokeDuoAnalyser1.fftSize = 2048;
+      volNode1.connect(karaokeDuoAnalyser1);
+      
+      const merger = karaokeDuoAudioContext.createChannelMerger(2);
+      
+      volNode1.connect(merger, 0, 0);
+      
       const audioConstraints2 = {
         echoCancellation: false,
         noiseSuppression: false,
@@ -1940,6 +1934,8 @@ async function startKaraokeRecording() {
         deviceId: { exact: mic2Id }
       };
 
+      if (mic2Id) audioConstraints2.deviceId = { exact: mic2Id };
+      
       const stream2 = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints2 });
       window.karaokeStream2 = stream2;
 
@@ -1947,8 +1943,6 @@ async function startKaraokeRecording() {
       const mic2Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source2);
 
       const volNode2 = karaokeDuoAudioContext.createGain();
-      
-      volNode2.gain.value = 3.0; 
       
       mic2Filtrado.connect(volNode2);
       currentVolNode2 = volNode2; 
@@ -2630,9 +2624,9 @@ async function testMicrophone(micNumber) {
 
     micTestStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = audioCtx.createMediaStreamSource(micTestStream);
-    micTestAnalyser = audioCtx.createAnalyser();
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(micTestStream);
+    micTestAnalyser = audioContext.createAnalyser();
     micTestAnalyser.fftSize = 256;
     source.connect(micTestAnalyser);
 
