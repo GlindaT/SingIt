@@ -492,30 +492,30 @@
         </div>
 
         <div class="settings-group">
-          <label for="karaokeThemeSelect"> Escenario de Karaoke (Tema Visual):</label> 🏟
-          <!-- 🎯 CORREGIDO: Añadido el evento onchange para activar el cambio de color neón/espejo en caliente -->
-          <select id="karaokeThemeSelect" onchange="actualizarPreferenciaGlobal(this.id, this.value)"> 
-            <option value="theme-clasico">Clásico (Por defecto)</option>
-            <option value="theme-moderno">Moderno (Neón Azul)</option>
-            <option value="theme-disco">Disco (Rosa / Morado)</option>
-            <option value="theme-acustico">Acústico (Madera Relajante)</option>
-            <option value="theme-fiesta">Fiesta (Luces Locas Animadas)</option>
-            <option value="theme-retrowave">Cyberpunk Retro Wave </option> 🌌
-          </select>
-        </div>
+  <label for="karaokeThemeSelect"> Escenario de Karaoke (Tema Visual):</label> 🏟
+  <!-- 🎯 CORREGIDO: Le quitamos el onchange para que no busque la otra función y use tu lógica nativa de abajo -->
+  <select id="karaokeThemeSelect"> 
+    <option value="theme-clasico">Clásico (Por defecto)</option>
+    <option value="theme-moderno">Moderno (Neón Azul)</option>
+    <option value="theme-disco">Disco (Rosa / Morado)</option>
+    <option value="theme-acustico">Acústico (Madera Relajante)</option>
+    <option value="theme-fiesta">Fiesta (Luces Locas Animadas)</option>
+    <option value="theme-retrowave">Cyberpunk Retro Wave 🌌</option>
+  </select>
+</div>
 
         <div class="settings-group">
-          <label for="appTheme"> Tema de la App</label> 🎨
-          <!-- 🎯 CORREGIDO: Conectado a la función de preferencias globales para que guarde tu tema rock, pop o neón -->
-          <select id="appTheme" onchange="actualizarPreferenciaGlobal(this.id, this.value)">
-            <option value="oscuro"> Oscuro (Predeterminado)</option> 🌙
-            <option value="claro"> Claro</option> ☀
-            <option value="rock"> Rock</option> 🎸
-            <option value="pop"> Pop</option> 🎤
-            <option value="neon"> Neón</option> 💜
-            <option value="naturaleza"> Naturaleza</option> 🌿
-          </select>
-        </div>
+  <label for="appTheme"> Tema de la App</label> 🎨
+  <!-- 🎯 CORREGIDO: Eliminamos el onchange para que tu script lo maneje de forma nativa con sus propios addEventListener -->
+  <select id="appTheme">
+    <option value="oscuro"> Oscuro (Predeterminado)</option> 🌙
+    <option value="claro"> Claro</option> ☀
+    <option value="rock"> Rock</option> 🎸
+    <option value="pop"> Pop</option> 🎤
+    <option value="neon"> Neón</option> 💜
+    <option value="naturaleza"> Naturaleza</option> 🌿
+  </select>
+</div>
 
         <!-- 🎯 SINCRONIZADO: Mantiene la ID limpia y lista para que la animación CSS o JS de opacidad funcione -->
         <p id="saveNotification" class="save-notification" style="opacity: 0; transition: opacity 0.5s;"> Configuración guardada ✅</p> 
