@@ -34,161 +34,6 @@ function safeAdd(id, event, handler) {
 let pitchHistoryMic1 = [];
 let pitchHistoryMic2 = [];
 
-// ====================================================================
-// MOTOR DE PANTALLA DIVIDIDA DÚO PARA EL CANVAS
-// ====================================================================
-const karaokeCanvas = document.getElementById('karaokeCanvas');
-const karaokeCtx = karaokeCanvas ? karaokeCanvas.getContext('2d') : null;
-
-// Dimensiones de cálculo relativo basadas en la resolución del canvas
-const cWidth = karaokeCanvas ? karaokeCanvas.width : 800;
-const cHeight = karaokeCanvas ? karaokeCanvas.height / 2 : 250; // Dividido en 2 mitades exactas
-
-let canvasAnimationId = null;
-
-// Función que inicia el bucle de renderizado (Llamar al dar Play)
-function iniciarBucleCanvas() {
-    if (!karaokeCtx) return;
-    
-    function renderFrame() {
-        const track = document.getElementById("karaokeTrack");
-        if (track && !track.paused) {
-            // Sincroniza directamente con el reproductor de audio de tu sección de karaoke
-            dibujarMonitorDualCanvas(track.currentTime);
-            canvasAnimationId = requestAnimationFrame(renderFrame);
-        }
-    }
-    // Cancelar cualquier bucle previo para evitar duplicaciones de memoria
-    if (canvasAnimationId) cancelAnimationFrame(canvasAnimationId);
-    canvasAnimationId = requestAnimationFrame(renderFrame);
-}
-
-function dibujarMonitorDualCanvas(currentTime) {
-    if (!karaokeCtx) return;
-
-    // 1. Limpiar el lienzo completo
-    karaokeCtx.clearRect(0, 0, karaokeCanvas.width, karaokeCanvas.height);
-
-    // 2. Buscar la línea lírica correspondiente al segundo actual
-    let lineaActiva = transcriptionSegments.find(seg => 
-        currentTime >= parseFloat(seg.start) && currentTime <= (parseFloat(seg.end) + 1.2)
-    );
-
-    // Si no ha empezado la frase, buscar la línea que viene a continuación
-    if (!lineaActiva) {
-        lineaActiva = transcriptionSegments.find(seg => parseFloat(seg.start) > currentTime);
-    }
-
-    // =======================================================
-    // MITAD SUPERIOR: CANTANTE 1 (Amarillo brillante #facc15)
-    // =======================================================
-    karaokeCtx.save();
-    karaokeCtx.translate(0, cHeight * 0); // Posición inicial y=0
-    
-    // Aquí puedes enlazar tu lógica de roles de dúo si la tienes. 
-    // Por defecto habilitamos la visualización para ambos.
-    if (lineaActiva) {
-        renderizarMitadKaraoke("CANTANTE 1", lineaActiva, currentTime, "#facc15");
-    } else {
-        renderizarMitadKaraoke("CANTANTE 1", { text: "Preparados..." }, currentTime, "#94a3b8", true);
-    }
-    karaokeCtx.restore();
-
-    // =======================================================
-    // MITAD INFERIOR: CANTANTE 2 (Celeste Eléctrico #06b6d4)
-    // =======================================================
-    karaokeCtx.save();
-    karaokeCtx.translate(0, cHeight * 1); // Desplazamos el eje vertical a la segunda mitad
-
-    // Dibujar línea física divisoria entre las pantallas
-    karaokeCtx.beginPath();
-    karaokeCtx.moveTo(0, 0);
-    karaokeCtx.lineTo(cWidth, 0);
-    karaokeCtx.strokeStyle = "#334155"; // Color var(--border) de tu CSS
-    karaokeCtx.lineWidth = 4;
-    karaokeCtx.stroke();
-
-    if (lineaActiva) {
-        renderizarMitadKaraoke("CANTANTE 2", lineaActiva, currentTime, "#06b6d4");
-    } else {
-        renderizarMitadKaraoke("CANTANTE 2", { text: "Preparados..." }, currentTime, "#94a3b8", true);
-    }
-    karaokeCtx.restore();
-}
-
-// Función encargada de dibujar de forma RELATIVA (independiente de si está arriba o abajo)
-function renderizarMitadKaraoke(nombreCantante, segmento, currentTime, colorVoz, esMensajeEstatico = false) {
-    // Fondo de pantalla individual oscuro
-    karaokeCtx.fillStyle = "#0f172a"; // Tu color var(--bg-main)
-    karaokeCtx.fillRect(0, 0, cWidth, cHeight);
-
-    // Indicador del nombre del cantante en la esquina superior izquierda
-    karaokeCtx.fillStyle = colorVoz;
-    karaokeCtx.font = "bold 14px Arial";
-    karaokeCtx.textAlign = "left";
-    karaokeCtx.fillText(nombreCantante, 25, 35);
-
-    // Caso de espera o mensajes iniciales sin marcas de tiempo
-    if (esMensajeEstatico || !segmento.words || segmento.words.length === 0) {
-        karaokeCtx.font = "italic 24px Arial";
-        karaokeCtx.fillStyle = "#94a3b8"; // Tu color var(--text-muted)
-        karaokeCtx.textAlign = "center";
-        karaokeCtx.fillText(segmento.text, cWidth / 2, cHeight / 2 + 10);
-        return;
-    }
-
-    // --- CÁLCULO DE BARRIDO DINÁMICO POR PALABRA ---
-    karaokeCtx.font = "bold 30px Arial";
-    karaokeCtx.textAlign = "left";
-
-    // Calcular la anchura de la frase completa para lograr un centrado perfecto horizontal
-    let textoCompleto = segmento.words.map(w => w.word).join(" ");
-    let anchoTotalLetra = karaokeCtx.measureText(textoCompleto).width;
-    
-    let xCursor = (cWidth - anchoTotalLetra) / 2;
-    let yPos = cHeight / 2 + 12; // Centrado vertical relativo
-
-    segmento.words.forEach((wordObj) => {
-        let stringPalabra = wordObj.word + " ";
-        let anchoPalabra = karaokeCtx.measureText(stringPalabra).width;
-
-        let tStart = parseFloat(wordObj.start);
-        let tEnd = parseFloat(wordObj.end);
-
-        if (currentTime > tEnd) {
-            // Palabra cantada del pasado -> Se pinta completamente con el color del cantante
-            karaokeCtx.fillStyle = colorVoz;
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-        } else if (currentTime >= tStart && currentTime <= tEnd) {
-            // Palabra activa actual -> Efecto de relleno / barrido de izquierda a derecha
-            // Primero pintamos el texto base en blanco
-            karaokeCtx.fillStyle = "#ffffff";
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-
-            // Interpolación matemática del progreso de la palabra actual
-            let duracion = tEnd - tStart;
-            let porcentajeProgreso = (currentTime - tStart) / duracion;
-            let anchoRellenoProgreso = anchoPalabra * porcentajeProgreso;
-
-            // Cortamos el canvas para pintar la capa de color únicamente sobre el fragmento que ya pasó
-            karaokeCtx.save();
-            karaokeCtx.beginPath();
-            karaokeCtx.rect(xCursor, yPos - 35, anchoRellenoProgreso, 50);
-            karaokeCtx.clip();
-
-            karaokeCtx.fillStyle = colorVoz;
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-            karaokeCtx.restore();
-        } else {
-            // Palabra futura que aún no se debe cantar -> Queda en color blanco
-            karaokeCtx.fillStyle = "#ffffff";
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-        }
-
-        // Desplazamos el cursor horizontal para renderizar la siguiente palabra a su lado
-        xCursor += anchoPalabra;
-    });
-}
 
 // ==========================================
 // INDEXED DB - BIBLIOTECA
@@ -3766,6 +3611,163 @@ function ultrastarToSegments(parsed) {
   
   return segments;
 }
+
+// ====================================================================
+// MOTOR DE PANTALLA DIVIDIDA DÚO PARA EL CANVAS
+// ====================================================================
+const karaokeCanvas = document.getElementById('karaokeCanvas');
+const karaokeCtx = karaokeCanvas ? karaokeCanvas.getContext('2d') : null;
+
+// Dimensiones de cálculo relativo basadas en la resolución del canvas
+const cWidth = karaokeCanvas ? karaokeCanvas.width : 800;
+const cHeight = karaokeCanvas ? karaokeCanvas.height / 2 : 250; // Dividido en 2 mitades exactas
+
+let canvasAnimationId = null;
+
+// Función que inicia el bucle de renderizado (Llamar al dar Play)
+function iniciarBucleCanvas() {
+    if (!karaokeCtx) return;
+    
+    function renderFrame() {
+        const track = document.getElementById("karaokeTrack");
+        if (track && !track.paused) {
+            // Sincroniza directamente con el reproductor de audio de tu sección de karaoke
+            dibujarMonitorDualCanvas(track.currentTime);
+            canvasAnimationId = requestAnimationFrame(renderFrame);
+        }
+    }
+    // Cancelar cualquier bucle previo para evitar duplicaciones de memoria
+    if (canvasAnimationId) cancelAnimationFrame(canvasAnimationId);
+    canvasAnimationId = requestAnimationFrame(renderFrame);
+}
+
+function dibujarMonitorDualCanvas(currentTime) {
+    if (!karaokeCtx) return;
+
+    // 1. Limpiar el lienzo completo
+    karaokeCtx.clearRect(0, 0, karaokeCanvas.width, karaokeCanvas.height);
+
+    // 2. Buscar la línea lírica correspondiente al segundo actual
+    let lineaActiva = transcriptionSegments.find(seg => 
+        currentTime >= parseFloat(seg.start) && currentTime <= (parseFloat(seg.end) + 1.2)
+    );
+
+    // Si no ha empezado la frase, buscar la línea que viene a continuación
+    if (!lineaActiva) {
+        lineaActiva = transcriptionSegments.find(seg => parseFloat(seg.start) > currentTime);
+    }
+
+    // =======================================================
+    // MITAD SUPERIOR: CANTANTE 1 (Amarillo brillante #facc15)
+    // =======================================================
+    karaokeCtx.save();
+    karaokeCtx.translate(0, cHeight * 0); // Posición inicial y=0
+    
+    // Aquí puedes enlazar tu lógica de roles de dúo si la tienes. 
+    // Por defecto habilitamos la visualización para ambos.
+    if (lineaActiva) {
+        renderizarMitadKaraoke("CANTANTE 1", lineaActiva, currentTime, "#facc15");
+    } else {
+        renderizarMitadKaraoke("CANTANTE 1", { text: "Preparados..." }, currentTime, "#94a3b8", true);
+    }
+    karaokeCtx.restore();
+
+    // =======================================================
+    // MITAD INFERIOR: CANTANTE 2 (Celeste Eléctrico #06b6d4)
+    // =======================================================
+    karaokeCtx.save();
+    karaokeCtx.translate(0, cHeight * 1); // Desplazamos el eje vertical a la segunda mitad
+
+    // Dibujar línea física divisoria entre las pantallas
+    karaokeCtx.beginPath();
+    karaokeCtx.moveTo(0, 0);
+    karaokeCtx.lineTo(cWidth, 0);
+    karaokeCtx.strokeStyle = "#334155"; // Color var(--border) de tu CSS
+    karaokeCtx.lineWidth = 4;
+    karaokeCtx.stroke();
+
+    if (lineaActiva) {
+        renderizarMitadKaraoke("CANTANTE 2", lineaActiva, currentTime, "#06b6d4");
+    } else {
+        renderizarMitadKaraoke("CANTANTE 2", { text: "Preparados..." }, currentTime, "#94a3b8", true);
+    }
+    karaokeCtx.restore();
+}
+
+// Función encargada de dibujar de forma RELATIVA (independiente de si está arriba o abajo)
+function renderizarMitadKaraoke(nombreCantante, segmento, currentTime, colorVoz, esMensajeEstatico = false) {
+    // Fondo de pantalla individual oscuro
+    karaokeCtx.fillStyle = "#0f172a"; // Tu color var(--bg-main)
+    karaokeCtx.fillRect(0, 0, cWidth, cHeight);
+
+    // Indicador del nombre del cantante en la esquina superior izquierda
+    karaokeCtx.fillStyle = colorVoz;
+    karaokeCtx.font = "bold 14px Arial";
+    karaokeCtx.textAlign = "left";
+    karaokeCtx.fillText(nombreCantante, 25, 35);
+
+    // Caso de espera o mensajes iniciales sin marcas de tiempo
+    if (esMensajeEstatico || !segmento.words || segmento.words.length === 0) {
+        karaokeCtx.font = "italic 24px Arial";
+        karaokeCtx.fillStyle = "#94a3b8"; // Tu color var(--text-muted)
+        karaokeCtx.textAlign = "center";
+        karaokeCtx.fillText(segmento.text, cWidth / 2, cHeight / 2 + 10);
+        return;
+    }
+
+    // --- CÁLCULO DE BARRIDO DINÁMICO POR PALABRA ---
+    karaokeCtx.font = "bold 30px Arial";
+    karaokeCtx.textAlign = "left";
+
+    // Calcular la anchura de la frase completa para lograr un centrado perfecto horizontal
+    let textoCompleto = segmento.words.map(w => w.word).join(" ");
+    let anchoTotalLetra = karaokeCtx.measureText(textoCompleto).width;
+    
+    let xCursor = (cWidth - anchoTotalLetra) / 2;
+    let yPos = cHeight / 2 + 12; // Centrado vertical relativo
+
+    segmento.words.forEach((wordObj) => {
+        let stringPalabra = wordObj.word + " ";
+        let anchoPalabra = karaokeCtx.measureText(stringPalabra).width;
+
+        let tStart = parseFloat(wordObj.start);
+        let tEnd = parseFloat(wordObj.end);
+
+        if (currentTime > tEnd) {
+            // Palabra cantada del pasado -> Se pinta completamente con el color del cantante
+            karaokeCtx.fillStyle = colorVoz;
+            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
+        } else if (currentTime >= tStart && currentTime <= tEnd) {
+            // Palabra activa actual -> Efecto de relleno / barrido de izquierda a derecha
+            // Primero pintamos el texto base en blanco
+            karaokeCtx.fillStyle = "#ffffff";
+            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
+
+            // Interpolación matemática del progreso de la palabra actual
+            let duracion = tEnd - tStart;
+            let porcentajeProgreso = (currentTime - tStart) / duracion;
+            let anchoRellenoProgreso = anchoPalabra * porcentajeProgreso;
+
+            // Cortamos el canvas para pintar la capa de color únicamente sobre el fragmento que ya pasó
+            karaokeCtx.save();
+            karaokeCtx.beginPath();
+            karaokeCtx.rect(xCursor, yPos - 35, anchoRellenoProgreso, 50);
+            karaokeCtx.clip();
+
+            karaokeCtx.fillStyle = colorVoz;
+            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
+            karaokeCtx.restore();
+        } else {
+            // Palabra futura que aún no se debe cantar -> Queda en color blanco
+            karaokeCtx.fillStyle = "#ffffff";
+            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
+        }
+
+        // Desplazamos el cursor horizontal para renderizar la siguiente palabra a su lado
+        xCursor += anchoPalabra;
+    });
+}
+
 
 // ==========================================
 // CATÁLOGO Y MIS CANCIONES
