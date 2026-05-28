@@ -547,27 +547,21 @@ let duoAudioContext = null;
 let duoAnalyser1 = null;
 let duoAnalyser2 = null;
 let duoAnimationId = null;
-let studioStream = null;
 
 async function startStudioRecording() {
   try {
     const player = $("player");
     const micCount = $("micCount");
     const isDuo = micCount && micCount.value === "2";
-
     studioChunks = [];
     studioRecordedBlob = null;
     $("voicePlayer").src = "";
     $("studioStatus").textContent = "Estado: preparando grabación...";
-
-    // Contexto de audio unificado para aplicar filtros. Agregada may 25
-    duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const destination = duoAudioContext.createMediaStreamDestination();
-
+    
     // Obtener micrófonos seleccionados
     const mic1Id = getSelectedMicId(1);
     const mic2Id = getSelectedMicId(2);
-
+    
     const audioConstraints1 = {
       echoCancellation: false,
       noiseSuppression: false,
@@ -575,36 +569,17 @@ async function startStudioRecording() {
       channelCount: 1,
       sampleRate: 48000
     };
-
     if (mic1Id) {
       audioConstraints1.deviceId = { exact: mic1Id };
     }
-
+    
     // Obtener stream del Mic 1
-    studioStream = await navigator.mediaDevices.getUserMedia({audio: audioConstraints1});
-
-    // Procesar Mic 1 con tus filtros. Agregada may 25
-    const source1 = duoAudioContext.createMediaStreamSource(studioStream);
-    const mic1Filtrado = aplicarCadenaDeAudio(duoAudioContext, source1);
-
-    /// Control de volumen Mic 1. May 25
-    const volNode1 = duoAudioContext.createGain();
-    volNode1.gain.value = 0.75;
-    mic1Filtrado.connect(volNode1);
-    currentVolNode1 = volNode1; // Guardar referencia global
-
-    duoAnalyser1 = duoAudioContext.createAnalyser();
-    duoAnalyser1.fftSize = 256;
-    volNode1.connect(duoAnalyser1);
-
-    const merger = duoAudioContext.createChannelMerger(2);
-    duoAnalyser1.connect(merger, 0, 0);
-
-    // Si es mono, duplicamos el canal para que no se oiga de un solo lado. May 25
-    if (!isDuo) {
-      duoAnalyser1.connect(merger, 0, 1);
-    }
-
+    studioStream = await navigator.mediaDevices.getUserMedia({
+      audio: audioConstraints1
+    });
+    
+    let finalStream = studioStream;
+    
     // Si es DÚO, obtener y mezclar Mic 2
     if (isDuo && mic2Id) {
       const audioConstraints2 = {
@@ -612,56 +587,72 @@ async function startStudioRecording() {
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: 1,
-        sampleRate: 48000
+        sampleRate: 48000,
+        deviceId: { exact: mic2Id }
       };
-      if (mic2Id) audioConstraints2.deviceId = { exact: mic2Id };
-       
-      studioStream2 = await navigator.mediaDevices.getUserMedia({audio: audioConstraints2});
-
-      // Procesar Mic 2 con tus filtros. May 25
+      studioStream2 = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraints2
+      });
+      
+      // Crear contexto de audio para mezclar
+      duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source1 = duoAudioContext.createMediaStreamSource(studioStream);
       const source2 = duoAudioContext.createMediaStreamSource(studioStream2);
-      const mic2Filtrado = aplicarCadenaDeAudio(duoAudioContext, source2);
-
-      // Control de volumen Mic 2. May 25
-      const volNode2 = duoAudioContext.createGain();
-      volNode2.gain.value = 0.75;
-      mic2Filtrado.connect(volNode2);
-      currentVolNode2 = volNode2; // Guardar referencia global
-
+      
+      // Crear analizadores para visualización
+      duoAnalyser1 = duoAudioContext.createAnalyser();
       duoAnalyser2 = duoAudioContext.createAnalyser();
+      duoAnalyser1.fftSize = 256;
       duoAnalyser2.fftSize = 256;
-      volNode2.connect(duoAnalyser2);
-
+      
+      // Crear mezclador
+      const merger = duoAudioContext.createChannelMerger(2);
+      const destination = duoAudioContext.createMediaStreamDestination();
+      
+      // Conectar: fuentes -> analizadores -> mezclador -> destino
+      source1.connect(duoAnalyser1);
+      source2.connect(duoAnalyser2);
+      duoAnalyser1.connect(merger, 0, 0);
       duoAnalyser2.connect(merger, 0, 1);
-
+      merger.connect(destination);
+      
+      finalStream = destination.stream;
+      
+      // Mostrar indicador de dúo
       const duoIndicator = $("duoIndicator");
-      if (duoIndicator) duoIndicator.style.display = "block";
+      if (duoIndicator) {
+        duoIndicator.style.display = "block";
+      }
+      // Iniciar visualización de niveles
+      startDuoLevelMonitor();
     }
-    
-    merger.connect(destination);
-    let finalStream = destination.stream;
-
-    startDuoLevelMonitor();
-
-    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? { mimeType: "audio/webm;codecs=opus" }
+      : {};
     studioMediaRecorder = new MediaRecorder(finalStream, options);
-
     studioMediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) studioChunks.push(event.data);
+      if (event.data.size > 0) {
+        studioChunks.push(event.data);
+      }
     };
-
     studioMediaRecorder.onstop = () => {
       studioRecordedBlob = new Blob(studioChunks, { type: "audio/webm" });
-      $("voicePlayer").src = URL.createObjectURL(studioRecordedBlob);
-      $("studioStatus").textContent = "Estado: grabación lista";
+      const audioURL = URL.createObjectURL(studioRecordedBlob);
+      $("voicePlayer").src = audioURL;
+      $("studioStatus").textContent = "Estado: grabación lista para escuchar o guardar";
+      
+      // Ocultar indicador dúo
+      const duoIndicator = $("duoIndicator");
+      if (duoIndicator) {
+        duoIndicator.style.display = "none";
+      }
       stopDuoLevelMonitor();
     };
-
     studioMediaRecorder.start();
     
     // Mostrar estado
     const mic1Select = $("mic1Select");
-    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Mic 1";
+    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
     
     if (isDuo && mic2Id) {
       const mic2Select = $("mic2Select");
@@ -670,7 +661,7 @@ async function startStudioRecording() {
     } else {
       $("studioStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
     }
-
+    
     if (player && player.src) {
       player.currentTime = 0;
       player.play();
@@ -681,6 +672,7 @@ async function startStudioRecording() {
     alert("❌ No se pudo acceder al micrófono. Verifica en Configuración.");
   }
 }
+
 
 function startDuoLevelMonitor() {
   const level1 = $("duoMic1Level");
