@@ -475,7 +475,7 @@
         
         <div class="settings-group">
           <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
-          <select id="difficultyLevel">
+          <select id="difficultyLevel" onchange="actualizarPreferenciaGlobal(this.id, this.value)">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
@@ -485,7 +485,7 @@
         
         <div class="settings-group">
           <label for="pentagramDifficulty">📊 Dificultad para el Pentagrama</label>
-          <select id="pentagramDifficulty">
+          <select id="pentagramDifficulty" onchange="actualizarPreferenciaGlobal(this.id, this.value)">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
