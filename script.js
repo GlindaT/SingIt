@@ -3229,7 +3229,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   const canvas = $("karaokeCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
 
   const width = canvas.width;
   const height = canvas.height;
@@ -3289,25 +3288,9 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   ctx.fillRect(0, 0, width, height);
 
   // ====================================================================
-  // 🔥 CONFIGURACIÓN DE DIFICULTAD ADAPTATIVA PARA EL PENTAGRAMA DÚO
-  // ====================================================================
-  // Leemos la dificultad directamente usando tu mapa de configuración maestro
-  const diffPentagrama = localStorage.getItem("singIt_pentagramDiff") || "medio";
-  
-  // Margen de error en semitonos (MIDI) para decidir si el usuario le atinó a la barra musical
-  let margenAciertoMidi = 2; // Modo "medio" por defecto (Tolerancia estándar de ±2 semitonos)
-  
-  if (diffPentagrama === "facil") {
-    margenAciertoMidi = 3.5; // Muy tolerante, ideal para principiantes o micrófonos inestables
-  } else if (diffPentagrama === "dificil") {
-    margenAciertoMidi = 1.0; // Estricto, requiere precisión de estudio
-  }
-
-
-  // ====================================================================
   // 📏 --- RENDERING ESTRUCTURAL: PENTAGRAMAS DOBLES Y ADAPTACIÓN ---
   // ====================================================================
-  const numLines = 6; // Ajustado a  líneas por cada mitad para no sobrecargar visualmente
+  const numLines = 6; // Ajustado a 6 líneas por cada mitad para no sobrecargar visualmente
   ctx.strokeStyle = colorLineas;
   ctx.lineWidth = 1.5;
 
@@ -3376,8 +3359,8 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         let isCorrectMic2 = false;
         
         if (isActive) {
-          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= margenAciertoMidi) isCorrectMic1 = true;
-          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= margenAciertoMidi) isCorrectMic2 = true;
+          if (currentFreq > 0 && Math.abs(frequencyToMidi(currentFreq) - midi) <= 2) isCorrectMic1 = true;
+          if (currentFreq2 > 0 && Math.abs(frequencyToMidi(currentFreq2) - midi) <= 2) isCorrectMic2 = true;
         }
         
         // --- PROCESAR E INYECTAR EN PANEL 1 (ARRIBA - USUARIO 1) ---
@@ -3409,9 +3392,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         if (displayWord.length > 10) displayWord = displayWord.substring(0, 8) + "..";
         ctx.fillText(displayWord, wordStartX + barWidth/2, barY1);
 
-        // ====================================================================
-        // --- PROCESAR E INYECTAR EN PANEL 2 (ABAJO - JUGADOR 2) ---
-        // ====================================================================
+        // --- PROCESAR E INYECTAR EN PANEL 2 (ABAJO - USUARIO 2) ---
         let barColor2, textColor2, borderColor2;
         if (isPast) {
           barColor2 = "#4b5563"; textColor2 = "#9ca3af"; borderColor2 = "#6b7280";
@@ -3431,20 +3412,14 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         ctx.lineWidth = isActive ? 2 : 1;
         ctx.beginPath();
         ctx.roundRect(wordStartX, barY2 - barHeight/2, barWidth, barHeight, 6);
-        ctx.fill(); 
-        ctx.stroke();
+        ctx.fill(); ctx.stroke();
 
-        // 🎯 CORRECCIÓN: Configuración y dibujado de la letra para el Jugador 2
         ctx.fillStyle = textColor2;
         ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
-        ctx.textAlign = "center"; 
-        ctx.textBaseline = "middle";
-        
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
         let displayWord2 = word.word || "";
         if (displayWord2.length > 10) displayWord2 = displayWord2.substring(0, 8) + "..";
-        
-        // Aquí se pinta físicamente la palabra abajo
-        ctx.fillText(displayWord2, wordStartX + barWidth/2, barY2); 
+        ctx.fillText(displayWord2, wordStartX + barWidth/2, barY2);
       });
     });
     
@@ -3459,28 +3434,26 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // ====================================================================
   // ⚡ --- CAPA INTERMEDIA: LÍNEA DIVISORIA ELECTRÓNICA ---
   // ====================================================================
-  
-  // 1. DIBUJAR LÍNEA DIVISORIA NEÓN EN MEDIO DEL MONITOR
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.2)"; // Color --text-muted suave
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.3)"; 
   ctx.lineWidth = 2;
-  ctx.setLineDash([5, 5]); // Línea punteada estética
+  ctx.setLineDash([6, 6]); 
   ctx.moveTo(0, height / 2);
   ctx.lineTo(width, height / 2);
   ctx.stroke();
-  ctx.setLineDash([]); // Resetear estilo de línea continuo
+  ctx.setLineDash([]); 
 
   // ====================================================================
   // 🎙️ --- MONITOR CANAL 1 ACTUAL: JUGADOR 1 (ARRIBA - AMARILLO) ---
   // ====================================================================
   ctx.beginPath();
-  ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+  ctx.strokeStyle = "rgba(250, 204, 21, 0.65)";
   ctx.lineWidth = 4;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
   let started1 = false;
   
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
-      // 🔥 CAMBIO: Usa midiToY1 para la mitad de arriba
       const y = midiToY1(frequencyToMidi(freq), height);
       const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
