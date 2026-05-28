@@ -466,14 +466,14 @@
         </div>
         
         <div class="settings-group">
-  <label for="micSensitivity">🎚️ Sensibilidad del Micrófono (Umbral)</label>
-  <!-- 🔥 AGREGA EL ONINPUT AQUÍ -->
-  <input type="range" id="micSensitivity" min="0.000" max="0.050" step="0.001" value="0.015" oninput="guardarSensibilidadGlobal(this.value)">
-  <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
-</div>
-        
+          <label for="micSensitivity"> Sensibilidad del Micrófono (Umbral)</label> 🎚
+          <!-- 🎯 CONECTADO: Guarda en tiempo real mientras arrastras el slider -->
+          <input type="range" id="micSensitivity" min="0.000" max="0.050" step="0.001" value="0.015" oninput="guardarSensibilidadGlobal(this.value)">
+          <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
+        </div>
+         
         <div class="settings-group">
-          <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
+          <label for="difficultyLevel"> Dificultad para el Afinador</label> 📊
           <select id="difficultyLevel" onchange="actualizarPreferenciaGlobal(this.id, this.value)">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
@@ -481,9 +481,9 @@
             <option value="experto">Experto</option>
           </select>
         </div>
-        
+         
         <div class="settings-group">
-          <label for="pentagramDifficulty">📊 Dificultad para el Pentagrama</label>
+          <label for="pentagramDifficulty"> Dificultad para el Pentagrama</label> 📊
           <select id="pentagramDifficulty" onchange="actualizarPreferenciaGlobal(this.id, this.value)">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
@@ -492,28 +492,33 @@
         </div>
 
         <div class="settings-group">
-  <label for="karaokeThemeSelect">🏟️ Escenario de Karaoke (Tema Visual):</label>
-  <select id="karaokeThemeSelect"> <!-- Quitamos el onchange antiguo -->
-    <option value="theme-clasico">Clásico (Por defecto)</option>
-    <option value="theme-moderno">Moderno (Neón Azul)</option>
-    <option value="theme-disco">Disco (Rosa / Morado)</option>
-    <option value="theme-acustico">Acústico (Madera Relajante)</option>
-    <option value="theme-fiesta">Fiesta (Luces Locas Animadas)</option>
-    <option value="theme-retrowave">Cyberpunk Retro Wave 🌌</option>
-  </select>
-        </div>
-        <div class="settings-group">
-          <label for="appTheme">🎨 Tema de la App</label>
-          <select id="appTheme">
-            <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
-            <option value="claro">☀️ Claro</option>
-            <option value="rock">🎸 Rock</option>
-            <option value="pop">🎤 Pop</option>
-            <option value="neon">💜 Neón</option>
-            <option value="naturaleza">🌿 Naturaleza</option>
+          <label for="karaokeThemeSelect"> Escenario de Karaoke (Tema Visual):</label> 🏟
+          <!-- 🎯 CORREGIDO: Añadido el evento onchange para activar el cambio de color neón/espejo en caliente -->
+          <select id="karaokeThemeSelect" onchange="actualizarPreferenciaGlobal(this.id, this.value)"> 
+            <option value="theme-clasico">Clásico (Por defecto)</option>
+            <option value="theme-moderno">Moderno (Neón Azul)</option>
+            <option value="theme-disco">Disco (Rosa / Morado)</option>
+            <option value="theme-acustico">Acústico (Madera Relajante)</option>
+            <option value="theme-fiesta">Fiesta (Luces Locas Animadas)</option>
+            <option value="theme-retrowave">Cyberpunk Retro Wave </option> 🌌
           </select>
         </div>
-        <p id="saveNotification" class="save-notification" style="opacity:0; transition: opacity 0.5s;">✅ Configuración guardada</p>
+
+        <div class="settings-group">
+          <label for="appTheme"> Tema de la App</label> 🎨
+          <!-- 🎯 CORREGIDO: Conectado a la función de preferencias globales para que guarde tu tema rock, pop o neón -->
+          <select id="appTheme" onchange="actualizarPreferenciaGlobal(this.id, this.value)">
+            <option value="oscuro"> Oscuro (Predeterminado)</option> 🌙
+            <option value="claro"> Claro</option> ☀
+            <option value="rock"> Rock</option> 🎸
+            <option value="pop"> Pop</option> 🎤
+            <option value="neon"> Neón</option> 💜
+            <option value="naturaleza"> Naturaleza</option> 🌿
+          </select>
+        </div>
+
+        <!-- 🎯 SINCRONIZADO: Mantiene la ID limpia y lista para que la animación CSS o JS de opacidad funcione -->
+        <p id="saveNotification" class="save-notification" style="opacity: 0; transition: opacity 0.5s;"> Configuración guardada ✅</p> 
       </div>
     </section>
 
