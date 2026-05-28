@@ -1870,10 +1870,7 @@ async function startKaraokeRecording() {
     const micCount = $("micCount");
     const isDuo = micCount && micCount.value === "2";
 
-    karaokeChunks = [];
-    karaokeRecordedBlob = null;
-    karaokeDuoAnalyser1 = null; 
-    karaokeDuoAnalyser2 = null; 
+    karaokeChunks = []; 
     $("karaokeVoicePlayer").src = "";
 
     karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
