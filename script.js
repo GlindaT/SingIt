@@ -1892,7 +1892,7 @@ async function startKaraokeRecording() {
     if (mic1Id) audioConstraints1.deviceId = { exact: mic1Id };
     
     const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints1 });
-      window.karaokeStream = stream1; 
+      window.karaokeStream = stream; 
     
     // Procesar Mic 1 de forma totalmente independiente
     const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream);
