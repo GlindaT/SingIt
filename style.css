@@ -252,15 +252,19 @@ audio {
 }
 
 /* ==========================================
-   MONITORES DE LETRAS (ESTUDIO)
-========================================= */
+   MONITORES DE LETRAS (GRANDE Y PROTAGONISTA)
+========================================== */
 .karaoke-lyrics {
   margin-top: 12px;
-  padding: 12px; /* REDUCIDO */
+  padding: 20px; /* Recuperamos un buen espacio interno */
   background: var(--bg-main);
   border: 1px solid var(--border);
   border-radius: 8px;
-  max-height: 220px; /* REDUCIDO: Menos altura para que no empuje lo demás abajo */
+  
+  /* CAMBIO CLAVE: Cambiamos de max-height a una altura fija o más alta */
+  height: 380px; /* Aumenta este número si quieres que sea todavía más gigante */
+  max-height: 50vh; /* Permite que ocupe hasta la mitad de la pantalla si el monitor es grande */
+  
   overflow-y: auto;
   scroll-behavior: smooth; 
 }
