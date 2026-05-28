@@ -34,7 +34,6 @@ function safeAdd(id, event, handler) {
 let pitchHistoryMic1 = [];
 let pitchHistoryMic2 = [];
 
-
 // ==========================================
 // INDEXED DB - BIBLIOTECA
 // ==========================================
@@ -401,6 +400,45 @@ function getNoteFrequency(note) {
   return 440 * Math.pow(2, semitoneOffset / 12);
 }
 
+function autoCorrelate(buf, sampleRate) {
+  let rms = 0;
+  for (let i = 0; i < buf.length; i++) {
+    rms += buf[i] * buf[i];
+  }
+  rms = Math.sqrt(rms / buf.length);
+
+  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.015;
+
+  // Si el volumen es muy bajo, ignoramos la detección
+  if (rms < umbral) return -1;
+
+  let bestOffset = -1;
+  let bestCorrelation = 0;
+
+  for (let offset = 8; offset < 1000; offset++) {
+    let correlation = 0;
+
+    for (let i = 0; i < buf.length - offset; i++) {
+      correlation += Math.abs(buf[i] - buf[i + offset]);
+    }
+
+    correlation = 1 - (correlation / (buf.length - offset));
+
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestOffset = offset;
+    }
+  }
+
+  if (bestCorrelation < 0.85 || bestOffset === -1) return -1;
+
+  const frequency = sampleRate / bestOffset;
+
+  // Ignorar frecuencias absurdas para voz humana cantada
+  if (frequency < 60 || frequency > 1200) return -1;
+
+  return frequency;
+}
 // ==========================================
 // ESTADO ESTUDIO / BIBLIOTECA
 // ==========================================
@@ -1901,29 +1939,27 @@ async function startKaraokeRecording() {
     karaokeMediaRecorder.start();
     track.currentTime = 0;
     track.play();
-    
-    // 🔥 NUEVO: Arranca el motor de renderizado dual en pantalla
-    iniciarBucleCanvas();
-    
+
     // Le damos un margen sutil de estabilidad antes de arrancar el motor de dibujo
     setTimeout(() => {
         startKaraokePitchDetection();
     }, 300);
-    
+
     const mic1Select = $("mic1Select");
     const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
     if (isDuo && mic2Id) {
-        const mic2Select = $("mic2Select");
-        const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
-        $("karaokeStatus").textContent = `Estado: Grabando DÚO (${mic1Name} + 🔴 ${mic2Name})...`;
+      const mic2Select = $("mic2Select");
+      const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
+      $("karaokeStatus").textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
     } else {
-        $("karaokeStatus").textContent = `Estado: Grabando con ${mic1Name}...`; 
+      $("karaokeStatus").textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
     }
     $("karaokeStartBtn").disabled = true;
-} catch (err) {
+
+  } catch (err) {
     console.error(err);
-    alert(" Error al acceder al micrófono."); 
-}
+    alert("❌ Error al acceder al micrófono.");
+  }
 }
 
 function startKaraokeDuoLevelMonitor() {
@@ -1967,67 +2003,61 @@ function stopKaraokeDuoLevelMonitor() {
 }
 
 function stopKaraokeRecording() {
-    // 🔥 NUEVO: Apaga el motor gráfico del Canvas de inmediato
-    if (canvasAnimationId) {
-        cancelAnimationFrame(canvasAnimationId);
-        canvasAnimationId = null;
-    }
+  if (karaokeMediaRecorder && karaokeMediaRecorder.state !== "inactive") {
+    karaokeMediaRecorder.stop();
+  }
 
-    if (karaokeMediaRecorder && karaokeMediaRecorder.state !== "inactive") {
-        karaokeMediaRecorder.stop();
-    }
-    // Detener Mic 1
-    if (karaokeStream) {
-        karaokeStream.getTracks().forEach(t => t.stop());
-    }
-    // Detener Mic 2 (si existe)
-    if (karaokeStream2) {
-        karaokeStream2.getTracks().forEach(t => t.stop());
-        karaokeStream2 = null;
-    }
-    // Cerrar contexto de audio dúo
-    if (karaokeDuoAudioContext) {
-        karaokeDuoAudioContext.close();
-        karaokeDuoAudioContext = null;
-    }
-    karaokeDuoAnalyser1 = null;
-    karaokeDuoAnalyser2 = null;
-    stopKaraokeDuoLevelMonitor();
-    
-    // Ocultar indicador
-    const duoIndicator = $("karaokeDuoIndicator");
-    if (duoIndicator) {
-        duoIndicator.style.display = "none";
-    }
-    const track = $("karaokeTrack");
-    if (track) track.pause();
-    $("karaokeStartBtn").disabled = false;
+  // Detener Mic 1
+  if (karaokeStream) {
+    karaokeStream.getTracks().forEach(t => t.stop());
+  }
+
+  // Detener Mic 2 (si existe)
+  if (karaokeStream2) {
+    karaokeStream2.getTracks().forEach(t => t.stop());
+    karaokeStream2 = null;
+  }
+
+  // Cerrar contexto de audio dúo
+  if (karaokeDuoAudioContext) {
+    karaokeDuoAudioContext.close();
+    karaokeDuoAudioContext = null;
+  }
+
+  karaokeDuoAnalyser1 = null;
+  karaokeDuoAnalyser2 = null;
+
+  stopKaraokeDuoLevelMonitor();
+
+  // Ocultar indicador
+  const duoIndicator = $("karaokeDuoIndicator");
+  if (duoIndicator) {
+    duoIndicator.style.display = "none";
+  }
+
+  const track = $("karaokeTrack");
+  if (track) track.pause();
+
+  $("karaokeStartBtn").disabled = false;
 }
 
-
 function restartKaraokeRecording() {
-    // 🔥 NUEVO: Detiene y limpia el lienzo para que empiece de cero
-    if (canvasAnimationId) {
-        cancelAnimationFrame(canvasAnimationId);
-        canvasAnimationId = null;
-    }
-    if (karaokeCtx) {
-        karaokeCtx.clearRect(0, 0, karaokeCanvas.width, karaokeCanvas.height);
-    }
+  const track = $("karaokeTrack");
 
-    const track = $("karaokeTrack");
-    if (track) {
-        track.pause();
-        track.currentTime = 0;
-    }
-    $("karaokeVoicePlayer").src = "";
-    karaokeChunks = [];
-    karaokeRecordedBlob = null;
-    $("karaokeStatus").textContent = "Estado: Esperando para grabar...";
-    $("karaokeStartBtn").disabled = false;
-    
-    pitchHistoryMic1 = [];
-    pitchHistoryMic2 = [];
+  if (track) {
+    track.pause();
+    track.currentTime = 0;
+  }
+
+  $("karaokeVoicePlayer").src = "";
+  karaokeChunks = [];
+  karaokeRecordedBlob = null;
+  $("karaokeStatus").textContent = "Estado: Esperando para grabar...";
+  $("karaokeStartBtn").disabled = false;
+  
+  // ¡AQUÍ AGREGA ESTAS DOS LÍNEAS!
+  pitchHistoryMic1 = [];
+  pitchHistoryMic2 = [];
 }
 
 function syncKaraokeMonitor(currentTime) {
@@ -3612,163 +3642,6 @@ function ultrastarToSegments(parsed) {
   return segments;
 }
 
-// ====================================================================
-// MOTOR DE PANTALLA DIVIDIDA DÚO PARA EL CANVAS
-// ====================================================================
-const karaokeCanvas = document.getElementById('karaokeCanvas');
-const karaokeCtx = karaokeCanvas ? karaokeCanvas.getContext('2d') : null;
-
-// Dimensiones de cálculo relativo basadas en la resolución del canvas
-const cWidth = karaokeCanvas ? karaokeCanvas.width : 800;
-const cHeight = karaokeCanvas ? karaokeCanvas.height / 2 : 250; // Dividido en 2 mitades exactas
-
-let canvasAnimationId = null;
-
-// Función que inicia el bucle de renderizado (Llamar al dar Play)
-function iniciarBucleCanvas() {
-    if (!karaokeCtx) return;
-    
-    function renderFrame() {
-        const track = document.getElementById("karaokeTrack");
-        if (track && !track.paused) {
-            // Sincroniza directamente con el reproductor de audio de tu sección de karaoke
-            dibujarMonitorDualCanvas(track.currentTime);
-            canvasAnimationId = requestAnimationFrame(renderFrame);
-        }
-    }
-    // Cancelar cualquier bucle previo para evitar duplicaciones de memoria
-    if (canvasAnimationId) cancelAnimationFrame(canvasAnimationId);
-    canvasAnimationId = requestAnimationFrame(renderFrame);
-}
-
-function dibujarMonitorDualCanvas(currentTime) {
-    if (!karaokeCtx) return;
-
-    // 1. Limpiar el lienzo completo
-    karaokeCtx.clearRect(0, 0, karaokeCanvas.width, karaokeCanvas.height);
-
-    // 2. Buscar la línea lírica correspondiente al segundo actual
-    let lineaActiva = transcriptionSegments.find(seg => 
-        currentTime >= parseFloat(seg.start) && currentTime <= (parseFloat(seg.end) + 1.2)
-    );
-
-    // Si no ha empezado la frase, buscar la línea que viene a continuación
-    if (!lineaActiva) {
-        lineaActiva = transcriptionSegments.find(seg => parseFloat(seg.start) > currentTime);
-    }
-
-    // =======================================================
-    // MITAD SUPERIOR: CANTANTE 1 (Amarillo brillante #facc15)
-    // =======================================================
-    karaokeCtx.save();
-    karaokeCtx.translate(0, cHeight * 0); // Posición inicial y=0
-    
-    // Aquí puedes enlazar tu lógica de roles de dúo si la tienes. 
-    // Por defecto habilitamos la visualización para ambos.
-    if (lineaActiva) {
-        renderizarMitadKaraoke("CANTANTE 1", lineaActiva, currentTime, "#facc15");
-    } else {
-        renderizarMitadKaraoke("CANTANTE 1", { text: "Preparados..." }, currentTime, "#94a3b8", true);
-    }
-    karaokeCtx.restore();
-
-    // =======================================================
-    // MITAD INFERIOR: CANTANTE 2 (Celeste Eléctrico #06b6d4)
-    // =======================================================
-    karaokeCtx.save();
-    karaokeCtx.translate(0, cHeight * 1); // Desplazamos el eje vertical a la segunda mitad
-
-    // Dibujar línea física divisoria entre las pantallas
-    karaokeCtx.beginPath();
-    karaokeCtx.moveTo(0, 0);
-    karaokeCtx.lineTo(cWidth, 0);
-    karaokeCtx.strokeStyle = "#334155"; // Color var(--border) de tu CSS
-    karaokeCtx.lineWidth = 4;
-    karaokeCtx.stroke();
-
-    if (lineaActiva) {
-        renderizarMitadKaraoke("CANTANTE 2", lineaActiva, currentTime, "#06b6d4");
-    } else {
-        renderizarMitadKaraoke("CANTANTE 2", { text: "Preparados..." }, currentTime, "#94a3b8", true);
-    }
-    karaokeCtx.restore();
-}
-
-// Función encargada de dibujar de forma RELATIVA (independiente de si está arriba o abajo)
-function renderizarMitadKaraoke(nombreCantante, segmento, currentTime, colorVoz, esMensajeEstatico = false) {
-    // Fondo de pantalla individual oscuro
-    karaokeCtx.fillStyle = "#0f172a"; // Tu color var(--bg-main)
-    karaokeCtx.fillRect(0, 0, cWidth, cHeight);
-
-    // Indicador del nombre del cantante en la esquina superior izquierda
-    karaokeCtx.fillStyle = colorVoz;
-    karaokeCtx.font = "bold 14px Arial";
-    karaokeCtx.textAlign = "left";
-    karaokeCtx.fillText(nombreCantante, 25, 35);
-
-    // Caso de espera o mensajes iniciales sin marcas de tiempo
-    if (esMensajeEstatico || !segmento.words || segmento.words.length === 0) {
-        karaokeCtx.font = "italic 24px Arial";
-        karaokeCtx.fillStyle = "#94a3b8"; // Tu color var(--text-muted)
-        karaokeCtx.textAlign = "center";
-        karaokeCtx.fillText(segmento.text, cWidth / 2, cHeight / 2 + 10);
-        return;
-    }
-
-    // --- CÁLCULO DE BARRIDO DINÁMICO POR PALABRA ---
-    karaokeCtx.font = "bold 30px Arial";
-    karaokeCtx.textAlign = "left";
-
-    // Calcular la anchura de la frase completa para lograr un centrado perfecto horizontal
-    let textoCompleto = segmento.words.map(w => w.word).join(" ");
-    let anchoTotalLetra = karaokeCtx.measureText(textoCompleto).width;
-    
-    let xCursor = (cWidth - anchoTotalLetra) / 2;
-    let yPos = cHeight / 2 + 12; // Centrado vertical relativo
-
-    segmento.words.forEach((wordObj) => {
-        let stringPalabra = wordObj.word + " ";
-        let anchoPalabra = karaokeCtx.measureText(stringPalabra).width;
-
-        let tStart = parseFloat(wordObj.start);
-        let tEnd = parseFloat(wordObj.end);
-
-        if (currentTime > tEnd) {
-            // Palabra cantada del pasado -> Se pinta completamente con el color del cantante
-            karaokeCtx.fillStyle = colorVoz;
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-        } else if (currentTime >= tStart && currentTime <= tEnd) {
-            // Palabra activa actual -> Efecto de relleno / barrido de izquierda a derecha
-            // Primero pintamos el texto base en blanco
-            karaokeCtx.fillStyle = "#ffffff";
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-
-            // Interpolación matemática del progreso de la palabra actual
-            let duracion = tEnd - tStart;
-            let porcentajeProgreso = (currentTime - tStart) / duracion;
-            let anchoRellenoProgreso = anchoPalabra * porcentajeProgreso;
-
-            // Cortamos el canvas para pintar la capa de color únicamente sobre el fragmento que ya pasó
-            karaokeCtx.save();
-            karaokeCtx.beginPath();
-            karaokeCtx.rect(xCursor, yPos - 35, anchoRellenoProgreso, 50);
-            karaokeCtx.clip();
-
-            karaokeCtx.fillStyle = colorVoz;
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-            karaokeCtx.restore();
-        } else {
-            // Palabra futura que aún no se debe cantar -> Queda en color blanco
-            karaokeCtx.fillStyle = "#ffffff";
-            karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-        }
-
-        // Desplazamos el cursor horizontal para renderizar la siguiente palabra a su lado
-        xCursor += anchoPalabra;
-    });
-}
-
-
 // ==========================================
 // CATÁLOGO Y MIS CANCIONES
 // ==========================================
@@ -4138,114 +4011,3 @@ document.addEventListener("DOMContentLoaded", () => {
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
 });
-
-function autoCorrelate(buf, sampleRate) {
-  let rms = 0;
-  for (let i = 0; i < buf.length; i++) {
-    rms += buf[i] * buf[i];
-  }
-  rms = Math.sqrt(rms / buf.length);
-
-  const umbral = parseFloat(localStorage.getItem("singIt_sensitivity")) || 0.015;
-
-  // Si el volumen es muy bajo, ignoramos la detección
-  if (rms < umbral) return -1;
-
-  let bestOffset = -1;
-  let bestCorrelation = 0;
-
-  for (let offset = 8; offset < 1000; offset++) {
-    let correlation = 0;
-
-    for (let i = 0; i < buf.length - offset; i++) {
-      correlation += Math.abs(buf[i] - buf[i + offset]);
-    }
-
-    correlation = 1 - (correlation / (buf.length - offset));
-
-    if (correlation > bestCorrelation) {
-      bestCorrelation = correlation;
-      bestOffset = offset;
-    }
-  }
-
-  if (bestCorrelation < 0.85 || bestOffset === -1) return -1;
-
-  const frequency = sampleRate / bestOffset;
-
-  // Ignorar frecuencias absurdas para voz humana cantada
-  if (frequency < 60 || frequency > 1200) return -1;
-
-  return frequency;
-}
-
-function iniciarBucleCanvas() {
-    if (!karaokeCtx) return;
-    function renderFrame() {
-        const track = document.getElementById("karaokeTrack");
-        if (track && !track.paused) {
-            dibujarMonitorDualCanvas(track.currentTime);
-            canvasAnimationId = requestAnimationFrame(renderFrame);
-        }
-    }
-    if (canvasAnimationId) cancelAnimationFrame(canvasAnimationId);
-    canvasAnimationId = requestAnimationFrame(renderFrame);
-}
-
-function dibujarMonitorDualCanvas(currentTime) {
-    if (!karaokeCtx) return;
-    karaokeCtx.clearRect(0, 0, karaokeCanvas.width, karaokeCanvas.height);
-    let lineaActiva = transcriptionSegments.find(seg => currentTime >= parseFloat(seg.start) && currentTime <= (parseFloat(seg.end) + 1.2));
-    if (!lineaActiva) lineaActiva = transcriptionSegments.find(seg => parseFloat(seg.start) > currentTime);
-
-    // Mitad 1: Cantante 1 (Amarillo)
-    karaokeCtx.save();
-    karaokeCtx.translate(0, cHeight * 0);
-    if (lineaActiva) renderizarMitadKaraoke("CANTANTE 1", lineaActiva, currentTime, "#facc15");
-    else renderizarMitadKaraoke("CANTANTE 1", { text: "Preparados..." }, currentTime, "#94a3b8", true);
-    karaokeCtx.restore();
-
-    // Mitad 2: Cantante 2 (Celeste)
-    karaokeCtx.save();
-    karaokeCtx.translate(0, cHeight * 1);
-    karaokeCtx.beginPath(); karaokeCtx.moveTo(0, 0); karaokeCtx.lineTo(cWidth, 0);
-    karaokeCtx.strokeStyle = "#334155"; karaokeCtx.lineWidth = 4; karaokeCtx.stroke();
-    if (lineaActiva) renderizarMitadKaraoke("CANTANTE 2", lineaActiva, currentTime, "#06b6d4");
-    else renderizarMitadKaraoke("CANTANTE 2", { text: "Preparados..." }, currentTime, "#94a3b8", true);
-    karaokeCtx.restore();
-}
-
-function renderizarMitadKaraoke(nombreCantante, segmento, currentTime, colorVoz, esEstatico = false) {
-    karaokeCtx.fillStyle = "#0f172a"; karaokeCtx.fillRect(0, 0, cWidth, cHeight);
-    karaokeCtx.fillStyle = colorVoz; karaokeCtx.font = "bold 14px Arial"; karaokeCtx.textAlign = "left";
-    karaokeCtx.fillText(nombreCantante, 25, 35);
-
-    if (esEstatico || !segmento.words || segmento.words.length === 0) {
-        karaokeCtx.font = "italic 24px Arial"; karaokeCtx.fillStyle = "#94a3b8"; karaokeCtx.textAlign = "center";
-        karaokeCtx.fillText(segmento.text, cWidth / 2, cHeight / 2 + 10); return;
-    }
-
-    karaokeCtx.font = "bold 30px Arial"; karaokeCtx.textAlign = "left";
-    let textoCompleto = segmento.words.map(w => w.word).join(" ");
-    let xCursor = (cWidth - karaokeCtx.measureText(textoCompleto).width) / 2;
-    let yPos = cHeight / 2 + 12;
-
-    segmento.words.forEach((wordObj) => {
-        let stringPalabra = wordObj.word + " ";
-        let anchoPalabra = karaokeCtx.measureText(stringPalabra).width;
-        let tStart = parseFloat(wordObj.start), tEnd = parseFloat(wordObj.end);
-
-        if (currentTime > tEnd) {
-            karaokeCtx.fillStyle = colorVoz; karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-        } else if (currentTime >= tStart && currentTime <= tEnd) {
-            karaokeCtx.fillStyle = "#ffffff"; karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-            karaokeCtx.save(); karaokeCtx.beginPath();
-            karaokeCtx.rect(xCursor, yPos - 35, anchoPalabra * ((currentTime - tStart) / (tEnd - tStart)), 50);
-            karaokeCtx.clip(); karaokeCtx.fillStyle = colorVoz; karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-            karaokeCtx.restore();
-        } else {
-            karaokeCtx.fillStyle = "#ffffff"; karaokeCtx.fillText(stringPalabra, xCursor, yPos);
-        }
-        xCursor += anchoPalabra;
-    });
-}
