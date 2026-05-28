@@ -2072,12 +2072,12 @@ async function startKaraokeRecording() {
         const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
         $("karaokeStatus").textContent = `Estado: Grabando DÚO (${mic1Name} + 🔴 ${mic2Name})...`;
     } else {
-        $("karaokeStatus").textContent = `Estado: Grabando con ${mic1Name}...`; 🔴
+        $("karaokeStatus").textContent = `Estado: Grabando con ${mic1Name}...`; 
     }
     $("karaokeStartBtn").disabled = true;
 } catch (err) {
     console.error(err);
-    alert(" Error al acceder al micrófono."); ❌
+    alert(" Error al acceder al micrófono."); 
 }
 }
 
