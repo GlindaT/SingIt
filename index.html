@@ -14,7 +14,6 @@
   <!-- SIDEBAR -->
   <nav class="sidebar">
     <h2>🎤 SingIt</h2>
-
     <button id="btnAfinador" type="button">Afinador</button>
     <button id="btnEstudio" type="button">Estudio</button>
     <button id="btnBiblioteca" type="button">Biblioteca</button>
@@ -27,187 +26,164 @@
   <main class="content">
 
     <!-- AFINADOR -->
-<section id="afinador" class="tab active">
-  <h1>🎵 Afinador</h1>
-  
-  <div class="afinador-container">
-    <label for="targetNote">Nota objetivo:</label>
-<select id="targetNote">
-  <option value="C2">Do 2 (C2)</option>
-  <option value="C#2">Do# 2 (C#2)</option>
-  <option value="D2">Re 2 (D2)</option>
-  <option value="D#2">Re# 2 (D#2)</option>
-  <option value="E2" selected>Mi 2 (E2)</option>
-  <option value="F2">Fa 2 (F2)</option>
-  <option value="F#2">Fa# 2 (F#2)</option>
-  <option value="G2">Sol 2 (G2)</option>
-  <option value="G#2">Sol# 2 (G#2)</option>
-  <option value="A2">La 2 (A2)</option>
-  <option value="A#2">La# 2 (A#2)</option>
-  <option value="B2">Si 2 (B2)</option>
+    <section id="afinador" class="tab active">
+      <h1>🎵 Afinador</h1>
+      
+      <div class="afinador-container">
+        <label for="targetNote">Nota objetivo:</label>
+        <select id="targetNote">
+          <option value="C2">Do 2 (C2)</option>
+          <option value="C#2">Do# 2 (C#2)</option>
+          <option value="D2">Re 2 (D2)</option>
+          <option value="D#2">Re# 2 (D#2)</option>
+          <option value="E2" selected>Mi 2 (E2)</option>
+          <option value="F2">Fa 2 (F2)</option>
+          <option value="F#2">Fa# 2 (F#2)</option>
+          <option value="G2">Sol 2 (G2)</option>
+          <option value="G#2">Sol# 2 (G#2)</option>
+          <option value="A2">La 2 (A2)</option>
+          <option value="A#2">La# 2 (A#2)</option>
+          <option value="B2">Si 2 (B2)</option>
 
-  <option value="C3">Do 3 (C3)</option>
-  <option value="C#3">Do# 3 (C#3)</option>
-  <option value="D3">Re 3 (D3)</option>
-  <option value="D#3">Re# 3 (D#3)</option>
-  <option value="E3">Mi 3 (E3)</option>
-  <option value="F3">Fa 3 (F3)</option>
-  <option value="F#3">Fa# 3 (F#3)</option>
-  <option value="G3">Sol 3 (G3)</option>
-  <option value="G#3">Sol# 3 (G#3)</option>
-  <option value="A3">La 3 (A3)</option>
-  <option value="A#3">La# 3 (A#3)</option>
-  <option value="B3">Si 3 (B3)</option>
+          <option value="C3">Do 3 (C3)</option>
+          <option value="C#3">Do# 3 (C#3)</option>
+          <option value="D3">Re 3 (D3)</option>
+          <option value="D#3">Re# 3 (D#3)</option>
+          <option value="E3">Mi 3 (E3)</option>
+          <option value="F3">Fa 3 (F3)</option>
+          <option value="F#3">Fa# 3 (F#3)</option>
+          <option value="G3">Sol 3 (G3)</option>
+          <option value="G#3">Sol# 3 (G#3)</option>
+          <option value="A3">La 3 (A3)</option>
+          <option value="A#3">La# 3 (A#3)</option>
+          <option value="B3">Si 3 (B3)</option>
 
-  <option value="C4">Do 4 (C4)</option>
-  <option value="C#4">Do# 4 (C#4)</option>
-  <option value="D4">Re 4 (D4)</option>
-  <option value="D#4">Re# 4 (D#4)</option>
-  <option value="E4">Mi 4 (E4)</option>
-  <option value="F4">Fa 4 (F4)</option>
-  <option value="F#4">Fa# 4 (F#4)</option>
-  <option value="G4">Sol 4 (G4)</option>
-  <option value="G#4">Sol# 4 (G#4)</option>
-  <option value="A4">La 4 (A4)</option>
-  <option value="A#4">La# 4 (A#4)</option>
-  <option value="B4">Si 4 (B4)</option>
-</select>
-    <button id="recordBtn">Iniciar</button>
-    <h2 id="noteDisplay">--</h2>
-    <div id="guideText" style="font-size: 24px; font-weight: bold; margin-top: 10px;"></div>
-  </div>
-</section>
+          <option value="C4">Do 4 (C4)</option>
+          <option value="C#4">Do# 4 (C#4)</option>
+          <option value="D4">Re 4 (D4)</option>
+          <option value="D#4">Re# 4 (D#4)</option>
+          <option value="E4">Mi 4 (E4)</option>
+          <option value="F4">Fa 4 (F4)</option>
+          <option value="F#4">Fa# 4 (F#4)</option>
+          <option value="G4">Sol 4 (G4)</option>
+          <option value="G#4">Sol# 4 (G#4)</option>
+          <option value="A4">La 4 (A4)</option>
+          <option value="A#4">La# 4 (A#4)</option>
+          <option value="B4">Si 4 (B4)</option>
+        </select>
+        <button id="recordBtn" type="button">Iniciar</button>
+        <h2 id="noteDisplay">--</h2>
+        <div id="guideText"></div>
+      </div>
+    </section>
     
     <!-- ESTUDIO -->
-<section id="estudio" class="tab">
-  <h1>🎧 Estudio</h1>
+    <section id="estudio" class="tab">
+      <h1>🎧 Estudio</h1>
 
-  <div class="card">
-  <h3>Pista musical</h3>
-
-  <div class="studio-controls">
-    <button id="refreshStudioTrackListBtn" type="button">🔄 Actualizar lista</button>
-  </div>
-
-  <select id="studioTrackSelect">
-    <option value="">Selecciona una pista desde Biblioteca</option>
-  </select>
-
-  <div class="studio-controls" style="margin-bottom: 15px;">
-    <button id="loadStudioTrackBtn" type="button">📥 Cargar pista seleccionada</button>
-  </div>
-
-  <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
-  <input type="file" id="audioFile" accept="audio/*">
-
-  <audio id="player" controls></audio>
-
-  <div class="studio-controls">
-    <button id="playTrackBtn" type="button">▶️ Reproducir</button>
-    <button id="pauseTrackBtn" type="button">⏸️ Pausar</button>
-    <button id="stopTrackBtn" type="button">⏹️ Detener</button>
-  </div>
-</div>
-
-  <div class="card">
-  <h3>Voz desde Biblioteca</h3>
-
-  <div class="studio-controls">
-    <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
-  </div>
-
-  <select id="voiceLibrarySelect">
-    <option value="">Selecciona una voz guardada</option>
-  </select>
-
-  <div class="studio-controls">
-    <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
-    <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
-  </div>
-
-  <audio id="selectedVoicePlayer" controls></audio>
-
-  <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
-  </div>
-
-  <div class="card">
-    
-    <h3>Grabación de voz</h3>
-
-    <div class="studio-controls">
-      <button id="startStudioRecBtn" type="button">🎙️ Grabar voz</button>
-      <button id="stopStudioRecBtn" type="button">🛑 Detener grabación</button>
-      <button id="redoStudioRecBtn" type="button">🔁 Volver a grabar</button>
-      <button id="saveStudioRecBtn" type="button">💾 Guardar grabación</button>
-    </div>
-
-    <p id="studioStatus">Estado: sin grabación</p>
-    
-    <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
-      <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
-      <div style="display: flex; gap: 20px;">
-        <div style="flex: 1;">
-          <small>Mic 1:</small>
-          <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill"></div></div>
+      <div class="card">
+        <h3>Pista musical</h3>
+        <div class="studio-controls">
+          <button id="refreshStudioTrackListBtn" type="button">🔄 Actualizar lista</button>
         </div>
-        <div style="flex: 1;">
-          <small>Mic 2:</small>
-          <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill"></div></div>
+        <select id="studioTrackSelect">
+          <option value="">Selecciona una pista desde Biblioteca</option>
+        </select>
+        <div class="studio-controls" style="margin-bottom: 15px;">
+          <button id="loadStudioTrackBtn" type="button">📥 Cargar pista seleccionada</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+        <input type="file" id="audioFile" accept="audio/*">
+        <audio id="player" controls></audio>
+        <div class="studio-controls">
+          <button id="playTrackBtn" type="button">▶️ Reproducir</button>
+          <button id="pauseTrackBtn" type="button">⏸️ Pausar</button>
+          <button id="stopTrackBtn" type="button">⏹️ Detener</button>
         </div>
       </div>
-    </div>
 
-    <audio id="voicePlayer" controls></audio>
-  </div>
+      <div class="card">
+        <h3>Voz desde Biblioteca</h3>
+        <div class="studio-controls">
+          <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
+        </div>
+        <select id="voiceLibrarySelect">
+          <option value="">Selecciona una voz guardada</option>
+        </select>
+        <div class="studio-controls">
+          <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
+          <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
+        </div>
+        <audio id="selectedVoicePlayer" controls></audio>
+        <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
+      </div>
 
- <div class="card">
-  <h3>Letra</h3>
+      <div class="card">
+        <h3>Grabación de voz</h3>
+        <div class="studio-controls">
+          <button id="startStudioRecBtn" type="button">🎙️ Grabar voz</button>
+          <button id="stopStudioRecBtn" type="button">🛑 Detener grabación</button>
+          <button id="redoStudioRecBtn" type="button">🔁 Volver a grabar</button>
+          <button id="saveStudioRecBtn" type="button">💾 Guardar grabación</button>
+        </div>
+        <p id="studioStatus">Estado: sin grabación</p>
+        
+        <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+          <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+              <small>Mic 1:</small>
+              <!-- CORRECCIÓN VISUAL: Añadimos fondo amarillo nativo para emparejar con el tema -->
+              <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill" style="background:#facc15; box-shadow:0 0 10px rgba(250,204,21,0.5);"></div></div>
+            </div>
+            <div style="flex: 1;">
+              <small>Mic 2:</small>
+              <!-- CORRECCIÓN VISUAL: Añadimos fondo cian nativo para emparejar con el tema -->
+              <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill" style="background:#06b6d4; box-shadow:0 0 10px rgba(6,182,212,0.5);"></div></div>
+            </div>
+          </div>
+        </div>
+        <audio id="voicePlayer" controls></audio>
+      </div>
 
-  <textarea
-    id="lyricsText"
-    rows="6"
-    placeholder="Aquí vamos a mostrar o pegar la letra de la canción..."
-  ></textarea>
+      <div class="card">
+        <h3>Letra</h3>
+        <textarea id="lyricsText" rows="6" placeholder="Aquí vamos a mostrar o pegar la letra de la canción..."></textarea>
+        <div class="studio-controls">
+          <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar letra corregida</button>
+        </div>
 
-  <div class="studio-controls">
-    <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar letra corregida</button>
-  </div>
+        <!-- SINCRONIZACIÓN MANUAL CON TAPS -->
+        <div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #60a5fa;">🎯 Sincronización Manual</h4>
+            <button id="toggleAutoScrollBtn" type="button" style="background: #f59e0b; font-size: 12px; padding: 5px 10px;">🔒 Auto-scroll: ON</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+            Escucha el audio y presiona TAP (o ESPACIO) cada vez que empiece una nueva línea.
+          </p>
+          <div class="studio-controls" style="margin-bottom: 15px;">
+            <button id="startTapSyncBtn" type="button" style="background: #3b82f6; color: white;">▶️ Iniciar Sincronización</button>
+            <button id="cancelTapSyncBtn" type="button" style="background: #6b7280; display: none;">❌ Cancelar</button>
+          </div>
+          
+          <div id="tapSyncActive" style="display: none;">
+            <div style="text-align: center; padding: 20px; background: var(--bg-main); border-radius: 8px; margin-bottom: 15px;">
+              <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0;">Línea actual:</p>
+              <p id="tapCurrentLine" style="font-size: 20px; font-weight: bold; color: #facc15; margin: 0 0 15px 0;">---</p>
+              <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 5px 0;">Progreso:</p>
+              <p id="tapProgress" style="font-size: 16px; color: #22c55e; margin: 0;">0 / 0 líneas</p>
+            </div>
+            <button id="tapBeatBtn" type="button" style="width: 100%; padding: 30px; font-size: 24px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border-radius: 12px;">
+              🎵 TAP (o presiona ESPACIO)
+            </button>
+            <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+              ⌨️ También puedes usar la barra espaciadora
+            </p>
+          </div>
 
-  <!-- SINCRONIZACIÓN MANUAL CON TAPS -->
-<div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-    <h4 style="margin: 0; color: #60a5fa;">🎯 Sincronización Manual</h4>
-    <button id="toggleAutoScrollBtn" type="button" style="background: #f59e0b; font-size: 12px; padding: 5px 10px;">🔒 Auto-scroll: ON</button>
-  </div>
   
-  <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
-    Escucha el audio y presiona TAP (o ESPACIO) cada vez que empiece una nueva línea.
-  </p>
-  
-  <div class="studio-controls" style="margin-bottom: 15px;">
-    <button id="startTapSyncBtn" type="button" style="background: #3b82f6; color: white;">▶️ Iniciar Sincronización</button>
-    <button id="cancelTapSyncBtn" type="button" style="background: #6b7280; display: none;">❌ Cancelar</button>
-  </div>
-  
-  <!-- Modo de sincronización activo -->
-  <div id="tapSyncActive" style="display: none;">
-    <div style="text-align: center; padding: 20px; background: var(--bg-main); border-radius: 8px; margin-bottom: 15px;">
-      <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0;">Línea actual:</p>
-      <p id="tapCurrentLine" style="font-size: 20px; font-weight: bold; color: #facc15; margin: 0 0 15px 0;">---</p>
-      <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 5px 0;">Progreso:</p>
-      <p id="tapProgress" style="font-size: 16px; color: #22c55e; margin: 0;">0 / 0 líneas</p>
-    </div>
-    
-    <button id="tapBeatBtn" type="button" style="width: 100%; padding: 30px; font-size: 24px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border-radius: 12px;">
-      🎵 TAP (o presiona ESPACIO)
-    </button>
-    
-    <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">
-      ⌨️ También puedes usar la barra espaciadora
-    </p>
-  </div>
-  
-  <!-- Resultado -->
+  <!-- Resultado de Taps -->
   <div id="tapSyncResult" style="display: none; margin-top: 15px; padding: 15px; background: #14532d; border-radius: 8px; border: 1px solid #22c55e;">
     <p style="color: #22c55e; font-weight: bold; margin: 0 0 10px 0;">✅ ¡Sincronización completada!</p>
     <div class="studio-controls">
@@ -217,30 +193,28 @@
   </div>
 </div>
 
-
-  <div id="karaokeLyrics" class="karaoke-lyrics">
+  <!-- CORRECCIÓN ID MONITOR: Cambiado a miniMonitorTextArea para acoplarse con la carga de la biblioteca -->
+  <div id="miniMonitorTextArea" class="karaoke-lyrics">
     <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
   </div>
 </div>
-
 </section>
 
 <!-- BIBLIOTECA -->
 <section id="biblioteca" class="tab">
   <h1>📁 Biblioteca</h1>
 
-  <!-- NUEVOS BOTONES DE CARPETA -->
+  <!-- BOTONES DE CARPETA -->
   <div class="folder-controls">
-    <button class="folder-btn" onclick="renderLibrary('todos')">📂 Todos</button>
-    <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
-    <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
-    <button class="folder-btn" onclick="renderLibrary('grabación')">💾 Grabaciones</button>
-    <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
-    <!-- NUEVA CATEGORÍA AGREGADA -->
-    <button class="folder-btn" onclick="renderLibrary('ultrastar_txt')">📝 Texto UltraStar</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('todos')">📂 Todos</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('pista')">🎵 Pistas</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('voz')">🎙️ Voces</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('grabación')">💾 Grabaciones</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('ultrastar_txt')">📝 Texto UltraStar</button>
   </div>
 
-  <!-- SUBIR ARCHIVOS DESDE PC (ahorra API) -->
+  <!-- SUBIR ARCHIVOS DESDE PC -->
   <div class="card">
     <h3>📤 Subir archivo desde PC</h3>
     <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
@@ -248,7 +222,6 @@
     </p>
 
     <div class="settings-group">
-      <!-- Actualizado accept para permitir también archivos de texto (.txt) -->
       <label for="libraryFileInput">Archivo (Audio o Letra TXT)</label>
       <input type="file" id="libraryFileInput" accept="audio/*,.txt">
     </div>
@@ -258,16 +231,15 @@
       <select id="libraryFileType">
         <option value="pista">🎵 Pista instrumental</option>
         <option value="voz">🎙️ Voz</option>
-        <option value="grabacion">💾 Grabación / Mezcla</option>
-        <!-- NUEVA OPCIÓN EN EL SELECT -->
+        <!-- CORRECCIÓN ORTOGRÁFICA: Cambiado a "grabación" con acento para coincidir con IndexedDB -->
+        <option value="grabación">💾 Grabación / Mezcla</option>
         <option value="ultrastar_txt">📝 Texto UltraStar (.txt)</option>
       </select>
     </div>
 
     <div class="settings-group">
       <label for="libraryFileName">Nombre personalizado (opcional)</label>
-      <input type="text" id="libraryFileName" placeholder="Ej. Bohemian Rhapsody - Pista"
-        style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main);">
+      <input type="text" id="libraryFileName" placeholder="Ej. Bohemian Rhapsody - Pista">
     </div>
 
     <div class="studio-controls">
@@ -281,95 +253,88 @@
   </div>
 </section>
     
-    <!-- KARAOKE -->
-    <section id="karaoke" class="tab">
-      <h1>🎤 Karaoke</h1>
-      <!-- MONITOR DE PENTAGRAMA -->
-      <div class="card" style="background: #1a1a1a; padding: 0;">
-        <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
-      </div>
+<!-- KARAOKE -->
+<section id="karaoke" class="tab">
+  <h1>🎤 Karaoke</h1>
+  
+  <!-- MONITOR DE PENTAGRAMA -->
+  <div class="card" style="background: #1a1a1a; padding: 0;">
+    <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
+  </div>
 
-<!-- CATÁLOGO DE CANCIONES LISTAS -->
-      <div class="card">
-        <!-- Encabezado interactivo sin onclick -->
-        <div class="encabezado-desplegable" data-target="contenido-catalogo" data-arrow="flecha-catalogo" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
-          <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
-          <span id="flecha-catalogo" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
-        </div>
+  <!-- CATÁLOGO DE CANCIONES LISTAS -->
+  <div class="card">
+    <div class="encabezado-desplegable" data-target="contenido-catalogo" data-arrow="flecha-catalogo" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+      <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
+      <span id="flecha-catalogo" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
+    </div>
 
-        <!-- Contenido que se va a ocultar -->
-        <div id="contenido-catalogo" class="contenido-desplegable oculto" style="margin-top: 15px;">
-          <!-- Catálogo pre-cargado -->
-          <div id="catalogSection">
-            <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
-            <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
-              <p style="color: var(--text-muted);">Cargando catálogo...</p>
-            </div>
-          </div>
-          
-          <!-- Mis canciones importadas/creadas -->
-          <div id="myKaraokeSongs" style="margin-top: 20px;">
-            <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
-            <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
-              <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
-            </div>
-          </div>
-         
-          <!-- Botones de acción -->
-          <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
-            <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
-          </div>
+    <div id="contenido-catalogo" class="contenido-desplegable oculto" style="margin-top: 15px;">
+      <!-- Catálogo pre-cargado -->
+      <div id="catalogSection">
+        <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
+        <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
+          <p style="color: var(--text-muted);">Cargando catálogo...</p>
         </div>
       </div>
       
-      <!-- Paso 1: Pista -->
-      <div class="card">
-        <!-- Encabezado interactivo sin onclick -->
-        <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
-          <h3 style="margin: 0;">1. Cargar Pista (Instrumental)</h3>
-          <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
-        </div>
-        
-        <!-- Contenido que se va a ocultar -->
-        <div id="contenido-pista" class="contenido-desplegable oculto" style="margin-top: 15px;">
-          <!-- Opción A: Desde la Biblioteca -->
-          <div class="studio-controls">
-            <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
-          </div>
-          <select id="karaokeTrackSelect" style="width: 100%; margin: 10px 0;">
-            <option value="">Selecciona una pista desde tu Biblioteca</option>
-          </select>
-          <div class="studio-controls" style="margin-bottom: 15px;">
-            <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
-          </div>
-          <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
+      <!-- Mis canciones importadas/creadas -->
+      <div id="myKaraokeSongs" style="margin-top: 20px;">
+        <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
+        <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
+          <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
         </div>
       </div>
-      <!-- Paso 2: Grabación -->
-      <div class="card">
-        <h3>2. Grabación Sincronizada</h3>
-        <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
-        
-        <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
-  <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
-  <div style="display: flex; gap: 20px;">
-    <div style="flex: 1;">
-      <small>Mic 1:</small>
-      <!-- Le agregamos posición relativa y desbordamiento oculto a la barra contenedor -->
-      <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
-        <!-- Forzamos altura, color amarillo y transición suave -->
-        <div id="karaokeDuoMic1Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #facc15; transition: width 0.05s ease;"></div>
-      </div>
-    </div>
-    <div style="flex: 1;">
-      <small>Mic 2:</small>
-      <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
-        <!-- Forzamos altura, color celeste y transición suave -->
-        <div id="karaokeDuoMic2Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #06b6d4; transition: width 0.05s ease;"></div>
+     
+      <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+        <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
       </div>
     </div>
   </div>
-</div>
+  
+  <!-- Paso 1: Pista -->
+  <div class="card">
+    <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+      <h3 style="margin: 0;">1. Cargar Pista (Instrumental)</h3>
+      <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
+    </div>
+    
+    <div id="contenido-pista" class="contenido-desplegable oculto" style="margin-top: 15px;">
+      <div class="studio-controls">
+        <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
+      </div>
+      <select id="karaokeTrackSelect" style="width: 100%; margin: 10px 0;">
+        <option value="">Selecciona una pista desde tu Biblioteca</option>
+      </select>
+      <div class="studio-controls" style="margin-bottom: 15px;">
+        <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
+      </div>
+      <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
+    </div>
+  </div>
+
+  <!-- Paso 2: Grabación -->
+  <div class="card">
+    <h3>2. Grabación Sincronizada</h3>
+    <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
+    
+    <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+      <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+      <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+          <small>Mic 1:</small>
+          <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
+            <div id="karaokeDuoMic1Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #facc15; transition: width 0.05s ease;"></div>
+          </div>
+        </div>
+        <div style="flex: 1;">
+          <small>Mic 2:</small>
+          <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
+            <div id="karaokeDuoMic2Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #06b6d4; transition: width 0.05s ease;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
         
         <div class="studio-controls">
           <button id="karaokeStartBtn" class="btn-danger" type="button">🎙️ Iniciar Grabación</button>
@@ -392,7 +357,6 @@
         
         <div id="karaokeMixResult" style="margin-top: 15px;"></div>
       </div>
-
     </section>
 
     <!-- SPLITTER -->
@@ -444,84 +408,65 @@
           </select>
         </div>
         
+        <!-- CONTROL DEL HARDWARE - MICRÓFONO 1 -->
         <div class="settings-group">
-          <label>🎙️ Micrófono Principal</label>
+          <label for="mic1Select">🎙️ Micrófono Principal (Cantante 1)</label>
           <select id="mic1Select">
             <option value="">Cargando dispositivos...</option>
           </select>
-          <button type="button" id="testMic1Btn" style="margin-top: 10px; background: #3b82f6;">🔊 Probar Mic 1</button>
+          <div class="studio-controls">
+            <button type="button" id="testMic1Btn" style="background: #3b82f6;">🔊 Probar Mic 1</button>
+          </div>
           <div id="mic1Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
         </div>
-        
-        <div class="settings-group" id="mic2Group" style="display: none;">
-          <label>🎙️ Micrófono Secundario (Dúo)</label>
+
+        <!-- CORRECCIÓN COMPLEMENTARIA: Añadimos la maquetación física del Micrófono 2 para el modo Dúo -->
+        <div id="mic2Group" class="settings-group" style="display: none;">
+          <label for="mic2Select">🎙️ Micrófono Secundario (Cantante 2)</label>
           <select id="mic2Select">
             <option value="">Cargando dispositivos...</option>
           </select>
-          <button type="button" id="testMic2Btn" style="margin-top: 10px; background: #3b82f6;">🔊 Probar Mic 2</button>
+          <div class="studio-controls">
+            <button type="button" id="testMic2Btn" style="background: #3b82f6;">🔊 Probar Mic 2</button>
+          </div>
           <div id="mic2Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
         </div>
-        
-        <div class="settings-group">
-          <button type="button" id="refreshMicsBtn" style="background: #6b7280;">🔄 Actualizar lista de micrófonos</button>
-        </div>
-        
-        <div class="settings-group">
-          <label for="micSensitivity">🎚️ Sensibilidad del Micrófono (Umbral)</label>
-          <input type="range" id="micSensitivity" min="0.000" max="0.050" step="0.001" value="0.010">
-          <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
-        </div>
-        
-        <div class="settings-group">
-          <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
-          <select id="difficultyLevel">
-            <option value="facil">Fácil</option>
-            <option value="medio">Medio</option>
-            <option value="dificil">Difícil</option>
-            <option value="experto">Experto</option>
-          </select>
-        </div>
-        
-        <div class="settings-group">
-          <label for="pentagramDifficulty">📊 Dificultad para el Pentagrama</label>
-          <select id="pentagramDifficulty">
-            <option value="facil">Fácil</option>
-            <option value="medio">Medio</option>
-            <option value="dificil">Difícil</option>
+
+        <!-- CORRECCIÓN INTERFAZ SELECTOR ESCENARIOS: Vinculamos los nombres y el nuevo Retrowave -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <label for="karaokeThemeSelect">🎨 Escenario de Karaoke (Tema Visual)</label>
+          <select id="karaokeThemeSelect">
+            <option value="theme-clasico">Clásico (Slate)</option>
+            <option value="theme-moderno">Moderno (Neón Azul)</option>
+            <option value="theme-disco">Disco (Magenta/Rosa)</option>
+            <option value="theme-acustico">Acústico (Madera Cálida)</option>
+            <option value="theme-fiesta">Fiesta (Luces Animadas)</option>
+            <option value="theme-retrowave">Retrowave (Synthwave Ochentero) 🚀</option>
           </select>
         </div>
 
+        <!-- CORRECCIÓN INTERFAZ TEMAS GLOBALES: Añadimos el conmutador data-theme -->
         <div class="settings-group">
-  <label for="karaokeThemeSelect">🏟️ Escenario de Karaoke (Tema Visual):</label>
-  <select id="karaokeThemeSelect"> <!-- Quitamos el onchange antiguo -->
-    <option value="theme-clasico">Clásico (Por defecto)</option>
-    <option value="theme-moderno">Moderno (Neón Azul)</option>
-    <option value="theme-disco">Disco (Rosa / Morado)</option>
-    <option value="theme-acustico">Acústico (Madera Relajante)</option>
-    <option value="theme-fiesta">Fiesta (Luces Locas Animadas)</option>
-    <option value="theme-retrowave">Cyberpunk Retro Wave 🌌</option>
-  </select>
-        </div>
-        <div class="settings-group">
-          <label for="appTheme">🎨 Tema de la App</label>
+          <label for="appTheme">🎨 Tema Global de la Interfaz</label>
           <select id="appTheme">
-            <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
-            <option value="claro">☀️ Claro</option>
-            <option value="rock">🎸 Rock</option>
-            <option value="pop">🎤 Pop</option>
-            <option value="neon">💜 Neón</option>
-            <option value="naturaleza">🌿 Naturaleza</option>
+            <option value="oscuro">Oscuro (Por defecto)</option>
+            <option value="claro">Claro</option>
+            <option value="rock">Rock Metal (Rojo/Piedra)</option>
+            <option value="pop">Pop Star (Rosa/Pastel)</option>
+            <option value="neon">Cyber Neon (Púrpura Eléctrico)</option>
+            <option value="naturaleza">Naturaleza (Verde Bosque)</option>
           </select>
         </div>
-        <p id="saveNotification" class="save-notification" style="opacity:0; transition: opacity 0.5s;">✅ Configuración guardada</p>
+
+        <!-- NOTIFICACIÓN DE GUARDADO EXIGIDA POR JAVASCRIPT -->
+        <div id="saveNotification" class="save-notification">💾 Configuración guardada en el almacenamiento local...</div>
       </div>
     </section>
 
-  </main>
+  </main> <!-- Cierre del contenedor de contenido central -->
+</div> <!-- Cierre de la envoltura global de la app -->
 
-</div>
-  
-<script src="script.js"></script>
-
+<!-- INYECCIÓN UNIFICADA DE SCRIPTS DE MOTOR DE AUDIO (Mantenemos tu script principal) -->
+<script src="app.js"></script>
 </body>
 </html>
