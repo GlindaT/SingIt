@@ -543,23 +543,13 @@ input[type="text"] {
 }
 
 #karaokeCanvas {
-    /* Mantenemos tu elegante fondo degradado */
     background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
     display: block;
-    
-    /* SOLUCCIÓN A LA DISTORSIÓN: */
     width: 100%;
-    height: auto; /* Permite al canvas escalar manteniendo la relación de aspecto 800x500 */
-    aspect-ratio: 800 / 500; /* Asegura que mantenga la proporción perfecta en cualquier monitor */
-    
-    border-radius: 12px;
-    
-    /* CAMBIO DE ESTILO: Borde neutral oscuro para integrarse al layout */
-    border: 2px solid var(--border); 
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    box-sizing: border-box;
+    height: 300px;
+    border-radius: 8px;
+    border: 2px solid #3b82f6;
 }
-
 /* ==========================================
    SISTEMA DE TEMAS GLOBALES
 ========================================== */
