@@ -3277,7 +3277,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // ====================================================================
   // 📏 --- RENDERING ESTRUCTURAL: PENTAGRAMAS DOBLES Y ADAPTACIÓN ---
   // ====================================================================
-  const numLines = 6; // Ajustado a 6 líneas por cada mitad para no sobrecargar visualmente
+  const numLines = 5; // Ajustado a 5 líneas por cada mitad para no sobrecargar visualmente
   ctx.strokeStyle = colorLineas;
   ctx.lineWidth = 1.5;
 
