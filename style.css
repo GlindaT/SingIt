@@ -10,7 +10,7 @@
   --accent: #22c55e;
   --accent-hover: #16a34a;
   --danger: #ef4444;
-  --border: #334155; /* 🎯 CORREGIDO: Eliminado guion tipográfico extra */
+  --border: #334155;
 }
 
 /* ====================================================================
@@ -56,7 +56,10 @@ body {
   transition: 0.2s;
 }
 
-.sidebar button:hover,
+.sidebar button:hover {
+  background: var(--border);
+  color: var(--text-main);
+}
 .sidebar button.active {
   background: var(--border);
   color: var(--text-main);
