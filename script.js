@@ -3264,6 +3264,16 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   ctx.fillStyle = colorFondo;
   ctx.fillRect(0, 0, width, height);
 
+  const diffPentagrama = localStorage.getItem("singIt_pentagramDiff") || "medio";
+
+  let margenAciertoMidi = 2; // Modo "medio" por defecto (Tolerancia estándar de ±2 semitonos)
+
+  if (diffPentagrama === "facil") {
+    margenAciertoMidi = 3.5;
+  } else if (diffPentagrama === "dificil") {
+    margenAciertoMidi = 1.0;
+  }
+
   // ====================================================================
   // 📏 --- RENDERING ESTRUCTURAL: PENTAGRAMAS DOBLES Y ADAPTACIÓN ---
   // ====================================================================
