@@ -35,6 +35,7 @@ let pitchHistoryMic1 = [];
 let pitchHistoryMic2 = [];
 let isPitchDetectionRunning = false;
 let micTestAudioContext = null;
+let micTestAnimationId = [];
 
 // ==========================================
 // INDEXED DB - BIBLIOTECA
