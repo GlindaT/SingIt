@@ -3459,9 +3459,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // ====================================================================
   // ⚡ --- CAPA INTERMEDIA: LÍNEA DIVISORIA ELECTRÓNICA ---
   // ====================================================================
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
-
+  
   // 1. DIBUJAR LÍNEA DIVISORIA NEÓN EN MEDIO DEL MONITOR
   ctx.beginPath();
   ctx.strokeStyle = "rgba(148, 163, 184, 0.2)"; // Color --text-muted suave
