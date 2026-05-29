@@ -26,6 +26,19 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function handleTap() {
+    const elements = [document.getElementById('tapCurrentLine'), document.getElementById('tapProgress')];
+    
+    elements.forEach(el => {
+        // Remove class to reset animation
+        el.classList.remove('tap-active');
+        // Trigger reflow to allow animation to restart
+        void el.offsetWidth; 
+        // Re-add class
+        el.classList.add('tap-active');
+    });
+}
+
 function safeAdd(id, event, handler) {
   const el = $(id);
   if (el) el.addEventListener(event, handler);
