@@ -4295,38 +4295,42 @@ function inicializarEscenarioDesdeMemoria() {
 }
 
 // ====================================================================
-// MONITOR UNIFICADO DE AUDIO (COMPATIBLE CON TU DETECTPITCH DE LA P. 7)
+// RENDERIZADO DEL MONITOR DE KARAOKE UNIFICADO (SOPORTE MIC 1 Y MIC 2)
 // ====================================================================
 let historialVocesUnificado = { mic1: [], mic2: [] };
-const MAX_PUNTOS_MONITOR = 180; 
+const MAX_PUNTOS_MONITOR = 180; // Largo del rastro dentro del monitor
 
-function drawKaraokeMonitor(ignoredZero, currentPitch) {
+function drawKaraokeMonitor() {
     const canvas = document.getElementById("karaokeCanvas");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     const sampleRate = 48000;
 
-    // Sincronizar tamaño del lienzo con el CSS de forma automática
+    // Asegurar que el canvas mantenga su resolución interna alineada con el CSS
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
     }
 
-    // 1. LEER EL PITCH ACTUAL DE AMBOS MICRÓFONOS
-    let pitch1 = currentPitch || -1; // Usa el pitch que ya calculó tu script
+    // 1. EXTRAER EL PITCH ACTUAL DE AMBOS MICRÓFONOS EN TIEMPO REAL
+    let pitch1 = -1;
     let pitch2 = -1;
 
-    // Si el Micrófono 2 está activo en grabación Dúo, calculamos su frecuencia
+    if (karaokeDuoAnalyser1) {
+        const buf1 = new Float32Array(2048);
+        karaokeDuoAnalyser1.getFloatTimeDomainData(buf1);
+        pitch1 = autoCorrelate(buf1, sampleRate); // Tu función matemática nativa
+    }
     if (karaokeDuoAnalyser2) {
         const buf2 = new Float32Array(2048);
         karaokeDuoAnalyser2.getFloatTimeDomainData(buf2);
-        pitch2 = autoCorrelate(buf2, sampleRate); // Tu función matemática nativa
+        pitch2 = autoCorrelate(buf2, sampleRate);
     }
 
-    // 2. LIMPIAR EL LIENZO EN CADA FOTOGRAMA
+    // 2. LIMPIAR EL LIENZO CON EL FONDO OSCURO ORIGINAL
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Línea guía central sutil (Nota C4 de referencia)
+    // Línea guía central (C4 / Do Central de referencia)
     ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -4334,23 +4338,31 @@ function drawKaraokeMonitor(ignoredZero, currentPitch) {
     ctx.lineTo(canvas.width, canvas.height / 2);
     ctx.stroke();
 
-    // 3. DIBUJAR MICRÓFONO 1 (Onda Amarilla)
+    // 3. PROCESAR HISTORIAL Y DIBUJAR MICRÓFONO 1 (Color Amarillo Neón)
     actualizarYDibujarRastro(ctx, canvas, pitch1, historialVocesUnificado.mic1, "#facc15");
 
-    // 4. DIBUJAR MICRÓFONO 2 (Onda Cian)
+    // 4. PROCESAR HISTORIAL Y DIBUJAR MICRÓFONO 2 (Color Cian Neón)
     actualizarYDibujarRastro(ctx, canvas, pitch2, historialVocesUnificado.mic2, "#06b6d4");
+
+    // 5. MANTENER EL CICLO VIVO A 60 FPS MIENTRAS SE GRABE
+    if (window.state && window.state.isRecording || (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording")) {
+        requestAnimationFrame(drawKaraokeMonitor);
+    }
 }
 
-// Función interna auxiliar de renderizado de líneas
+// Función auxiliar interna para mapear y trazar las líneas de cada micrófono
 function actualizarYDibujarRastro(ctx, canvas, pitch, historial, colorHex) {
+    // Mapear la frecuencia (Rango vocal de 60Hz a 600Hz) al eje Y del Canvas
     let coordenadaY = null;
     if (pitch > 60 && pitch < 600) {
         coordenadaY = canvas.height - ((pitch - 60) / (600 - 60)) * canvas.height;
     }
 
+    // Guardar el punto en la cola del historial
     historial.push(coordenadaY);
     if (historial.length > MAX_PUNTOS_MONITOR) historial.shift();
 
+    // Estilo de la línea con efecto de brillo "Glow"
     ctx.strokeStyle = colorHex;
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
@@ -4374,9 +4386,9 @@ function actualizarYDibujarRastro(ctx, canvas, pitch, historial, colorHex) {
                 ctx.lineTo(x, y);
             }
         } else {
-            esPrimerPunto = true; 
+            esPrimerPunto = true; // Rompe la línea si hay un silencio
         }
     }
     ctx.stroke();
-    ctx.shadowBlur = 0; 
+    ctx.shadowBlur = 0; // Apagar sombras
 }
