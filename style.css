@@ -1209,17 +1209,39 @@ input[type="text"] {
 }
 
 /* ==========================================================
-   NUEVO: COMPACTACIÓN DE TÍTULOS Y CONTENIDO INFERIOR
+   EFECTO PIE DE PÁGINA (MINIMALISTA Y ULTRA-COMPACTO)
    ========================================================== */
+
+/* 1. Volver los títulos diminutos como notas al pie */
 .card h1, .card h2, .card h3, .card h4, .card h5, .card h6 {
-    font-size: 14px !important;    /* Reduce drásticamente el tamaño de los 4 títulos */
-    margin-top: 2px !important;    /* Elimina casi todo el espacio de arriba */
-    margin-bottom: 4px !important; /* Elimina casi todo el espacio de abajo */
+    font-size: 11px !important;       /* Tamaño micro de nota al pie */
+    font-weight: bold !important;
+    text-transform: uppercase;         /* En mayúsculas para que sea legible a pesar de ser mini */
+    margin: 2px 0 !important;
+    color: var(--text-muted) !important; /* Color gris suave para que no compita con el karaoke */
 }
 
-/* Reduce también los textos pequeños de descripción (como "Une la pista instrumental...") */
-.card p, .card span, .card div {
-    font-size: 12px !important;    
+/* 2. Textos descriptivos aún más pequeños */
+.card p, .card span, .card div, .card label {
+    font-size: 10px !important;       /* Tamaño mínimo legible */
+    margin: 1px 0 !important;
+    color: rgba(255, 255, 255, 0.4) !important; /* Súper sutil */
+}
+
+/* 3. Volver el reproductor de audio una barrita minimalista */
+audio {
+    height: 24px !important;          /* Reduce la altura a la mitad de su tamaño original */
     margin-top: 2px !important;
     margin-bottom: 2px !important;
+    opacity: 0.7;                     /* Lo hace sutil para que se mezcle con el fondo */
+    transition: opacity 0.2s;
+}
+audio:hover {
+    opacity: 1;                       /* Se aclara solo cuando pasas el mouse por encima */
+}
+
+/* 4. Reducir la separación interna de los bloques para aplastarlos más */
+.card {
+    padding: 6px 12px !important;     /* Reduce el grosor interno de las cajas */
+    margin-bottom: 6px !important;    /* Junta las líneas una detrás de la otra */
 }
