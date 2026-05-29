@@ -4294,3 +4294,92 @@ function inicializarEscenarioDesdeMemoria() {
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
 }
+
+// ====================================================================
+// MONITOR EN ESPEJO: MIC 1 (DESDE ABAJO) Y MIC 2 (DESDE ARRIBA)
+// ====================================================================
+let rastroMic1 = [];
+let rastroMic2 = [];
+const MAX_PUNTOS_MONITOR = 120; 
+
+function drawKaraokeMonitor(ignoredZero, currentPitch) {
+    const canvas = document.getElementById("karaokeCanvas");
+    if (!canvas || canvas.clientWidth === 0) return;
+    
+    const ctx = canvas.getContext("2d");
+    const sampleRate = 48000;
+
+    if (canvas.width !== canvas.clientWidth) {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    }
+
+    // 1. OBTENER DETECCIÓN DE RECUENTOS (Rango seguro de voz: 65Hz a 500Hz)
+    let pitch1 = (currentPitch > 65 && currentPitch < 500) ? currentPitch : null;
+    let pitch2 = null;
+
+    try {
+        if (typeof karaokeDuoAnalyser2 !== 'undefined' && karaokeDuoAnalyser2) {
+            const buf2 = new Float32Array(512);
+            karaokeDuoAnalyser2.getFloatTimeDomainData(buf2);
+            if (typeof autoCorrelate === 'function') {
+                let p2 = autoCorrelate(buf2, sampleRate);
+                if (p2 > 65 && p2 < 500) pitch2 = p2;
+            }
+        }
+    } catch (e) {}
+
+    // 2. MATEMÁTICA INVERTIDA (EFECTO ESPEJO)
+    // Mic 1 (Amarillo): Crece normalmente desde el suelo del monitor hacia el centro
+    let y1 = pitch1 ? canvas.height - ((pitch1 - 65) / 435) * canvas.height : null;
+    
+    // Mic 2 (Cian): ¡Fórmula invertida! Crece desde el techo (0) hacia el centro
+    let y2 = pitch2 ? ((pitch2 - 65) / 435) * canvas.height : null;
+
+    rastroMic1.push(y1); if (rastroMic1.length > MAX_PUNTOS_MONITOR) rastroMic1.shift();
+    rastroMic2.push(y2); if (rastroMic2.length > MAX_PUNTOS_MONITOR) rastroMic2.shift();
+
+    // 3. LIMPIEZA RÁPIDA DE FOTOGRAMA
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Líneas guía de fondo discretas para cada cantante
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.02)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, canvas.height * 0.25); ctx.lineTo(canvas.width, canvas.height * 0.25); ctx.stroke(); // Guía P2
+    ctx.beginPath(); ctx.moveTo(0, canvas.height * 0.75); ctx.lineTo(canvas.width, canvas.height * 0.75); ctx.stroke(); // Guía P1
+
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // 4. RENDERIZAR MICRÓFONO 1 (Onda Amarilla - Abajo)
+    ctx.strokeStyle = "#facc15";
+    ctx.beginPath();
+    let pFirst1 = true;
+    for (let i = 0; i < rastroMic1.length; i++) {
+        let x = i * (canvas.width / MAX_PUNTOS_MONITOR);
+        if (rastroMic1[i] !== null) {
+            if (pFirst1) { ctx.moveTo(x, rastroMic1[i]); pFirst1 = false; }
+            else ctx.lineTo(x, rastroMic1[i]);
+        } else pFirst1 = true;
+    }
+    ctx.stroke();
+
+    // 5. RENDERIZAR MICRÓFONO 2 (Onda Cian - Arriba)
+    ctx.strokeStyle = "#06b6d4";
+    ctx.beginPath();
+    let pFirst2 = true;
+    for (let i = 0; i < rastroMic2.length; i++) {
+        let x = i * (canvas.width / MAX_PUNTOS_MONITOR);
+        if (rastroMic2[i] !== null) {
+            if (pFirst2) { ctx.moveTo(x, rastroMic2[i]); pFirst2 = false; }
+            else ctx.lineTo(x, rastroMic2[i]);
+        } else pFirst2 = true;
+    }
+    ctx.stroke();
+
+    // Mantener la animación ligera en paralelo a las letras
+    if (typeof karaokeMediaRecorder !== 'undefined' && karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") {
+        requestAnimationFrame(drawKaraokeMonitor);
+    }
+}
