@@ -1289,7 +1289,7 @@ input[type="text"] {
 
 /* 2. Textos descriptivos aún más pequeños */
 .card p, .card span, .card div, .card label {
-    font-size: 10px !important;       /* Tamaño mínimo legible */
+    font-size: 12px !important;       /* Tamaño mínimo legible */
     margin: 1px 0 !important;
     color: rgba(255, 255, 255, 0.4) !important; /* Súper sutil */
 }
