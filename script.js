@@ -4293,3 +4293,90 @@ function inicializarEscenarioDesdeMemoria() {
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
 }
+
+// ====================================================================
+// MONITOR UNIFICADO DE AUDIO (COMPATIBLE CON TU DETECTPITCH DE LA P. 7)
+// ====================================================================
+let historialVocesUnificado = { mic1: [], mic2: [] };
+const MAX_PUNTOS_MONITOR = 180; 
+
+function drawKaraokeMonitor(ignoredZero, currentPitch) {
+    const canvas = document.getElementById("karaokeCanvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const sampleRate = 48000;
+
+    // Sincronizar tamaño del lienzo con el CSS de forma automática
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    }
+
+    // 1. LEER EL PITCH ACTUAL DE AMBOS MICRÓFONOS
+    let pitch1 = currentPitch || -1; // Usa el pitch que ya calculó tu script
+    let pitch2 = -1;
+
+    // Si el Micrófono 2 está activo en grabación Dúo, calculamos su frecuencia
+    if (karaokeDuoAnalyser2) {
+        const buf2 = new Float32Array(2048);
+        karaokeDuoAnalyser2.getFloatTimeDomainData(buf2);
+        pitch2 = autoCorrelate(buf2, sampleRate); // Tu función matemática nativa
+    }
+
+    // 2. LIMPIAR EL LIENZO EN CADA FOTOGRAMA
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Línea guía central sutil (Nota C4 de referencia)
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.stroke();
+
+    // 3. DIBUJAR MICRÓFONO 1 (Onda Amarilla)
+    actualizarYDibujarRastro(ctx, canvas, pitch1, historialVocesUnificado.mic1, "#facc15");
+
+    // 4. DIBUJAR MICRÓFONO 2 (Onda Cian)
+    actualizarYDibujarRastro(ctx, canvas, pitch2, historialVocesUnificado.mic2, "#06b6d4");
+}
+
+// Función interna auxiliar de renderizado de líneas
+function actualizarYDibujarRastro(ctx, canvas, pitch, historial, colorHex) {
+    let coordenadaY = null;
+    if (pitch > 60 && pitch < 600) {
+        coordenadaY = canvas.height - ((pitch - 60) / (600 - 60)) * canvas.height;
+    }
+
+    historial.push(coordenadaY);
+    if (historial.length > MAX_PUNTOS_MONITOR) historial.shift();
+
+    ctx.strokeStyle = colorHex;
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = colorHex;
+
+    ctx.beginPath();
+    let esPrimerPunto = true;
+    const avanceX = canvas.width / MAX_PUNTOS_MONITOR;
+
+    for (let i = 0; i < historial.length; i++) {
+        const x = i * avanceX;
+        const y = historial[i];
+
+        if (y !== null) {
+            if (esPrimerPunto) {
+                ctx.moveTo(x, y);
+                esPrimerPunto = false;
+            } else {
+                ctx.lineTo(x, y);
+            }
+        } else {
+            esPrimerPunto = true; 
+        }
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0; 
+}
