@@ -1245,34 +1245,3 @@ audio:hover {
     padding: 6px 12px !important;     /* Reduce el grosor interno de las cajas */
     margin-bottom: 6px !important;    /* Junta las líneas una detrás de la otra */
 }
-
-/* ==========================================================
-   AGRANDAR MONITOR DE LETRAS ULTRASTAR (SEGURO)
-   ========================================================== */
-#karaokeLiveLyrics {
-    height: 480px !important;       /* Aumenta la altura para ocupar más espacio */
-    max-height: 55vh !important;    /* Le impide desbordar más allá de la mitad de pantalla */
-    padding: 25px !important;       /* Más aire interno para que las letras respiren */
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important; /* Mantiene la letra activa siempre al centro */
-}
-
-/* Asegura que el contenedor del monitor permita capas superpuestas */
-#karaokeLiveLyrics, [id*="karaokeLiveLyrics"] {
-    position: relative !important;
-    background: transparent !important;
-    z-index: 2 !important; /* Coloca las letras al frente */
-    pointer-events: none;  /* Evita que bloquee los clics */
-}
-
-/* Fuerza al Canvas a posicionarse exactamente detrás de las letras */
-#karaokeCanvas {
-    position: absolute !important;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    height: 100% !important;
-    z-index: 1 !important; /* Coloca las ondas al fondo */
-    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%) !important;
-}
