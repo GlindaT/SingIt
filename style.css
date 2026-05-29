@@ -1,3 +1,6 @@
+/* 1. Add the Cursive Font (Requires Google Fonts import at top of CSS) */
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+
 /* ==========================================
    VARIABLES (ESCALABLE)
 ========================================== */
@@ -102,6 +105,52 @@ body {
 /* ==========================================
    BOTONES GENERALES
 ========================================== */
+/* 2. Global Section Styles (Font, Size, Spacing) */
+#tapSyncSection, #lyricsText {
+    font-family: 'Dancing Script', cursive !important;
+    font-size: 14px;
+    letter-spacing: 2px;
+}
+
+/* 3. Neon Pop Animation Definition */
+@keyframes neon-pop {
+    0% { transform: scale(1); text-shadow: none; }
+    50% { 
+        transform: scale(1.15); 
+        color: #39FF14; /* Neon Green */
+        text-shadow: 0 0 10px #39FF14, 0 0 20px #39FF14; 
+    }
+    100% { transform: scale(1.1); }
+}
+
+/* 4. Current Line and Progress States */
+#tapCurrentLine, #tapProgress {
+    font-size: 24px;
+    transition: color 0.3s ease;
+    /* Default/Before Tap Color: Neon Cyan */
+    color: #00F3FF; 
+}
+
+/* Class to trigger via JavaScript on tap */
+.tap-active {
+    animation: neon-pop 0.2s ease-out forwards;
+    /* After Tap Color: Golden Yellow */
+    color: #FFD700 !important; 
+}
+
+/* 5. Light Blue Aligned Button */
+#tapBeatBtn {
+    width: 100%;
+    background: linear-gradient(to bottom, #00d4ff, #00a3ff);
+    color: white;
+    padding: 15px;
+    font-size: 18px;
+    margin: 10px 0;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 8px;
+}
+
 button {
    border: none;
    border-radius: 8px;
