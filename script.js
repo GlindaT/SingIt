@@ -3681,6 +3681,11 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   }
 }
 
+// OJO!!!!!!may 28
+let rastroMic1 = [];
+let rastroMic2 = [];
+const MAX_PUNTOS_MONITOR = 150;
+
 // CORRECCIÓN REUTILIZACIÓN DE MEMORIA: Declaramos los buffers fuera del loop
 const staticBufferMic1 = new Float32Array(2048);
 const staticBufferMic2 = new Float32Array(2048);
@@ -4295,100 +4300,75 @@ function inicializarEscenarioDesdeMemoria() {
 }
 
 // ====================================================================
-// RENDERIZADO DEL MONITOR DE KARAOKE UNIFICADO (SOPORTE MIC 1 Y MIC 2)
+// MONITOR ULTRA-OPTIMIZADO (PINTADO ULTRA-RÁPIDO A 60 FPS)
 // ====================================================================
-let historialVocesUnificado = { mic1: [], mic2: [] };
-const MAX_PUNTOS_MONITOR = 180; // Largo del rastro dentro del monitor
-
-function drawKaraokeMonitor() {
+function drawKaraokeMonitor(ignoredZero, currentPitch) {
     const canvas = document.getElementById("karaokeCanvas");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const sampleRate = 48000;
 
-    // Asegurar que el canvas mantenga su resolución interna alineada con el CSS
-    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+    // Ajuste rápido de resolución sin recalcular CSS bultoso
+    if (canvas.width !== canvas.clientWidth) {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
     }
 
-    // 1. EXTRAER EL PITCH ACTUAL DE AMBOS MICRÓFONOS EN TIEMPO REAL
-    let pitch1 = -1;
-    let pitch2 = -1;
+    // 1. CAPTURAR EL PITCH DE FORMA DIRECTA Y SEGURA
+    let pitch1 = (currentPitch > 60 && currentPitch < 600) ? currentPitch : null;
+    let pitch2 = null;
 
-    if (karaokeDuoAnalyser1) {
-        const buf1 = new Float32Array(2048);
-        karaokeDuoAnalyser1.getFloatTimeDomainData(buf1);
-        pitch1 = autoCorrelate(buf1, sampleRate); // Tu función matemática nativa
-    }
-    if (karaokeDuoAnalyser2) {
-        const buf2 = new Float32Array(2048);
-        karaokeDuoAnalyser2.getFloatTimeDomainData(buf2);
-        pitch2 = autoCorrelate(buf2, sampleRate);
+    // Capturar el pitch del Mic 2 solo si tu sistema ya lo calculó en otra variable global
+    // (Si se queda en el piso, mapeamos el valor base de forma segura)
+    if (window.lastTrackedPitchMic2 && window.lastTrackedPitchMic2 > 60) {
+        pitch2 = window.lastTrackedPitchMic2;
     }
 
-    // 2. LIMPIAR EL LIENZO CON EL FONDO OSCURO ORIGINAL
+    // Convertir Frecuencia a posición Y en píxeles
+    let y1 = pitch1 ? canvas.height - ((pitch1 - 60) / (540)) * canvas.height : null;
+    let y2 = pitch2 ? canvas.height - ((pitch2 - 60) / (540)) * canvas.height : null;
+
+    // 2. ACTUALIZAR HISTORIALES (Evita que la línea se quede pegada en el piso)
+    rastroMic1.push(y1);
+    if (rastroMic1.length > MAX_PUNTOS_MONITOR) rastroMic1.shift();
+
+    rastroMic2.push(y2);
+    if (rastroMic2.length > MAX_PUNTOS_MONITOR) rastroMic2.shift();
+
+    // 3. LIMPIEZA RÁPIDA DEL LIENZO
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Línea guía central (C4 / Do Central de referencia)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height / 2);
-    ctx.lineTo(canvas.width, canvas.height / 2);
-    ctx.stroke();
+    // 4. RENDERIZAR MICRÓFONO 1 (Onda Amarilla - Renderizado nativo veloz)
+    dibujarLineaRastro(ctx, canvas, rastroMic1, "#facc15");
 
-    // 3. PROCESAR HISTORIAL Y DIBUJAR MICRÓFONO 1 (Color Amarillo Neón)
-    actualizarYDibujarRastro(ctx, canvas, pitch1, historialVocesUnificado.mic1, "#facc15");
-
-    // 4. PROCESAR HISTORIAL Y DIBUJAR MICRÓFONO 2 (Color Cian Neón)
-    actualizarYDibujarRastro(ctx, canvas, pitch2, historialVocesUnificado.mic2, "#06b6d4");
-
-    // 5. MANTENER EL CICLO VIVO A 60 FPS MIENTRAS SE GRABE
-    if (window.state && window.state.isRecording || (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording")) {
-        requestAnimationFrame(drawKaraokeMonitor);
-    }
+    // 5. RENDERIZAR MICRÓFONO 2 (Onda Cian - Renderizado nativo veloz)
+    dibujarLineaRastro(ctx, canvas, rastroMic2, "#06b6d4");
 }
 
-// Función auxiliar interna para mapear y trazar las líneas de cada micrófono
-function actualizarYDibujarRastro(ctx, canvas, pitch, historial, colorHex) {
-    // Mapear la frecuencia (Rango vocal de 60Hz a 600Hz) al eje Y del Canvas
-    let coordenadaY = null;
-    if (pitch > 60 && pitch < 600) {
-        coordenadaY = canvas.height - ((pitch - 60) / (600 - 60)) * canvas.height;
-    }
-
-    // Guardar el punto en la cola del historial
-    historial.push(coordenadaY);
-    if (historial.length > MAX_PUNTOS_MONITOR) historial.shift();
-
-    // Estilo de la línea con efecto de brillo "Glow"
+// Dibujo optimizado por hardware (Sin sombras pesadas de CSS)
+function dibujarLineaRastro(ctx, canvas, historial, colorHex) {
     ctx.strokeStyle = colorHex;
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = colorHex;
 
     ctx.beginPath();
-    let esPrimerPunto = true;
+    let prim = true;
     const avanceX = canvas.width / MAX_PUNTOS_MONITOR;
 
     for (let i = 0; i < historial.length; i++) {
         const x = i * avanceX;
         const y = historial[i];
 
-        if (y !== null) {
-            if (esPrimerPunto) {
+        if (y !== null && y !== undefined) {
+            if (prim) {
                 ctx.moveTo(x, y);
-                esPrimerPunto = false;
+                prim = false;
             } else {
                 ctx.lineTo(x, y);
             }
         } else {
-            esPrimerPunto = true; // Rompe la línea si hay un silencio
+            prim = true; // Rompe la línea de forma limpia si el usuario no habla
         }
     }
     ctx.stroke();
-    ctx.shadowBlur = 0; // Apagar sombras
 }
