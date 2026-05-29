@@ -3681,10 +3681,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   }
 }
 
-// OJO!!!!!!may 28
-let rastroMic1 = [];
-let rastroMic2 = [];
-const MAX_PUNTOS_MONITOR = 150;
 
 // CORRECCIÓN REUTILIZACIÓN DE MEMORIA: Declaramos los buffers fuera del loop
 const staticBufferMic1 = new Float32Array(2048);
