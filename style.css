@@ -529,39 +529,6 @@ audio {
 /* ==========================================
    ESTUDIO
 ========================================== */
-/* related resource: style.css:126:1 */
-button { /* the element was button#toggleAutoScrollBtn */
-  padding: 2px 6px;
-  font-size: 12px;
-}
-
-/* related resource: style.css:1225:1 */
-.card div { /* the element was .studio-controls */
-  gap: 5px;
-}
-
-/* related resource: style.css:126:1 */
-button { /* the element was button#startTapSyncBtn */
-  padding: 4px 8px;
-  font-size: 13px;
-}
-
-/* related resource: style.css:126:1 */
-button { /* the element was button#cancelTapSyncBtn */
-  padding: 4px 8px;
-  font-size: 13px;
-}
-
-/* related resource: style.css:1225:1 */
-.card p { /* the element was p */
-  font-size: 48px;
-  color: rgb(255, 255, 255);
-  font-family: "Dancing Script", "cursive", "Apple Chancery", "Segoe Script", "Comic Sans MS";
-  text-shadow: rgba(255, 255, 255, 0.5) 0px 0px 10px;
-  transform-origin: center center;
-  cursor: pointer;
-  user-select: none;
-}
 
 .studio-controls {
   display: flex;
@@ -625,6 +592,22 @@ input[type="text"] {
 .karaoke-placeholder {
   color: var(--text-muted);
   margin: 0;
+}
+#tapCurrentLine {
+    font-size: 24px !important;
+    font-family: Arial, sans-serif !important;
+    color: #FF4500 !important; /* Orange-Red */
+    text-shadow: 0 0 10px #FF4500 !important; /* Pop effect */
+    letter-spacing: 1px !important;
+    font-weight: bold !important;
+    text-transform: none !important;
+}
+
+/* Tap effect for the current line */
+#tapCurrentLine:active {
+    color: #ff4500 !important;
+    text-shadow: 0 0 20px #ff4500 !important;
+    transform: scale(0.98) !important;
 }
 
 .karaoke-line {
