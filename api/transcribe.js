@@ -36,7 +36,9 @@ export default async function handler(req, res) {
     formData.append("model", "whisper-1");
     formData.append("language", "es");
     formData.append("response_format", "verbose_json");
-    formData.append("timestamp_granularities[]", "segment");
+    
+    // Cambiado de "segment" a "word" para obtener marcas de tiempo por palabra individual
+    formData.append("timestamp_granularities[]", "word"); 
 
     const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
@@ -57,7 +59,12 @@ export default async function handler(req, res) {
     }
 
     const data = JSON.parse(responseText);
-    return res.status(200).json(data);
+    
+    // Retornamos una respuesta estructurada ideal para tu frontend
+    return res.status(200).json({
+      text: data.text,      // El texto corrido para tu textarea de edición
+      words: data.words    // El array con los tiempos por palabra para la automatización
+    });
 
   } catch (error) {
     console.error("Error del servidor:", error);
