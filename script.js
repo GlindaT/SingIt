@@ -1243,7 +1243,7 @@ async function transcribeSelectedVoice() {
     cargarLetrasEnMonitor();
 
     if (lyricsText) {
-      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+      lyricsText.value = baseTranscriptionSegments.map(w => w.text).join(" ");
     }
 
     // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
