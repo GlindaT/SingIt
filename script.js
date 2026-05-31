@@ -4253,6 +4253,12 @@ async function loadKaraokeLibraryTable() {
       const tr = document.createElement("tr");
       tr.style.cssText = "border-bottom: 1px solid var(--border); transition: background 0.2s ease;";
 
+      // 1. Celda de Número
+      const numberCell = document.createElement("td");
+      numberCell.style.cssText = "padding: 12px; color: var(--text-muted);";
+      numberCell.textContent = song.number;
+
+      // 2. Celda de Título
       const titleCell = document.createElement("td");
       titleCell.style.cssText = "padding: 12px; cursor: pointer; color: var(--accent);";
       titleCell.textContent = song.title;
@@ -4264,6 +4270,7 @@ async function loadKaraokeLibraryTable() {
         }
       });
 
+      // 3. Celda de Artista
       const artistCell = document.createElement("td");
       artistCell.style.cssText = "padding: 12px; cursor: pointer;";
       artistCell.textContent = song.artist;
@@ -4275,19 +4282,24 @@ async function loadKaraokeLibraryTable() {
         }
       });
 
-      tr.innerHTML = `
-        <td style="padding: 12px; color: var(--text-muted);">${song.number}</td>
-      `;
+      // 4. Celda de Origen
+      const sourceCell = document.createElement("td");
+      sourceCell.style.cssText = "padding: 12px; font-size: 13px; color: var(--text-muted);";
+      sourceCell.textContent = song.source;
+
+      // 5. Celda de Acciones (Eliminar)
+      const actionCell = document.createElement("td");
+      actionCell.style.cssText = "padding: 12px; text-align: center;";
+      if (song.type === "user") {
+        actionCell.innerHTML = `<button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>`;
+      }
+
+      // Añadir todas las celdas en orden sin romper el DOM
+      tr.appendChild(numberCell);
       tr.appendChild(titleCell);
       tr.appendChild(artistCell);
-      tr.innerHTML += `
-        <td style="padding: 12px; font-size: 13px; color: var(--text-muted);">${song.source}</td>
-        <td style="padding: 12px; text-align: center;">
-          ${song.type === "user" ? `
-            <button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>
-          ` : ''}
-        </td>
-      `;
+      tr.appendChild(sourceCell);
+      tr.appendChild(actionCell);
 
       tbody.appendChild(tr);
     });
