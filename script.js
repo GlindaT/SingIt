@@ -1217,14 +1217,15 @@ async function transcribeSelectedVoice() {
 
         if (esFantasma) return;
 
-        // Estructuramos la palabra con el offset de tiempo acumulado del chunk
+        // Estructuramos la palabra con el offset conservando tanto text como word
+        // para garantizar compatibilidad total con tus funciones nativas
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
-          text: wordText
+          text: wordText, // 👈 ¡ESTA ES LA CLAVE QUE LE FALTABA A TU SELECTOR!
+          word: wordText  // Mantenemos esta para tu alineador de Taps Automático
         };
 
-        // Guardamos tanto en los segmentos de procesamiento como en el backup de sincronización
         fullSegments.push(wordWithOffset);
         datosPalabrasOriginales.push({
           word: wordText,
@@ -1232,7 +1233,6 @@ async function transcribeSelectedVoice() {
           end: wordWithOffset.end
         });
       });
-    }
 
     baseTranscriptionSegments = fullSegments;
     
