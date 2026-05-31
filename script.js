@@ -4307,6 +4307,9 @@ async function loadKaraokeLibraryTable() {
     console.log(`✅ Tabla de biblioteca de karaoke cargada: ${allSongs.length} canciones`);
   } catch (error) {
     console.error("Error cargando tabla de karaoke:", error);
+    console.error("Error cargando canción:", error);
+    alert("❌ Error al cargar la canción");
+    
     tbody.innerHTML = `
       <tr>
         <td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">
@@ -4315,8 +4318,6 @@ async function loadKaraokeLibraryTable() {
       </tr>
     `;
   }
-  console.error("Error cargando canción:", error);
-    alert("❌ Error al cargar la canción");
 }
 
 function blobToBase64Full(blob) {
