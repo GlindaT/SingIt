@@ -1139,6 +1139,10 @@ async function loadSelectedVoiceFromLibrary() {
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (CORREGIDA)
 // ==========================================
+
+//Variable global
+let datosPalabrasOriginales = [];
+
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
@@ -1163,6 +1167,7 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
+    datosPalabrasOriginales = []; // Reiniciamos el almacenamiento global automatizado
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
@@ -1200,28 +1205,38 @@ async function transcribeSelectedVoice() {
 
       const timeOffset = start / sampleRate;
 
-      (result.segments || []).forEach((seg) => {
-        const segText = (seg?.text || "").trim();
+      // 💡 CAMBIO CLAVE: Procesamos result.words en lugar de result.segments
+      (result.words || []).forEach((w) => {
+        const wordText = (w?.word || "").trim();
 
-        if (!segText) return;
+        if (!wordText) return;
 
         const esFantasma = palabrasProhibidas.some((palabra) =>
-          segText.toLowerCase().includes(palabra.toLowerCase())
+          wordText.toLowerCase().includes(palabra.toLowerCase())
         );
 
         if (esFantasma) return;
 
-        const segmentWithOffset = {
-          start: Number(seg.start || 0) + timeOffset,
-          end: Number(seg.end || 0) + timeOffset,
-          text: segText
+        // Estructuramos la palabra con el offset de tiempo acumulado del chunk
+        const wordWithOffset = {
+          start: Number(w.start || 0) + timeOffset,
+          end: Number(w.end || 0) + timeOffset,
+          text: wordText
         };
 
-        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+        // Guardamos tanto en los segmentos de procesamiento como en el backup de sincronización
+        fullSegments.push(wordWithOffset);
+        datosPalabrasOriginales.push({
+          word: wordText,
+          start: wordWithOffset.start,
+          end: wordWithOffset.end
+        });
       });
     }
 
     baseTranscriptionSegments = fullSegments;
+    
+    // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
     renderKaraokeLyrics(transcriptionSegments);
@@ -1238,35 +1253,26 @@ async function transcribeSelectedVoice() {
       
       const bpmPorDefecto = 120;
       const gapPorDefecto = 0;
-      const duracionUnBeat = 60 / (bpmPorDefecto * 4); // Resolución x4 para evitar que se corra el tiempo
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4); 
 
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
       let lineasCuerpo = [];
 
-      // Mapeamos los segmentos nativos de Whisper a líneas de tiempo estructuradas de UltraStar
       baseTranscriptionSegments.forEach((seg, index) => {
-        // Convertimos segundos absolutos a Beats de la rejilla matemática musical
         const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
         const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
         const lengthBeats = endBeat - startBeat;
-        
-        // Pitch por defecto en 0 (Equivale a C4/Do Central) hasta que el usuario use los Taps o cante
         const pitchBase = 0; 
-        
-        // Asegurar que el texto conserve un espacio si no es una sílaba unida
         const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
 
         lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
 
-        // Insertar un corte de línea reglamentario (-) si detectamos pausas naturales o signos de puntuación
         if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
           lineasCuerpo.push("-");
         }
       });
 
-      // Añadimos el cierre obligatorio del archivo "E"
       lineasCuerpo.push("E");
-
       const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
 
       await addLibraryItem({
@@ -2367,6 +2373,121 @@ async function mixKaraoke() {
   }
 }
 
+// Tap automático
+
+async function sincronizarTapsAutomatico() {
+  const lyricsText = $("lyricsText");
+  if (!lyricsText) return;
+
+  const textoEditado = lyricsText.value.trim();
+
+  if (!datosPalabrasOriginales || datosPalabrasOriginales.length === 0) {
+    alert("⚠️ No hay datos de transcripción guardados. Primero debes transcribir la voz.");
+    return;
+  }
+
+  if (!textoEditado) {
+    alert("⚠️ El cuadro de texto está vacío. Escribe o carga una letra primero.");
+    return;
+  }
+
+  // 1. Separar el texto editado por palabras limpiando saltos de línea y espacios extras
+  const palabrasEditadas = textoEditado.replace(/\n/g, " ").split(/\s+/).filter(w => w.length > 0);
+  
+  let nuevosSegmentosBase = [];
+  let indiceOriginal = 0;
+
+  const limpiarStr = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
+
+  // 2. Algoritmo de alineación: Empareja el texto editado con los tiempos de Whisper
+  palabrasEditadas.forEach((palabraEditada) => {
+    let infoTiempo = datosPalabrasOriginales[indiceOriginal];
+
+    // Si el usuario modificó la palabra, busca una coincidencia cercana en las siguientes 4 posiciones
+    if (infoTiempo && limpiarStr(palabraEditada) !== limpiarStr(infoTiempo.word)) {
+      const rangoBusqueda = datosPalabrasOriginales.slice(indiceOriginal, indiceOriginal + 4);
+      const coincidencia = rangoBusqueda.findIndex(w => limpiarStr(w.word) === limpiarStr(palabraEditada));
+      
+      if (coincidencia !== -1) {
+        indiceOriginal += coincidencia;
+        infoTiempo = datosPalabrasOriginales[indiceOriginal];
+      }
+    }
+
+    if (infoTiempo) {
+      // Si hay coincidencia, conserva el tiempo original de Whisper pero usa el nuevo texto del usuario
+      nuevosSegmentosBase.push({
+        start: infoTiempo.start,
+        end: infoTiempo.end,
+        text: palabraEditada
+      });
+      indiceOriginal++;
+    } else {
+      // Si el usuario agregó una palabra completamente nueva, calcula un estimado de tiempo
+      const ultimo = nuevosSegmentosBase[nuevosSegmentosBase.length - 1];
+      const tiempoBase = ultimo ? ultimo.end : 0;
+      nuevosSegmentosBase.push({
+        start: tiempoBase,
+        end: tiempoBase + 0.4,
+        text: palabraEditada
+      });
+    }
+  });
+
+  // 3. Actualizar variables de control nativas de tu aplicación
+  baseTranscriptionSegments = nuevosSegmentosBase;
+  
+  // Dividimos de nuevo en líneas para el formato de pantalla de tu karaoke (ej. 6 palabras por línea)
+  transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+  // 4. Refrescar los monitores y renderizadores con la letra corregida y sincronizada
+  renderKaraokeLyrics(transcriptionSegments);
+  cargarLetrasEnMonitor();
+
+  // 5. --- REGENERAR Y ACTUALIZAR AUTOMÁTICAMENTE EL ULTRASTAR TXT ---
+  try {
+    const vozOriginal = await getLibraryItemById(selectedVoiceId); 
+    const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
+    
+    const bpmPorDefecto = 120;
+    const gapPorDefecto = 0;
+    const duracionUnBeat = 60 / (bpmPorDefecto * 4); 
+
+    const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Sincronizado\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
+    let lineasCuerpo = [];
+
+    baseTranscriptionSegments.forEach((seg) => {
+      const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
+      const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
+      const lengthBeats = endBeat - startBeat;
+      const pitchBase = 0; 
+      const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
+
+      lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
+    });
+
+    lineasCuerpo.push("E");
+    const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
+
+    // Buscamos si ya existe el archivo en la biblioteca para actualizarlo o crearlo
+    await addLibraryItem({
+      name: `UltraStar - ${nombreBase} (Sincronizado)`,
+      type: "ultrastar_txt", 
+      audioBlob: null,       
+      textoPlano: contenidoFinalTxt, 
+      date: new Date().toLocaleString("es-ES"),
+      transcription: baseTranscriptionSegments 
+    });
+
+    console.log("✅ ¡Estructura UltraStar TXT regenerada automáticamente!");
+    await renderLibrary("ultrastar_txt");
+    alert("✨ ¡Taps automatizados! La letra se ha sincronizado perfectamente con el audio.");
+
+  } catch (err) {
+    console.error("❌ Error al regenerar estructura UltraStar:", err);
+  }
+}
+
 function exportStereoWav(buffer) {
   const numOfChan = buffer.numberOfChannels;
   const length = buffer.length * numOfChan * 2 + 44;
@@ -3268,6 +3389,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Eventos interactivos de sincronización con Taps manuales
     safeAdd("startTapSyncBtn", "click", startTapSync);
+    safeAdd("btnSincronizarAuto", "click", sincronizarTapsAutomatico);
     safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
     safeAdd("tapBeatBtn", "click", recordTap);
     safeAdd("applyTapSyncBtn", "click", applyTapSync);
