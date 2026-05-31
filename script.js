@@ -4201,7 +4201,7 @@ async function loadKaraokeLibraryTable() {
   if (!tbody) return;
 
   tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td></tr>`;
-  
+
   try {
     // Load both catalog songs and user karaoke songs
     const response = await fetch("./karaoke-catalog/catalog.json");
@@ -4305,11 +4305,9 @@ async function loadKaraokeLibraryTable() {
     });
 
     console.log(`✅ Tabla de biblioteca de karaoke cargada: ${allSongs.length} canciones`);
+
   } catch (error) {
     console.error("Error cargando tabla de karaoke:", error);
-    console.error("Error cargando canción:", error);
-    alert("❌ Error al cargar la canción");
-    
     tbody.innerHTML = `
       <tr>
         <td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">
@@ -4317,6 +4315,12 @@ async function loadKaraokeLibraryTable() {
         </td>
       </tr>
     `;
+  }
+}
+    
+  } catch (error) {
+    console.error("Error cargando canción:", error);
+    alert("❌ Error al cargar la canción");
   }
 }
 
@@ -4448,3 +4452,4 @@ function inicializarEscenarioDesdeMemoria() {
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
 }
+

@@ -1,6 +1,7 @@
 export default async function handler(req, res) {
   // 💡 1. Configurar cabeceras CORS obligatorias al inicio
-  res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
+  const origin = req.headers.origin || req.headers.referer?.split('/').slice(0, 3).join('/') || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
