@@ -793,8 +793,10 @@ async function renderLibrary(filter = 'todos') {
   // SOLUCIÓN 1: ILUMINAR LA CARPETA SELECCIONADA
   // ==========================================
   document.querySelectorAll(".folder-btn").forEach(btn => {
-    // Comprobamos si el evento onclick incluye el tipo de filtro actual
-    if (btn.getAttribute("onclick").includes(`'${filter}'`)) {
+    // 💡 LEER DESDE EL DATASET: Es mucho más seguro y rápido para el navegador
+    const folderType = btn.dataset.folder || btn.getAttribute("data-folder");
+    
+    if (folderType === filter) {
       btn.classList.add("active"); // Ilumina la carpeta actual
     } else {
       btn.classList.remove("active"); // Apaga las carpetas inactivas
