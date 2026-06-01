@@ -36,9 +36,11 @@ export default async function handler(req, res) {
     formData.append("model", "whisper-1");
     formData.append("language", "es");
     formData.append("response_format", "verbose_json");
-    formData.append("timestamp_granularities", "word"); // Formato óptimo para servidores Vercel
+    
+    // Cambiado de "segment" a "word" para obtener marcas de tiempo por palabra individual
+    formData.append("timestamp_granularities[]", "word"); 
 
-    const openAIResponse = await fetch("https://openai.com", {
+    const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
@@ -48,20 +50,20 @@ export default async function handler(req, res) {
 
     const responseText = await openAIResponse.text();
 
-    // 💡 BLINDAJE CONTRA EL ERROR 403 (Evita que el HTML rompa el JSON.parse)
     if (!openAIResponse.ok) {
-      console.error("Error de OpenAI recibido de forma cruda:", responseText);
+      console.error("Error de OpenAI:", responseText);
       return res.status(openAIResponse.status).json({
-        error: "Error en la API de OpenAI",
-        detail: "Verifica que tu API Key sea correcta y que tu cuenta tenga fondos o saldo disponible en ://openai.com."
+        error: "Error al transcribir en OpenAI",
+        detail: responseText
       });
     }
 
     const data = JSON.parse(responseText);
     
+    // Retornamos una respuesta estructurada ideal para tu frontend
     return res.status(200).json({
-      text: data.text,
-      words: data.words || []
+      text: data.text,      // El texto corrido para tu textarea de edición
+      words: data.words    // El array con los tiempos por palabra para la automatización
     });
 
   } catch (error) {
