@@ -31,41 +31,32 @@ export default async function handler(req, res) {
 
     // Crear archivo compatible para enviar a OpenAI
     const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
+    // Dentro de tu api/transcribe.js, cuando preparas los datos para OpenAI:
     const formData = new FormData();
-    formData.append("file", audioBlob, "chunk.wav");
+    formData.append("file", archivoAudioVoz); // Tu archivo de voz aislado
     formData.append("model", "whisper-1");
-    formData.append("language", "es");
-    formData.append("response_format", "verbose_json");
-    
-    // CORRECCIÓN AQUÍ: Mandar el parámetro limpio sin los corchetes en la llave para Node.js
-    formData.append("timestamp_granularities", "word"); 
 
-    const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    // ¡IMPORTANTE! Añade estas dos líneas para activar la automatización:
+    formData.append("response_format", "verbose_json");
+    formData.append("timestamp_granularities[]", "word");
+
+    // Al hacer el fetch a OpenAI:
+    const openAiResponse = await fetch("https://openai.com", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: formData
     });
-
-    const responseText = await openAIResponse.text();
-
-    if (!openAIResponse.ok) {
-      console.error("Error de OpenAI:", responseText);
-      return res.status(openAIResponse.status).json({
-        error: "Error al transcribir en OpenAI",
-        detail: responseText
-      });
-    }
-
-    const data = JSON.parse(responseText);
     
-    // Retornamos una respuesta estructurada ideal para tu frontend
-    return res.status(200).json({
-      text: data.text,      // El texto corrido para tu textarea de edición
-      words: data.words    // El array con los tiempos por palabra para la automatización
-    });
+    const data = await openAiResponse.json();
 
+    // Ahora debes retornar al frontend tanto el texto como el array de palabras estructurado
+    return res.status(200).json({
+      text: data.text,
+      words: data.words // <--- Esto le dará los milisegundos automáticos a tu frontend
+      });
+  
   } catch (error) {
     console.error("Error del servidor:", error);
     return res.status(500).json({
