@@ -874,7 +874,7 @@ async function renderLibrary(filter = 'todos') {
         
         if (item && item.textoPlano) {
           // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
+          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
           
           if (monitor) {
             monitor.value = item.textoPlano;
@@ -1199,7 +1199,7 @@ async function transcribeSelectedVoice() {
       datosPalabrasOriginales = resultado.words; 
       
       // Pintas el texto en el editor para que el usuario lo revise
-      document.getElementById("miniMonitorTextArea").value = resultado.text;
+      document.getElementById("lyricsText").value = resultado.text;
       
       const palabrasProhibidas = [
         "Amara",
@@ -1248,19 +1248,18 @@ async function transcribeSelectedVoice() {
       renderKaraokeLyrics(transcriptionSegments);
       cargarLetrasEnMonitor();
       
-      if (lyricsText) {
-        lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+      // 💡 CORRECCIÓN DIRECTA: Mapeamos las palabras directas para que el Textarea nunca quede vacío
+      if (lyricsText && baseTranscriptionSegments.length > 0) {
+        lyricsText.value = baseTranscriptionSegments.map(w => w.text.trim()).join(" ");
       }
       
       // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
-      
       try {
         const vozOriginal = await getLibraryItemById(selectedVoiceId); 
         const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
         const bpmPorDefecto = 120;
         const gapPorDefecto = 0;
-        const duracionUnBeat = 60 / (bpmPorDefecto * 4); 
-        
+        const duracionUnBeat = 60 / (bpmPorDefecto * 4);
         const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
         let lineasCuerpo = [];
         
