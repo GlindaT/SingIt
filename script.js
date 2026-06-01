@@ -2445,61 +2445,6 @@ async function sincronizarTapsAutomatico() {
   }
 }
 
-function sincronizarLetraAutomatica(textoEditadoUsuario) {
-  if (!datosPalabrasOriginales || datosPalabrasOriginales.length === 0) {
-    alert("⚠️ Primero debes transcribir una pista de voz.");
-    return null;
-  }
-
-  // Separar el texto editado por palabras limpiando espacios y saltos de línea
-  const palabrasEditadas = textoEditadoUsuario
-    .trim()
-    .replace(/\n/g, " ")
-    .split(/\s+/);
-
-  const palabrasSincronizadas Final = [];
-  let indiceOriginal = 0;
-
-  // Recorremos las palabras editadas e intentamos emparejarlas con los tiempos de Whisper
-  palabrasEditadas.forEach((palabraEditada) => {
-    // Limpiamos signos de puntuación para comparar el texto real
-    const limpiar = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
-    
-    let infoTiempo = datosPalabrasOriginales[indiceOriginal];
-
-    // Si por la edición el usuario agregó o cambió una palabra, buscamos una coincidencia cercana
-    if (infoTiempo && limpiar(palabraEditada) !== limpiar(infoTiempo.word)) {
-      const busquedaCercana = datosPalabrasOriginales.slice(indiceOriginal, indiceOriginal + 3)
-        .findIndex(w => limpiar(w.word) === limpiar(palabraEditada));
-      
-      if (busquedaCercana !== -1) {
-        indiceOriginal += busquedaCercana;
-        infoTiempo = datosPalabrasOriginales[indiceOriginal];
-      }
-    }
-
-    // Si encontramos el tiempo asignamos start y end, si no, aproximamos con el tiempo anterior
-    if (infoTiempo) {
-      palabrasSincronizadasFinal.push({
-        word: palabraEditada,
-        start: infoTiempo.start,
-        end: infoTiempo.end
-      });
-      indiceOriginal++;
-    } else {
-      // Caso de respaldo si el usuario escribió texto extra que Whisper nunca escuchó
-      const ultimoTiempo = palabrasSincronizadasFinal[palabrasSincronizadasFinal.length - 1];
-      const tiempoBase = ultimoTiempo ? ultimoTiempo.end : 0;
-      palabrasSincronizadasFinal.push({
-        word: palabraEditada,
-        start: tiempoBase,
-        end: tiempoBase + 0.5 // Le asignamos medio segundo por defecto
-      });
-    }
-  });
-
-  return palabrasSincronizadasFinal;
-}
 
 async function guardarCancionEnBiblioteca() {
   const textoDelEditor = document.getElementById("tuTextareaDeEdicion").value;
