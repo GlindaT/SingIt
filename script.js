@@ -1153,9 +1153,7 @@ async function transcribeSelectedVoice() {
   const lyricsText = $("lyricsText");
   
   try {
-    if (status) {
-      status.textContent = "Estado: Preparando audio (cortando en porciones)...";
-    }
+    if (status) status.textContent = "Estado: Preparando audio (cortando en porciones)...";
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
@@ -1167,16 +1165,14 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
-    datosPalabrasOriginales = []; // Reiniciamos el almacenamiento global automatizado
+    datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
       const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
       const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
 
-      if (status) {
-        status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
-      }
+      if (status) status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
 
       const wavBlob = audioBufferToWav(audioBuffer, start, end);
       const base64Audio = await blobToBase64(wavBlob);
@@ -1193,31 +1189,16 @@ async function transcribeSelectedVoice() {
       }
 
       const result = await response.json();
-
-      const palabrasProhibidas = [
-        "Amara",
-        "Subtítulos",
-        "subtítulos",
-        "Almorzo",
-        "Suscribete",
-        "comunidad"
-      ];
-
+      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
       const timeOffset = start / sampleRate;
 
-      // Procesamos result.words que viene desde tu nueva API modificada
       (result.words || []).forEach((w) => {
         const wordText = (w?.word || "").trim();
-        
         if (!wordText) return;
 
-        const esFantasma = palabrasProhibidas.some((palabra) =>
-          wordText.toLowerCase().includes(palabra.toLowerCase())
-        );
-        
+        const esFantasma = palabrasProhibidas.some(p => wordText.toLowerCase().includes(p.toLowerCase()));
         if (esFantasma) return;
 
-        // Estructura compatible tanto con Taps como con el formateador de líneas nativo
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
@@ -1226,35 +1207,27 @@ async function transcribeSelectedVoice() {
         };
 
         fullSegments.push(wordWithOffset);
-        datosPalabrasOriginales.push({
-          word: wordText,
-          start: wordWithOffset.start,
-          end: wordWithOffset.end
-        });
+        datosPalabrasOriginales.push({ ...wordWithOffset });
       });
-    } // Aquí cierra correctamente el bucle FOR de los fragmentos de audio
+    } // Aquí termina correctamente el ciclo FOR de porciones de audio
       
     baseTranscriptionSegments = fullSegments;
-    
-    // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
     
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
     
-    // Forzado de inyección al Textarea de edición para evitar bloqueos del navegador
-    if (lyricsText) {
+    // Inyección limpia y sin bloqueos al Textarea
+    if (lyricsText && baseTranscriptionSegments.length > 0) {
       lyricsText.value = ""; 
-      const textoCompletoTranscrito = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
-      
-      lyricsText.defaultValue = textoCompletoTranscrito; 
-      lyricsText.value = textoCompletoTranscrito;        
-      
+      const textoPlanoUnido = baseTranscriptionSegments.map(w => w.text).join(" ");
+      lyricsText.defaultValue = textoPlanoUnido;
+      lyricsText.value = textoPlanoUnido;
       lyricsText.dispatchEvent(new Event('input', { bubbles: true }));
-      console.log("✅ Letra inyectada con éxito. Total palabras:", baseTranscriptionSegments.length);
+      console.log("✅ Letra cargada en Textarea. Total palabras:", baseTranscriptionSegments.length);
     }
     
-    // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
+    // --- GENERACIÓN DEL ARCHIVO ULTRASTAR TXT ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
@@ -1265,18 +1238,13 @@ async function transcribeSelectedVoice() {
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
       let lineasCuerpo = [];
       
-      baseTranscriptionSegments.forEach((seg, index) => {
+      baseTranscriptionSegments.forEach((seg) => {
         const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
         const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
         const lengthBeats = endBeat - startBeat;
         const pitchBase = 0; 
         const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
-
         lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
-
-        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
-          lineasCuerpo.push("-");
-        }
       });
 
       lineasCuerpo.push("E");
@@ -1290,76 +1258,21 @@ async function transcribeSelectedVoice() {
         date: new Date().toLocaleString("es-ES"),
         transcription: baseTranscriptionSegments 
       });
-
-      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
       await renderLibrary("ultrastar_txt");
 
     } catch (err) {
-      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
+      console.error("❌ Error UltraStar:", err);
     }
 
-    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
     if (selectedVoiceId) {
-      try {
-        await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments 
-        });
-        console.log("✅ Transcripción vinculada a la voz original");
-      } catch (err) {
-        console.error("❌ Error guardando transcripción en la voz:", err);
-      }
+      await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
     }
-    
-    if (status) {
-      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
-    }
+    if (status) status.textContent = "Estado: Transcripción completada ✅";
 
   } catch (error) {
     console.error(error);
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
-  }
-}
-
-async function guardarTextoUltraStarEnBiblioteca() {
-  try {
-    // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
-    const textoMonitor = document.getElementById("miniMonitorTextArea").textContent || document.getElementById("miniMonitorTextArea").innerText; 
-    
-    if (!textoMonitor.trim()) {
-      alert("⚠️ El monitor está vacío. No hay texto para guardar.");
-      return;
-    }
-
-    // 2. Extraer metadatos básicos para el nombre (puedes usar variables globales de tu app)
-    const tituloCancion = window.currentSongTitle || "Nueva Canción";
-    const artistaCancion = window.currentSongArtist || "Artista Desconocido";
-
-    // 3. Crear el objeto con el nuevo tipo especializado
-    const nuevoElemento = {
-      name: `UltraStar - ${tituloCancion} (${artistaCancion})`,
-      type: "ultrastar_txt", // <--- Este es el nuevo tipo de archivo para el filtro
-      audioBlob: null,       // No requiere audio directo
-      date: new Date().toLocaleString("es-ES"),
-      textoPlano: textoMonitor, // Guardamos el formato de texto plano estructurado
-      metadata: {
-        title: tituloCancion,
-        artist: artistaCancion,
-        generadoPor: "Whisper + Manual Tap"
-      }
-    };
-
-    // 4. Guardar en tu base de datos existente
-    await addLibraryItem(nuevoElemento);
-
-    // 5. Refrescar la vista actual de la biblioteca
-    await renderLibrary("ultrastar_txt");
-    
-    alert("✅ ¡Texto UltraStar guardado en la biblioteca con éxito!");
-
-  } catch (error) {
-    console.error("Error al guardar texto UltraStar:", error);
-    alert("❌ No se pudo guardar el archivo en la biblioteca.");
   }
 }
 
