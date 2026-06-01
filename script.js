@@ -1143,6 +1143,31 @@ async function loadSelectedVoiceFromLibrary() {
 //Variable global
 let datosPalabrasOriginales = [];
 
+async function transcribirAudioVoz(audioBase64) {
+  try {
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audioBase64 })
+    });
+
+    const resultado = await response.json();
+
+    if (resultado.error) throw new Error(resultado.error);
+
+    // Guardamos las palabras con sus milisegundos en la variable global
+    datosPalabrasOriginales = resultado.words; 
+
+    // Colocamos el texto en tu textarea o contenedor de edición actual
+    // (Reemplaza 'textareaLetra' por el ID real de tu HTML)
+    document.getElementById("textareaLetra").value = resultado.text;
+
+    console.log("¡Transcripción cargada con tiempos por palabra!");
+  } catch (error) {
+    console.error("Error al procesar transcripción:", error);
+  }
+}
+
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
@@ -2335,6 +2360,7 @@ async function sincronizarTapsAutomatico() {
 
   const textoEditado = lyricsText.value.trim();
 
+  // Validamos usando tu arreglo global nativo
   if (!datosPalabrasOriginales || datosPalabrasOriginales.length === 0) {
     alert("⚠️ No hay datos de transcripción guardados. Primero debes transcribir la voz.");
     return;
@@ -2345,7 +2371,7 @@ async function sincronizarTapsAutomatico() {
     return;
   }
 
-  // 1. Separar el texto editado por palabras limpiando saltos de línea y espacios extras
+  // 1. Separar el texto editado por palabras limpiando saltos de línea
   const palabrasEditadas = textoEditado.replace(/\n/g, " ").split(/\s+/).filter(w => w.length > 0);
   
   let nuevosSegmentosBase = [];
@@ -2353,14 +2379,14 @@ async function sincronizarTapsAutomatico() {
 
   const limpiarStr = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
 
-  // 2. Algoritmo de alineación: Empareja el texto editado con los tiempos de Whisper
+  // 2. Algoritmo de alineación: Empareja el texto editado con los tiempos originales
   palabrasEditadas.forEach((palabraEditada) => {
     let infoTiempo = datosPalabrasOriginales[indiceOriginal];
 
-    // Si el usuario modificó la palabra, busca una coincidencia cercana en las siguientes 4 posiciones
-    if (infoTiempo && limpiarStr(palabraEditada) !== limpiarStr(infoTiempo.word)) {
+    // Búsqueda de proximidad por si el usuario insertó o corrigió una palabra
+    if (infoTiempo && limpiarStr(palabraEditada) !== limpiarStr(infoTiempo.text)) {
       const rangoBusqueda = datosPalabrasOriginales.slice(indiceOriginal, indiceOriginal + 4);
-      const coincidencia = rangoBusqueda.findIndex(w => limpiarStr(w.word) === limpiarStr(palabraEditada));
+      const coincidencia = rangoBusqueda.findIndex(w => limpiarStr(w.text) === limpiarStr(palabraEditada));
       
       if (coincidencia !== -1) {
         indiceOriginal += coincidencia;
@@ -2368,37 +2394,37 @@ async function sincronizarTapsAutomatico() {
       }
     }
 
+    // RESPETO TOTAL A TU OBJETO: 'text' debe llevar el espacio antes para tu monitor
+    const textoConEspacio = ` ${palabraEditada.trim()}`;
+
     if (infoTiempo) {
-      // Si hay coincidencia, conserva el tiempo original de Whisper pero usa el nuevo texto del usuario
       nuevosSegmentosBase.push({
         start: infoTiempo.start,
         end: infoTiempo.end,
-        text: palabraEditada
+        text: textoConEspacio
       });
       indiceOriginal++;
     } else {
-      // Si el usuario agregó una palabra completamente nueva, calcula un estimado de tiempo
+      // Si es una palabra inventada/añadida, estimamos el tiempo usando el último nodo
       const ultimo = nuevosSegmentosBase[nuevosSegmentosBase.length - 1];
       const tiempoBase = ultimo ? ultimo.end : 0;
       nuevosSegmentosBase.push({
         start: tiempoBase,
         end: tiempoBase + 0.4,
-        text: palabraEditada
+        text: textoConEspacio
       });
     }
   });
 
-  // 3. Actualizar variables de control nativas de tu aplicación
+  // 3. Actualizar tus variables globales nativas sin alterar sus nombres
   baseTranscriptionSegments = nuevosSegmentosBase;
-  
-  // Dividimos de nuevo en líneas para el formato de pantalla de tu karaoke (ej. 6 palabras por línea)
   transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
-  // 4. Refrescar los monitores y renderizadores con la letra corregida y sincronizada
+  // 4. Invocar tus renderizadores existentes
   renderKaraokeLyrics(transcriptionSegments);
   cargarLetrasEnMonitor();
 
-  // 5. --- REGENERAR Y ACTUALIZAR AUTOMÁTICAMENTE EL ULTRASTAR TXT ---
+  // 5. --- REGENERAR EL ARCHIVO ULTRASTAR TXT CON TU FORMATO NATIVO ---
   try {
     const vozOriginal = await getLibraryItemById(selectedVoiceId); 
     const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
@@ -2414,16 +2440,14 @@ async function sincronizarTapsAutomatico() {
       const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
       const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
       const lengthBeats = endBeat - startBeat;
-      const pitchBase = 0; 
-      const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
-
-      lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
+      
+      // Mantiene el formato exacto de tu cuerpo de UltraStar
+      lineasCuerpo.push(`: ${startBeat} ${lengthBeats} 0${seg.text}`);
     });
 
     lineasCuerpo.push("E");
     const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
 
-    // Buscamos si ya existe el archivo en la biblioteca para actualizarlo o crearlo
     await addLibraryItem({
       name: `UltraStar - ${nombreBase} (Sincronizado)`,
       type: "ultrastar_txt", 
@@ -2433,12 +2457,11 @@ async function sincronizarTapsAutomatico() {
       transcription: baseTranscriptionSegments 
     });
 
-    console.log("✅ ¡Estructura UltraStar TXT regenerada automáticamente!");
     await renderLibrary("ultrastar_txt");
-    alert("✨ ¡Taps automatizados! La letra se ha sincronizado perfectamente con el audio.");
+    alert("✨ ¡Taps automatizados! Tu letra corregida ha heredado los tiempos perfectamente.");
 
   } catch (err) {
-    console.error("❌ Error al regenerar estructura UltraStar:", err);
+    console.error("❌ Error al actualizar UltraStar:", err);
   }
 }
 
