@@ -793,9 +793,12 @@ async function renderLibrary(filter = 'todos') {
   // SOLUCIÓN 1: ILUMINAR LA CARPETA SELECCIONADA
   // ==========================================
   document.querySelectorAll(".folder-btn").forEach(btn => {
-    // Comprobamos si el evento onclick incluye el tipo de filtro actual
-    if (btn.getAttribute("onclick").includes(`'${filter}'`)) {
-      btn.classList.add("active"); // Ilumina la carpeta actual
+    // Leemos el filtro guardado en el botón (ej: data-filter="ultrastar_txt")
+    const botonFiltro = btn.dataset.filter;
+    
+    // Comprobamos si coincide con el filtro que está activo en la app
+    if (botonFiltro === filter) {
+      btn.classList.add("active");    // Ilumina la carpeta actual
     } else {
       btn.classList.remove("active"); // Apaga las carpetas inactivas
     }
@@ -874,7 +877,7 @@ async function renderLibrary(filter = 'todos') {
         
         if (item && item.textoPlano) {
           // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
+          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
           
           if (monitor) {
             monitor.value = item.textoPlano;
@@ -1311,7 +1314,7 @@ async function transcribeSelectedVoice() {
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
     // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
-    const textoMonitor = document.getElementById("miniMonitorTextArea").textContent || document.getElementById("miniMonitorTextArea").innerText; 
+    const textoMonitor = document.getElementById("lyricsText").textContent || document.getElementById("lyricsText").innerText; 
     
     if (!textoMonitor.trim()) {
       alert("⚠️ El monitor está vacío. No hay texto para guardar.");
