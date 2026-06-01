@@ -1149,3 +1149,16 @@ audio:hover {
   opacity: 1; /* Se aclara solo cuando pasas el mouse por encima */
 }
 
+/* related resource: style.css:109:1 */
+#lyricsText { /* the element was textarea#lyricsText */
+  font-size: 16px;
+  font-family: Arial, sans-serif;
+  color: gold;
+}
+
+/* related resource: style.css:837:1 */
+[data-theme="neon"] button { /* the element was button#btnSincronizarAuto */
+  box-shadow: gold 0px 0px 15px 5px;
+  border-color: gold;
+  background-color: goldenrod;
+}
