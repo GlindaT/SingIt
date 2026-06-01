@@ -1169,7 +1169,9 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
-    let datosPalabrasOriginales = []; // Reiniciamos el almacenamiento global automatizado
+    
+    // 💡 CORRECCIÓN 1: Vaciamos la variable global real (SIN 'let') antes de empezar a acumular
+    datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
@@ -1183,11 +1185,10 @@ async function transcribeSelectedVoice() {
       const wavBlob = audioBufferToWav(audioBuffer, start, end);
       const base64Audio = await blobToBase64(wavBlob);
 
-      // En tu script.js (Frontend)
       const response = await fetch("/api/transcribe", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // Crucial para que Vercel entienda el JSON
-        body: JSON.stringify({ audioBase64: base64Audio }) // 👈 ¡Aquí pones tu variable de audio!
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioBase64: base64Audio })
       });
 
       if (!response.ok) {
@@ -1196,12 +1197,6 @@ async function transcribeSelectedVoice() {
       }
       
       const resultado = await response.json();
-      
-      // Guardas los tiempos en memoria para cuando el usuario edite y le dé a "Sincronizar"
-      datosPalabrasOriginales = resultado.words; 
-      
-      // Pintas el texto en el editor para que el usuario lo revise
-      document.getElementById("lyricsText").value = resultado.text;
       
       const palabrasProhibidas = [
         "Amara",
@@ -1214,7 +1209,6 @@ async function transcribeSelectedVoice() {
       
       const timeOffset = start / sampleRate;
       
-      // 💡 CAMBIO CLAVE: Procesamos result.words en lugar de result.segments
       (resultado.words || []).forEach((w) => {
         const wordText = (w?.word || "").trim();
 
@@ -1226,17 +1220,18 @@ async function transcribeSelectedVoice() {
 
         if (esFantasma) return;
 
-        // Estructuramos la palabra con el offset conservando tanto text como word
-        // para garantizar compatibilidad total con tus funciones nativas
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
-          text: wordText, // 👈 ¡ESTA ES LA CLAVE QUE LE FALTABA A TU SELECTOR!
-          word: wordText  // Mantenemos esta para tu alineador de Taps Automático
+          text: wordText,
+          word: wordText 
         };
 
         fullSegments.push(wordWithOffset);
+
+        // 💡 CORRECCIÓN 2: Acumulamos las palabras en la lista global con sus tiempos ajustados
         datosPalabrasOriginales.push({
+          text: wordText, // Añadido text para asegurar que el alineador lo encuentre
           word: wordText,
           start: wordWithOffset.start,
           end: wordWithOffset.end
@@ -1244,18 +1239,16 @@ async function transcribeSelectedVoice() {
       });
       
       baseTranscriptionSegments = fullSegments;
-      // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
       transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
       
       renderKaraokeLyrics(transcriptionSegments);
       cargarLetrasEnMonitor();
       
-      // 💡 CORRECCIÓN DIRECTA: Mapeamos las palabras directas para que el Textarea nunca quede vacío
       if (lyricsText && baseTranscriptionSegments.length > 0) {
         lyricsText.value = baseTranscriptionSegments.map(w => w.text.trim()).join(" ");
       }
       
-      // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
+      // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
       try {
         const vozOriginal = await getLibraryItemById(selectedVoiceId); 
         const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
