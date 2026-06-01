@@ -1202,22 +1202,23 @@ async function transcribeSelectedVoice() {
         "Suscribete",
         "comunidad"
       ];
-
+      
       const timeOffset = start / sampleRate;
-
+      
       // 💡 CAMBIO CLAVE: Procesamos result.words en lugar de result.segments
       (result.words || []).forEach((w) => {
+        
         const wordText = (w?.word || "").trim();
-
+        
         if (!wordText) return;
-
+        
         const esFantasma = palabrasProhibidas.some((palabra) =>
           wordText.toLowerCase().includes(palabra.toLowerCase())
         );
 
         if (esFantasma) return;
 
-        // Estructuramos la palabra con el offset de tiempo acumulado del chunk
+        // Estructuramos la palabra con el offset de tiempo acumulado del chunk de 25s
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
@@ -1226,24 +1227,24 @@ async function transcribeSelectedVoice() {
 
         // Guardamos tanto en los segmentos de procesamiento como en el backup de sincronización
         fullSegments.push(wordWithOffset);
+        
+        // Alimentamos nuestra variable global para los Taps Automáticos
         datosPalabrasOriginales.push({
           word: wordText,
           start: wordWithOffset.start,
           end: wordWithOffset.end
         });
       });
-    }
-
-    baseTranscriptionSegments = fullSegments;
-    
-    // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
-    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
-
-    if (lyricsText) {
-      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+      baseTranscriptionSegments = fullSegments;
+      // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
+      transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+      
+      renderKaraokeLyrics(transcriptionSegments);
+      cargarLetrasEnMonitor();
+      
+      if (lyricsText) {
+        lyricsText.value = baseTranscriptionSegments.map(w => w.text).join(" ");
+      }
     }
 
     // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
@@ -1313,6 +1314,7 @@ async function transcribeSelectedVoice() {
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
 }
+
 // ==========================================
 // FUNCIONES AUXILIARES AUDIO
 // ==========================================
