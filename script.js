@@ -876,17 +876,24 @@ async function renderLibrary(filter = 'todos') {
         const item = library.find(i => i.id === id);
         
         if (item && item.textoPlano) {
-          // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
+          // 🎯 CORRECCIÓN 1: Selector limpio directo al Textarea del Estudio
+          const monitor = document.getElementById("lyricsText");
           
           if (monitor) {
             monitor.value = item.textoPlano;
             
-            // Si el archivo UltraStar contiene los tiempos de los taps guardados en memoria, los reactivamos
+            // Si el archivo contiene los tiempos guardados, los reactivamos en memoria
             if (item.transcription) {
               baseTranscriptionSegments = item.transcription;
-              transcriptionSegments = item.transcription;
               
+              // 🎯 CORRECCIÓN 2: Agrupamos en líneas de 6 palabras antes de pasarlo al monitor
+              if (typeof splitSegmentsIntoKaraokeLines === "function") {
+                transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+              } else {
+                transcriptionSegments = baseTranscriptionSegments;
+              }
+              
+              // Lanzamos los renderizadores para actualizar la pantalla
               if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
               if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
             }
@@ -896,7 +903,7 @@ async function renderLibrary(filter = 'todos') {
             // Scroll suave automático directo al monitor de texto para empezar a trabajar
             monitor.scrollIntoView({ behavior: "smooth", block: "center" });
           } else {
-            alert("⚠️ No se encontró el contenedor visual del monitor en esta pantalla.");
+            alert("⚠️ No se encontró el cuadro de texto 'lyricsText' en esta pantalla.");
           }
         }
       });
@@ -1104,21 +1111,27 @@ async function loadSelectedVoiceFromLibrary() {
     status.textContent = `Estado: voz seleccionada -> ${item.name}`;
 
     if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+      
+      // Mapeamos los segmentos guardados en memoria
       baseTranscriptionSegments = item.transcription.map(seg =>
         buildWordTimingFromSegment(seg)
       );
 
-      // IMPORTANTE:
-      // aquí respetamos exactamente las líneas guardadas
-      transcriptionSegments = baseTranscriptionSegments;
+      // 💡 CORRECCIÓN 1: Agrupamos las palabras en renglones de 6 antes de pasarlo al monitor
+      if (typeof splitSegmentsIntoKaraokeLines === "function") {
+        transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+      } else {
+        transcriptionSegments = baseTranscriptionSegments;
+      }
 
       renderKaraokeLyrics(transcriptionSegments);
       cargarLetrasEnMonitor();
 
+      // 💡 CORRECCIÓN 2: Unimos las palabras con espacios (" ") para que el cuadro de texto sea legible y fácil de editar
       if (lyricsText) {
-        lyricsText.value = transcriptionSegments
-          .map(seg => seg.text || "")
-          .join("\n")
+        lyricsText.value = baseTranscriptionSegments
+          .map(seg => (seg.text || "").trim())
+          .join(" ")
           .trim();
       }
 
@@ -1166,6 +1179,9 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
+    
+    // 💡 CORRECCIÓN 1: Vaciamos y preparamos la lista global real para la Sincronización IA
+    datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
@@ -1203,24 +1219,36 @@ async function transcribeSelectedVoice() {
 
       const timeOffset = start / sampleRate;
 
-      (result.segments || []).forEach((seg) => {
-        const segText = (seg?.text || "").trim();
+      // 💡 CORRECCIÓN 2: Procesamos 'words' en lugar de 'segments' para tener precisión palabra por palabra
+      const listaPalabras = result.words || result.segments || [];
 
-        if (!segText) return;
+      listaPalabras.forEach((w) => {
+        const wordText = (w?.word || w?.text || "").trim();
+
+        if (!wordText) return;
 
         const esFantasma = palabrasProhibidas.some((palabra) =>
-          segText.toLowerCase().includes(palabra.toLowerCase())
+          wordText.toLowerCase().includes(palabra.toLowerCase())
         );
 
         if (esFantasma) return;
 
-        const segmentWithOffset = {
-          start: Number(seg.start || 0) + timeOffset,
-          end: Number(seg.end || 0) + timeOffset,
-          text: segText
+        const wordWithOffset = {
+          start: Number(w.start || 0) + timeOffset,
+          end: Number(w.end || 0) + timeOffset,
+          text: wordText,
+          word: wordText
         };
 
-        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+        fullSegments.push(buildWordTimingFromSegment(wordWithOffset));
+
+        // 💡 CORRECCIÓN 3: Alimentamos la lista global compartida para que "Sincronizar Automáticamente" funcione
+        datosPalabrasOriginales.push({
+          text: wordText,
+          word: wordText,
+          start: wordWithOffset.start,
+          end: wordWithOffset.end
+        });
       });
     }
 
@@ -1230,46 +1258,38 @@ async function transcribeSelectedVoice() {
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
 
-    if (lyricsText) {
-      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    // Mostramos las palabras separadas por espacio legible en el editor
+    if (lyricsText && baseTranscriptionSegments.length > 0) {
+      lyricsText.value = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
     }
 
-    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
+    // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
       
       const bpmPorDefecto = 120;
       const gapPorDefecto = 0;
-      const duracionUnBeat = 60 / (bpmPorDefecto * 4); // Resolución x4 para evitar que se corra el tiempo
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4);
 
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
       let lineasCuerpo = [];
 
-      // Mapeamos los segmentos nativos de Whisper a líneas de tiempo estructuradas de UltraStar
       baseTranscriptionSegments.forEach((seg, index) => {
-        // Convertimos segundos absolutos a Beats de la rejilla matemática musical
         const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
         const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
         const lengthBeats = endBeat - startBeat;
-        
-        // Pitch por defecto en 0 (Equivale a C4/Do Central) hasta que el usuario use los Taps o cante
         const pitchBase = 0; 
-        
-        // Asegurar que el texto conserve un espacio si no es una sílaba unida
         const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
 
         lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
 
-        // Insertar un corte de línea reglamentario (-) si detectamos pausas naturales o signos de puntuación
         if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
           lineasCuerpo.push("-");
         }
       });
 
-      // Añadimos el cierre obligatorio del archivo "E"
       lineasCuerpo.push("E");
-
       const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
 
       await addLibraryItem({
@@ -1313,25 +1333,24 @@ async function transcribeSelectedVoice() {
 
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
-    // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
-    const textoMonitor = document.getElementById("lyricsText").textContent || document.getElementById("lyricsText").innerText; 
+    // 💡 CORRECCIÓN 4: Cambiado .textContent por .value para extraer correctamente lo que hay en el Textarea
+    const editorTexto = document.getElementById("lyricsText");
+    const textoMonitor = editorTexto ? editorTexto.value.trim() : ""; 
     
-    if (!textoMonitor.trim()) {
-      alert("⚠️ El monitor está vacío. No hay texto para guardar.");
+    if (!textoMonitor) {
+      alert("⚠️ El monitor de texto está vacío. No hay letras para guardar.");
       return;
     }
 
-    // 2. Extraer metadatos básicos para el nombre (puedes usar variables globales de tu app)
     const tituloCancion = window.currentSongTitle || "Nueva Canción";
     const artistaCancion = window.currentSongArtist || "Artista Desconocido";
 
-    // 3. Crear el objeto con el nuevo tipo especializado
     const nuevoElemento = {
       name: `UltraStar - ${tituloCancion} (${artistaCancion})`,
-      type: "ultrastar_txt", // <--- Este es el nuevo tipo de archivo para el filtro
-      audioBlob: null,       // No requiere audio directo
+      type: "ultrastar_txt", 
+      audioBlob: null,       
       date: new Date().toLocaleString("es-ES"),
-      textoPlano: textoMonitor, // Guardamos el formato de texto plano estructurado
+      textoPlano: textoMonitor, 
       metadata: {
         title: tituloCancion,
         artist: artistaCancion,
@@ -1339,10 +1358,7 @@ async function guardarTextoUltraStarEnBiblioteca() {
       }
     };
 
-    // 4. Guardar en tu base de datos existente
     await addLibraryItem(nuevoElemento);
-
-    // 5. Refrescar la vista actual de la biblioteca
     await renderLibrary("ultrastar_txt");
     
     alert("✅ ¡Texto UltraStar guardado en la biblioteca con éxito!");
@@ -1409,7 +1425,7 @@ function blobToBase64(blob) {
 }
 
 // ==========================================
-// PROCESADOR DE TIEMPOS VINCULADO A TAPS (CORREGIDO)
+// PROCESADOR DE TIEMPOS VINCULADO A TAPS (CORREGIDO TOTAL)
 // ==========================================
 function buildWordTimingFromSegment(segment) {
   const cleanText = (segment.text || "").trim();
@@ -1430,6 +1446,7 @@ function buildWordTimingFromSegment(segment) {
       ...segment,
       words: rawWords.map(word => ({
         word: word,
+        text: word, // 💡 CORRECCIÓN: Aseguramos duplicidad para compatibilidad total
         start: segment.start,
         end: segment.end,
         pitch: segment.pitch || 0,
@@ -1439,7 +1456,6 @@ function buildWordTimingFromSegment(segment) {
   }
 
   // Corrección de estabilidad: División equitativa base en fragmentos del segmento
-  // Esto previene que palabras largas bloqueen la memoria del capturador de Taps
   const sliceDuration = segmentDuration / rawWords.length;
   let cursor = segment.start;
 
@@ -1448,9 +1464,10 @@ function buildWordTimingFromSegment(segment) {
     const wordEnd = cursor + sliceDuration;
     cursor = wordEnd;
 
-    // Retornamos la estructura limpia nativa de tu app, lista para los Taps
+    // Retornamos la estructura limpia nativa de tu app, lista para los Taps y el Monitor
     return {
       word: word,
+      text: word, // 💡 CORRECCIÓN CLAVE: Agregamos 'text' para que el monitor y el sincronizador IA no se queden vacíos
       start: wordStart,
       end: wordEnd,
       pitch: segment.pitch || 0,
@@ -1667,8 +1684,6 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     return [];
   }
 
-  // CORRECCIÓN: En lugar de destruir los tiempos proporcionalmente,
-  // mapeamos las palabras editadas preservando las marcas de tiempo del buffer original
   let palabraIndexGlobal = 0;
   const todasLasPalabrasBase = [];
   
@@ -1677,7 +1692,6 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
   });
 
   if (todasLasPalabrasBase.length === 0) {
-    // Si no hay base previa, recurrimos a una aproximación temporal segura
     return aproximarTiemposPorDefecto(lines, baseSegments);
   }
 
@@ -1686,11 +1700,11 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     const timedWords = [];
 
     rawWords.forEach((word) => {
-      // Intentamos emparejar con el tiempo real guardado por Whisper/Taps
       const baseWord = todasLasPalabrasBase[palabraIndexGlobal] || todasLasPalabrasBase[todasLasPalabrasBase.length - 1];
       
       timedWords.push({
         word: word,
+        text: word, // 💡 CORRECCIÓN 1: Añadimos 'text' para que el monitor reconozca la palabra
         start: baseWord ? baseWord.start : 0,
         end: baseWord ? baseWord.end : 1,
         pitch: baseWord ? baseWord.pitch : 0,
@@ -1724,7 +1738,8 @@ function aproximarTiemposPorDefecto(lines, baseSegments) {
 }
 
 function renderKaraokeLyrics(segments) {
-  const container = $("karaokeLyrics");
+  // 💡 CORRECCIÓN 2: Apuntamos al ID real que pusimos en tu HTML ("studioKaraokeMonitor")
+  const container = document.getElementById("studioKaraokeMonitor");
   if (!container) return;
 
   container.innerHTML = "";
@@ -1736,8 +1751,8 @@ function renderKaraokeLyrics(segments) {
 
   segments.forEach((segment, index) => {
     const line = document.createElement("p");
-    line.className = "karaoke-line upcoming"; // Por defecto todas están en el futuro
-    line.id = `k-line-${index}`; // ID único directo para acelerar la búsqueda
+    line.className = "karaoke-line upcoming"; 
+    line.id = `k-line-${index}`; 
     line.dataset.index = index;
     line.dataset.start = Number(segment.start || 0);
     line.dataset.end = Number(segment.end || 0);
@@ -1750,7 +1765,9 @@ function renderKaraokeLyrics(segments) {
         span.className = "karaoke-word";
         span.dataset.start = Number(wordObj.start || 0);
         span.dataset.end = Number(wordObj.end || 0);
-        span.textContent = (wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
+        
+        // 💡 CORRECCIÓN 3: Usamos wordObj.text o wordObj.word de respaldo para pintar la palabra
+        span.textContent = (wordObj.text || wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
         line.appendChild(span);
       });
     } else {
@@ -1916,7 +1933,8 @@ async function loadSelectedTrackFromLibraryKaraoke() {
 // MONITOR DE LYRICS PARA KARAOKE (CORREGIDO)
 // ==========================================
 function cargarLetrasEnMonitor() {
-  const container = $("miniMonitorTextArea");
+  // Busca el contenedor del monitor del Karaoke usando el ID de tu HTML
+  const container = document.getElementById("miniMonitorTextArea") || $("miniMonitorTextArea");
   if (!container) return;
 
   console.log("cargarLetrasEnMonitor -> transcriptionSegments:", transcriptionSegments);
@@ -1931,7 +1949,7 @@ function cargarLetrasEnMonitor() {
   transcriptionSegments.forEach((seg, index) => {
     const p = document.createElement("p");
     p.className = "karaoke-live-line upcoming"; // Añadimos clase de estado por defecto
-    p.id = `k-live-line-${index}`; // ID directo para evitar lag en busquedas masivas
+    p.id = `k-live-line-${index}`; // ID directo para evitar lag en búsquedas masivas
     p.dataset.index = index;
     p.dataset.start = Number(seg.start || 0);
     p.dataset.end = Number(seg.end || 0);
@@ -1944,7 +1962,9 @@ function cargarLetrasEnMonitor() {
         span.className = "karaoke-live-word";
         span.dataset.start = Number(wordObj.start || 0);
         span.dataset.end = Number(wordObj.end || 0);
-        span.textContent = (wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
+        
+        // 💡 CORRECCIÓN: Respaldo doble (text o word) para asegurar que la palabra pinte texto real siempre
+        span.textContent = (wordObj.text || wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
         p.appendChild(span);
       });
     } else {
@@ -1954,7 +1974,6 @@ function cargarLetrasEnMonitor() {
     container.appendChild(p);
   });
 }
-
 // NUEVA VARIABLE CACHÉ EXCLUSIVA PARA LA PESTAÑA DE KARAOKE
 let lineaLiveActivaIndexCache = -1;
 
@@ -3281,6 +3300,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (typeof loadKaraokeCatalog === "function") await loadKaraokeCatalog();
       if (typeof loadMyKaraokeSongs === "function") await loadMyKaraokeSongs();
     });
+
+    // Escuchador para el botón de Sincronización Automática IA
+    const btnSincronizarAuto = document.getElementById("btnSincronizarAuto");
+    if (btnSincronizarAuto) {
+      btnSincronizarAuto.addEventListener("click", async () => {
+        await sincronizarTapsAutomatico();
+      });
+    }
 
     // Karaoke Library tab
     safeAdd("refreshKaraokeLibraryBtn", "click", async () => {
