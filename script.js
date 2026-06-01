@@ -1205,7 +1205,7 @@ async function transcribeSelectedVoice() {
 
       const timeOffset = start / sampleRate;
 
-      // Procesamos result.words en lugar de result.segments
+      // Procesamos result.words que viene desde tu nueva API modificada
       (result.words || []).forEach((w) => {
         const wordText = (w?.word || "").trim();
         
@@ -1217,6 +1217,7 @@ async function transcribeSelectedVoice() {
         
         if (esFantasma) return;
 
+        // Estructura compatible tanto con Taps como con el formateador de líneas nativo
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
@@ -1231,27 +1232,29 @@ async function transcribeSelectedVoice() {
           end: wordWithOffset.end
         });
       });
-    } // 👈 ¡EL CICLO FOR DEBE CERRAR AQUÍ! Una vez recopilados todos los trozos de audio.
+    } // Aquí cierra correctamente el bucle FOR de los fragmentos de audio
       
-    baseTranscriptionSegments = (fullSegments && fullSegments.length > 0) ? fullSegments : datosPalabrasOriginales;
+    baseTranscriptionSegments = fullSegments;
     
-    console.log("📊 Palabras totales acumuladas:", baseTranscriptionSegments.length);
-
-    // Agrupación por líneas de karaoke (ej. 6 palabras por línea)
+    // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
     
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
     
-    // 💡 INYECTAMOS DIRECTAMENTE AL TEXTAREA:
-    if (lyricsText && baseTranscriptionSegments.length > 0) {
-      lyricsText.value = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
-      console.log("📝 Texto inyectado con éxito en el Textarea");
-    } else if (lyricsText && transcriptionSegments.length > 0) {
-      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    // Forzado de inyección al Textarea de edición para evitar bloqueos del navegador
+    if (lyricsText) {
+      lyricsText.value = ""; 
+      const textoCompletoTranscrito = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
+      
+      lyricsText.defaultValue = textoCompletoTranscrito; 
+      lyricsText.value = textoCompletoTranscrito;        
+      
+      lyricsText.dispatchEvent(new Event('input', { bubbles: true }));
+      console.log("✅ Letra inyectada con éxito. Total palabras:", baseTranscriptionSegments.length);
     }
     
-    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
+    // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
