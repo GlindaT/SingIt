@@ -1182,7 +1182,6 @@ async function sincronizarTapsAutomatico() {
   const status = document.getElementById("selectedVoiceStatus");
 
   if (!lyricsText) return;
-
   const textoModificado = lyricsText.value.trim();
 
   if (!textoModificado) {
@@ -1191,20 +1190,19 @@ async function sincronizarTapsAutomatico() {
   }
 
   if (!window.datosPalabrasOriginales || window.datosPalabrasOriginales.length === 0) {
-    alert("⚠️ No hay tiempos de Whisper en memoria. Primero selecciona una voz y presiona 'Transcribir'.");
+    alert("⚠️ No hay tiempos en memoria. Primero selecciona una voz y presiona 'Transcribir'.");
     return;
   }
 
   if (status) status.textContent = "Estado: Sincronizando texto con tiempos de IA... ⚡";
 
   try {
-    // 🎯 CORRECCIÓN: Creamos un objeto segmento simulado correcto para que el alineador no se pierda
+    // Estructuramos el segmento base de forma limpia para que buildSegments no se desplace temporalmente
     const segmentoSimulado = {
       text: textoModificado,
-      words: window.datosPalabrasOriginales
+      words: [...window.datosPalabrasOriginales]
     };
 
-    // Pasamos el segmento simulado dentro del arreglo base
     const nuevosSegmentosBase = buildSegmentsFromMultilineLyrics(textoModificado, [segmentoSimulado]);
 
     if (nuevosSegmentosBase && nuevosSegmentosBase.length > 0) {
@@ -1213,26 +1211,47 @@ async function sincronizarTapsAutomatico() {
         if (seg.words) baseTranscriptionSegments.push(...seg.words);
       });
 
+      // Dividimos las líneas para el monitor de forma balanceada
       transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
       if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
       if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
-      if (window.selectedVoiceId) {
-        try {
-          await updateLibraryItem(window.selectedVoiceId, {
-            transcription: baseTranscriptionSegments
-          });
-          console.log("✅ Transcripción IA actualizada en la voz activa.");
-        } catch (err) {
-          console.error("Error al actualizar la voz en la biblioteca:", err);
-        }
-      }
+      // --- RE-GENERAR Y ACTUALIZAR EL ARCHIVO EN LA CARPETA KARAOKE ---
+      const bpmPorDefecto = 120;
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4);
+      let lineasCuerpo = [];
 
-      alert("⚡ ¡Sincronización Automática IA completada! Tiempos alineados perfectamente.");
+      baseTranscriptionSegments.forEach((seg) => {
+        const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
+        const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
+        const lengthBeats = endBeat - startBeat;
+        lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${seg.pitch || 0} ${seg.text || ""}`);
+      });
+      lineasCuerpo.push("E");
+      
+      const nombreBase = "Canción Sincronizada";
+      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:IA Sincro\n#BPM:${bpmPorDefecto}\n#GAP:0\n`;
+      const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
+
+      // 🎯 CORRECCIÓN CLAVE: Enlazamos con la variable real del reproductor de Karaoke
+      const pistaAAsociar = window.karaokeSelectedTrackBlob || karaokeSelectedTrackBlob || selectedVoiceBlob;
+
+      await addLibraryItem({
+        name: `${nombreBase} (IA Sync)`,
+        type: "karaoke",
+        audioBlob: pistaAAsociar, // 👈 Conserva la música instrumental de fondo
+        textoPlano: contenidoFinalTxt,
+        date: new Date().toLocaleString("es-ES"),
+        transcription: baseTranscriptionSegments
+      });
+      
+      alert("⚡ ¡Sincronización Automática IA completada! Guardado en la carpeta Karaoke.");
       if (status) status.textContent = "Estado: Sincronización IA completada con éxito ✅";
+      
+      if (typeof renderLibrary === "function") await renderLibrary("karaoke");
     } else {
-      alert("⚠️ No se pudieron generar los tiempos para este texto.");
+      alert("⚠️ No se pudieron emparejar los tiempos.");
     }
 
   } catch (error) {
@@ -1242,7 +1261,7 @@ async function sincronizarTapsAutomatico() {
 }
 
 // ==========================================
-// TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (CORREGIDA)
+// TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (COMPLETA Y CORREGIDA)
 // ==========================================
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
@@ -1268,8 +1287,6 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
-    
-    // 💡 CORRECCIÓN 1: Vaciamos y preparamos la lista global real para la Sincronización IA
     window.datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
@@ -1296,26 +1313,15 @@ async function transcribeSelectedVoice() {
       }
 
       const result = await response.json();
-
-      const palabrasProhibidas = [
-        "Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"
-      ];
-
+      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
       const timeOffset = start / sampleRate;
-
-      // Procesamos 'words' o 'segments' devueltos por la API
       const listaPalabras = result.words || result.segments || [];
 
       listaPalabras.forEach((w) => {
         const wordText = (w?.word || w?.text || "").trim();
-
         if (!wordText) return;
 
-        const esFantasma = palabrasProhibidas.some((palabra) =>
-          wordText.toLowerCase().includes(palabra.toLowerCase())
-        );
-
-        if (esFantasma) return;
+        if (palabrasProhibidas.some(p => wordText.toLowerCase().includes(p.toLowerCase()))) return;
 
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
@@ -1326,10 +1332,8 @@ async function transcribeSelectedVoice() {
           note: w.note || "C4"
         };
         
-        // 🎯 SOLUCIÓN AL FALLO: Guardamos el objeto plano directo sin envolverlo otra vez en segmentos
         fullSegments.push(wordWithOffset);
 
-        // Alimentamos la lista global limpia para el alineador automático
         window.datosPalabrasOriginales.push({
           text: wordText,
           word: wordText,
@@ -1341,21 +1345,17 @@ async function transcribeSelectedVoice() {
       });
     }
     
-    // Asignamos la lista plana de palabras
     baseTranscriptionSegments = fullSegments;
-    
-    // Agrupamos en bloques de 6 palabras para pintar las líneas del monitor visual
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
     if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
     if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
-    // Mostramos las palabras separadas por espacios legibles en el cuadro de texto
     if (lyricsText && baseTranscriptionSegments.length > 0) {
       lyricsText.value = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
     }
 
-    // --- GUARDADO AUTOMÁTICO EN BIBLIOTECA (SISTEMA MEJORADO) ---
+    // --- GUARDADO AUTOMÁTICO EN LA CARPETA KARAOKE ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
@@ -1373,45 +1373,44 @@ async function transcribeSelectedVoice() {
         const lengthBeats = endBeat - startBeat;
         const pitchBase = seg.pitch || 0; 
         const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
-
         lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
       });
 
       lineasCuerpo.push("E");
       const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
 
-      // Guardado como elemento nativo "karaoke" amarrando el audio original
+      // Usamos el archivo instrumental de fondo de tu bloque de Karaoke
+      const pistaAAsociar = window.karaokeSelectedTrackBlob || karaokeSelectedTrackBlob || selectedVoiceBlob; 
+
       await addLibraryItem({
-        name: `Karaoke - ${nombreBase}`,
-        type: "karaoke",                 
-        audioBlob: selectedVoiceBlob,    
+        name: `${nombreBase} - Pista Karaoke`,
+        type: "karaoke",                  
+        audioBlob: pistaAAsociar, 
         textoPlano: contenidoFinalTxt,   
         date: new Date().toLocaleString("es-ES"),
         transcription: baseTranscriptionSegments 
       });
 
-      console.log("✅ ¡Elemento de Karaoke creado con tipo 'karaoke' en IndexedDB!");
-      
+      console.log("✅ Archivo de Karaoke guardado con la pista instrumental real.");
       if (typeof renderLibrary === "function") await renderLibrary("karaoke");
       
-      // Actualizamos la voz original vinculada en segundo plano
-      if (selectedVoiceId) {
-        try {
-          await updateLibraryItem(selectedVoiceId, {
-            transcription: baseTranscriptionSegments 
-          });
-          console.log("✅ Transcripción vinculada a la voz original");
-        } catch (err) {
-          console.error("❌ Error guardando transcripción en la voz:", err);
-        }
-      }
-      
       if (status) {
-        status.textContent = "Estado: Transcripción completada y guardada en la carpeta Karaoke ✅";
+        status.textContent = "Estado: Transcripción completada. ¡Pista lista en la carpeta Karaoke! ✅";
       }
-    
     } catch (saveError) {
       console.error("Error al construir el archivo final:", saveError);
+    }
+
+    // --- ACTUALIZACIÓN DE LA VOZ VINCULADA EN SEGUNDO PLANO ---
+    if (selectedVoiceId) {
+      try {
+        await updateLibraryItem(selectedVoiceId, {
+          transcription: baseTranscriptionSegments 
+        });
+        console.log("✅ Transcripción vinculada a la voz original");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la voz:", err);
+      }
     }
 
   } catch (error) {
@@ -1419,8 +1418,9 @@ async function transcribeSelectedVoice() {
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
-}
+} // 👈 ¡Esta última llave cierra la función por completo!
 
+    
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
     // 💡 CORRECCIÓN 4: Cambiado .textContent por .value para extraer correctamente lo que hay en el Textarea
