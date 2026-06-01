@@ -4331,14 +4331,14 @@ async function loadKaraokeLibraryTable() {
   tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td></tr>`;
 
   try {
-    // Load both catalog songs and user karaoke songs
+    // Cargar tanto las canciones del catálogo como las de karaoke del usuario
     const response = await fetch("./karaoke-catalog/catalog.json");
     const catalog = response.ok ? await response.json() : { songs: [] };
     const userKaraokeSongs = await getLibraryItemsByType("karaoke");
 
     const allSongs = [];
 
-    // Add catalog songs
+    // Añadir canciones del catálogo externo
     if (catalog.songs) {
       catalog.songs.forEach((song, index) => {
         allSongs.push({
@@ -4353,7 +4353,7 @@ async function loadKaraokeLibraryTable() {
       });
     }
 
-    // Add user songs
+    // Añadir canciones subidas/creadas por el usuario
     userKaraokeSongs.forEach((song, index) => {
       allSongs.push({
         id: song.id,
@@ -4382,12 +4382,12 @@ async function loadKaraokeLibraryTable() {
       const tr = document.createElement("tr");
       tr.style.cssText = "border-bottom: 1px solid var(--border); transition: background 0.2s ease;";
 
-      // 1. Celda de Número
+      // 1. Celda con el número secuencial
       const numberCell = document.createElement("td");
       numberCell.style.cssText = "padding: 12px; color: var(--text-muted);";
       numberCell.textContent = song.number;
 
-      // 2. Celda de Título
+      // 2. Celda interactiva del Título
       const titleCell = document.createElement("td");
       titleCell.style.cssText = "padding: 12px; cursor: pointer; color: var(--accent);";
       titleCell.textContent = song.title;
@@ -4399,7 +4399,7 @@ async function loadKaraokeLibraryTable() {
         }
       });
 
-      // 3. Celda de Artista
+      // 3. Celda interactiva del Artista
       const artistCell = document.createElement("td");
       artistCell.style.cssText = "padding: 12px; cursor: pointer;";
       artistCell.textContent = song.artist;
@@ -4411,19 +4411,19 @@ async function loadKaraokeLibraryTable() {
         }
       });
 
-      // 4. Celda de Origen
+      // 4. Celda con el indicador de origen (Catálogo / Mis canciones)
       const sourceCell = document.createElement("td");
       sourceCell.style.cssText = "padding: 12px; font-size: 13px; color: var(--text-muted);";
       sourceCell.textContent = song.source;
 
-      // 5. Celda de Acciones (Eliminar)
+      // 5. Celda con la acción de eliminar (solo disponible para canciones de usuario)
       const actionCell = document.createElement("td");
       actionCell.style.cssText = "padding: 12px; text-align: center;";
       if (song.type === "user") {
         actionCell.innerHTML = `<button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>`;
       }
 
-      // Añadir todas las celdas en orden sin romper el DOM
+      // Añadimos todas las celdas de forma segura al árbol del DOM sin romper los eventos
       tr.appendChild(numberCell);
       tr.appendChild(titleCell);
       tr.appendChild(artistCell);
@@ -4433,7 +4433,7 @@ async function loadKaraokeLibraryTable() {
       tbody.appendChild(tr);
     });
 
-    // Add delete handlers for user songs
+    // Vinculación de eventos de eliminación para las canciones del usuario
     tbody.querySelectorAll(".delete-lib-karaoke-btn").forEach(btn => {
       btn.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -4447,8 +4447,7 @@ async function loadKaraokeLibraryTable() {
     console.log(`✅ Tabla de biblioteca de karaoke cargada: ${allSongs.length} canciones`);
   } catch (error) {
     console.error("Error cargando tabla de karaoke:", error);
-    console.error("Error cargando canción:", error);
-    alert("❌ Error al cargar la canción");
+    alert("❌ Error al cargar la tabla de canciones");
     
     tbody.innerHTML = `
       <tr>
