@@ -1207,34 +1207,33 @@ async function transcribeSelectedVoice() {
       
       // 💡 CAMBIO CLAVE: Procesamos result.words en lugar de result.segments
       (result.words || []).forEach((w) => {
-        
         const wordText = (w?.word || "").trim();
-        
+
         if (!wordText) return;
-        
+
         const esFantasma = palabrasProhibidas.some((palabra) =>
           wordText.toLowerCase().includes(palabra.toLowerCase())
         );
 
         if (esFantasma) return;
 
-        // Estructuramos la palabra con el offset de tiempo acumulado del chunk de 25s
+        // Estructuramos la palabra con el offset conservando tanto text como word
+        // para garantizar compatibilidad total con tus funciones nativas
         const wordWithOffset = {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
-          text: wordText
+          text: wordText, // 👈 ¡ESTA ES LA CLAVE QUE LE FALTABA A TU SELECTOR!
+          word: wordText  // Mantenemos esta para tu alineador de Taps Automático
         };
 
-        // Guardamos tanto en los segmentos de procesamiento como en el backup de sincronización
         fullSegments.push(wordWithOffset);
-        
-        // Alimentamos nuestra variable global para los Taps Automáticos
         datosPalabrasOriginales.push({
           word: wordText,
           start: wordWithOffset.start,
           end: wordWithOffset.end
         });
       });
+      
       baseTranscriptionSegments = fullSegments;
       // Mantiene tu agrupación por líneas de karaoke (ej. 6 palabras por línea)
       transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
@@ -1243,7 +1242,7 @@ async function transcribeSelectedVoice() {
       cargarLetrasEnMonitor();
       
       if (lyricsText) {
-        lyricsText.value = baseTranscriptionSegments.map(w => w.text).join(" ");
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
       }
     }
 
