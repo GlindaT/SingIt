@@ -153,6 +153,16 @@
         <div class="studio-controls">
           <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar letra corregida</button>
         </div>
+        <!-- ⚡ NUEVA SECCIÓN: SINCRONIZACIÓN AUTOMÁTICA INTELIGENTE ⚡ -->
+          <div id="autoSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #3b0764, #1e1b4b); border-radius: 8px; border: 2px solid #a855f7; text-align: center;">
+            <h4 style="margin: 0 0 5px 0; color: #c084fc;">⚡ Sincronización Automática IA</h4>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+              ¿No quieres hacer taps manuales? Sincroniza el texto corregido al instante con la voz de Whisper.
+            </p>
+            <button id="btnSincronizarAuto" type="button" style="background: #a855f7; color: white;">
+              ⚡ Sincronizar Automáticamente (Sin Taps)
+            </button>
+          </div>
 
         <!-- SINCRONIZACIÓN MANUAL CON TAPS -->
         <div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
@@ -168,16 +178,7 @@
             <button id="cancelTapSyncBtn" type="button" style="background: #6b7280; display: none;">❌ Cancelar</button>
           </div>
           
-          <!-- ⚡ NUEVA SECCIÓN: SINCRONIZACIÓN AUTOMÁTICA INTELIGENTE ⚡ -->
-          <div id="autoSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #3b0764, #1e1b4b); border-radius: 8px; border: 2px solid #a855f7; text-align: center;">
-            <h4 style="margin: 0 0 5px 0; color: #c084fc;">⚡ Sincronización Automática IA</h4>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
-              ¿No quieres hacer taps manuales? Sincroniza el texto corregido al instante con la voz de Whisper.
-            </p>
-            <button id="btnSincronizarAuto" type="button" style="width: 100%; background: linear-gradient(135deg, #a855f7, #7e22ce); color: white; padding: 12px; font-weight: bold; border-radius: 6px;">
-            🪄 Automatizar Taps al Instante
-            </button>
-          </div>
+          
           
           <div id="tapSyncActive" style="display: none;">
             <div style="text-align: center; padding: 20px; background: var(--bg-main); border-radius: 8px; margin-bottom: 15px;">
