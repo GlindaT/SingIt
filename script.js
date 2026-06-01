@@ -2408,6 +2408,98 @@ async function sincronizarTapsAutomatico() {
   }
 }
 
+function sincronizarLetraAutomatica(textoEditadoUsuario) {
+  if (!datosPalabrasOriginales || datosPalabrasOriginales.length === 0) {
+    alert("⚠️ Primero debes transcribir una pista de voz.");
+    return null;
+  }
+
+  // Separar el texto editado por palabras limpiando espacios y saltos de línea
+  const palabrasEditadas = textoEditadoUsuario
+    .trim()
+    .replace(/\n/g, " ")
+    .split(/\s+/);
+
+  const palabrasSincronizadas Final = [];
+  let indiceOriginal = 0;
+
+  // Recorremos las palabras editadas e intentamos emparejarlas con los tiempos de Whisper
+  palabrasEditadas.forEach((palabraEditada) => {
+    // Limpiamos signos de puntuación para comparar el texto real
+    const limpiar = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
+    
+    let infoTiempo = datosPalabrasOriginales[indiceOriginal];
+
+    // Si por la edición el usuario agregó o cambió una palabra, buscamos una coincidencia cercana
+    if (infoTiempo && limpiar(palabraEditada) !== limpiar(infoTiempo.word)) {
+      const busquedaCercana = datosPalabrasOriginales.slice(indiceOriginal, indiceOriginal + 3)
+        .findIndex(w => limpiar(w.word) === limpiar(palabraEditada));
+      
+      if (busquedaCercana !== -1) {
+        indiceOriginal += busquedaCercana;
+        infoTiempo = datosPalabrasOriginales[indiceOriginal];
+      }
+    }
+
+    // Si encontramos el tiempo asignamos start y end, si no, aproximamos con el tiempo anterior
+    if (infoTiempo) {
+      palabrasSincronizadasFinal.push({
+        word: palabraEditada,
+        start: infoTiempo.start,
+        end: infoTiempo.end
+      });
+      indiceOriginal++;
+    } else {
+      // Caso de respaldo si el usuario escribió texto extra que Whisper nunca escuchó
+      const ultimoTiempo = palabrasSincronizadasFinal[palabrasSincronizadasFinal.length - 1];
+      const tiempoBase = ultimoTiempo ? ultimoTiempo.end : 0;
+      palabrasSincronizadasFinal.push({
+        word: palabraEditada,
+        start: tiempoBase,
+        end: tiempoBase + 0.5 // Le asignamos medio segundo por defecto
+      });
+    }
+  });
+
+  return palabrasSincronizadasFinal;
+}
+
+async function guardarCancionEnBiblioteca() {
+  const textoDelEditor = document.getElementById("tuTextareaDeEdicion").value;
+  const palabrasSincronizadas = sincronizarLetraAutomatica(textoDelEditor);
+
+  if (!palabrasSincronizadas) return;
+
+  const nuevoKaraoke = {
+    id: Date.now(),
+    name: "Canción Sincronizada Automáticamente",
+    pistaAudioUrl: urlDeLaPistaSubida, // El archivo de la pista que requiere tu app
+    metadata: {
+      title: document.getElementById("inputTitulo").value || "Sin título",
+      artist: document.getElementById("inputArtista").value || "Artista desconocido"
+    },
+    // Este objeto reemplaza por completo los "taps" manuales
+    type: "user",
+    sincronizacion: palabrasSincronizadas 
+  };
+
+  // Aquí mandas el objeto a tu función de guardado existente en base de datos
+  await guardarEnTuDB(nuevoKaraoke); 
+  alert("✨ ¡Canción guardada en tu biblioteca con sincronización automática!");
+}
+
+
+const nuevoKaraoke = {
+  id: Date.now(),
+  name: "Mi canción sincronizada",
+  pistaAudio: urlPistaSube, // Tu archivo de música de fondo
+  metadata: { title: "Título", artist: "Artista" },
+  sincronizacion: palabrasConTimestamps // El JSON generado automáticamente
+};
+
+// Guardar en tu BD local (IndexedDB / LocalStorage) que lee tu pestaña de librería
+await saveLibraryItem("karaoke", nuevoKaraoke);
+
 function exportStereoWav(buffer) {
   const numOfChan = buffer.numberOfChannels;
   const length = buffer.length * numOfChan * 2 + 44;
@@ -4242,7 +4334,7 @@ async function loadKaraokeLibraryTable() {
   if (!tbody) return;
 
   tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td></tr>`;
-  
+
   try {
     // Load both catalog songs and user karaoke songs
     const response = await fetch("./karaoke-catalog/catalog.json");
@@ -4295,6 +4387,12 @@ async function loadKaraokeLibraryTable() {
       const tr = document.createElement("tr");
       tr.style.cssText = "border-bottom: 1px solid var(--border); transition: background 0.2s ease;";
 
+      // 1. Celda de Número
+      const numberCell = document.createElement("td");
+      numberCell.style.cssText = "padding: 12px; color: var(--text-muted);";
+      numberCell.textContent = song.number;
+
+      // 2. Celda de Título
       const titleCell = document.createElement("td");
       titleCell.style.cssText = "padding: 12px; cursor: pointer; color: var(--accent);";
       titleCell.textContent = song.title;
@@ -4306,6 +4404,7 @@ async function loadKaraokeLibraryTable() {
         }
       });
 
+      // 3. Celda de Artista
       const artistCell = document.createElement("td");
       artistCell.style.cssText = "padding: 12px; cursor: pointer;";
       artistCell.textContent = song.artist;
@@ -4317,19 +4416,24 @@ async function loadKaraokeLibraryTable() {
         }
       });
 
-      tr.innerHTML = `
-        <td style="padding: 12px; color: var(--text-muted);">${song.number}</td>
-      `;
+      // 4. Celda de Origen
+      const sourceCell = document.createElement("td");
+      sourceCell.style.cssText = "padding: 12px; font-size: 13px; color: var(--text-muted);";
+      sourceCell.textContent = song.source;
+
+      // 5. Celda de Acciones (Eliminar)
+      const actionCell = document.createElement("td");
+      actionCell.style.cssText = "padding: 12px; text-align: center;";
+      if (song.type === "user") {
+        actionCell.innerHTML = `<button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>`;
+      }
+
+      // Añadir todas las celdas en orden sin romper el DOM
+      tr.appendChild(numberCell);
       tr.appendChild(titleCell);
       tr.appendChild(artistCell);
-      tr.innerHTML += `
-        <td style="padding: 12px; font-size: 13px; color: var(--text-muted);">${song.source}</td>
-        <td style="padding: 12px; text-align: center;">
-          ${song.type === "user" ? `
-            <button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>
-          ` : ''}
-        </td>
-      `;
+      tr.appendChild(sourceCell);
+      tr.appendChild(actionCell);
 
       tbody.appendChild(tr);
     });
