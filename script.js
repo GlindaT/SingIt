@@ -1250,8 +1250,8 @@ async function transcribeSelectedVoice() {
     return;
   }
 
-  const status = $("selectedVoiceStatus");
-  const lyricsText = $("lyricsText");
+  const status = document.getElementById("selectedVoiceStatus") || $("selectedVoiceStatus");
+  const lyricsText = document.getElementById("lyricsText") || $("lyricsText");
 
   try {
     if (status) {
@@ -1270,7 +1270,7 @@ async function transcribeSelectedVoice() {
     let fullSegments = [];
     
     // 💡 CORRECCIÓN 1: Vaciamos y preparamos la lista global real para la Sincronización IA
-    datosPalabrasOriginales = []; 
+    window.datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
@@ -1298,17 +1298,12 @@ async function transcribeSelectedVoice() {
       const result = await response.json();
 
       const palabrasProhibidas = [
-        "Amara",
-        "Subtítulos",
-        "subtítulos",
-        "Almorzo",
-        "Suscribete",
-        "comunidad"
+        "Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"
       ];
 
       const timeOffset = start / sampleRate;
 
-      // 💡 CORRECCIÓN 2: Procesamos 'words' en lugar de 'segments' para tener precisión palabra por palabra
+      // Procesamos 'words' o 'segments' devueltos por la API
       const listaPalabras = result.words || result.segments || [];
 
       listaPalabras.forEach((w) => {
@@ -1326,33 +1321,41 @@ async function transcribeSelectedVoice() {
           start: Number(w.start || 0) + timeOffset,
           end: Number(w.end || 0) + timeOffset,
           text: wordText,
-          word: wordText
+          word: wordText,
+          pitch: w.pitch || 0,
+          note: w.note || "C4"
         };
+        
+        // 🎯 SOLUCIÓN AL FALLO: Guardamos el objeto plano directo sin envolverlo otra vez en segmentos
+        fullSegments.push(wordWithOffset);
 
-        fullSegments.push(buildWordTimingFromSegment(wordWithOffset));
-
-        // 💡 CORRECCIÓN 3: Alimentamos la lista global compartida para que "Sincronizar Automáticamente" funcione
-        datosPalabrasOriginales.push({
+        // Alimentamos la lista global limpia para el alineador automático
+        window.datosPalabrasOriginales.push({
           text: wordText,
           word: wordText,
           start: wordWithOffset.start,
-          end: wordWithOffset.end
+          end: wordWithOffset.end,
+          pitch: wordWithOffset.pitch,
+          note: wordWithOffset.note
         });
       });
     }
-
+    
+    // Asignamos la lista plana de palabras
     baseTranscriptionSegments = fullSegments;
+    
+    // Agrupamos en bloques de 6 palabras para pintar las líneas del monitor visual
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
+    if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
-    // Mostramos las palabras separadas por espacio legible en el editor
+    // Mostramos las palabras separadas por espacios legibles en el cuadro de texto
     if (lyricsText && baseTranscriptionSegments.length > 0) {
       lyricsText.value = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
     }
 
-    // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
+    // --- GUARDADO AUTOMÁTICO EN BIBLIOTECA (SISTEMA MEJORADO) ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
@@ -1364,57 +1367,55 @@ async function transcribeSelectedVoice() {
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
       let lineasCuerpo = [];
 
-      baseTranscriptionSegments.forEach((seg, index) => {
+      baseTranscriptionSegments.forEach((seg) => {
         const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
         const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
         const lengthBeats = endBeat - startBeat;
-        const pitchBase = 0; 
+        const pitchBase = seg.pitch || 0; 
         const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
 
         lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
-
-        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
-          lineasCuerpo.push("-");
-        }
       });
 
       lineasCuerpo.push("E");
       const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
 
+      // Guardado como elemento nativo "karaoke" amarrando el audio original
       await addLibraryItem({
-        name: `UltraStar - ${nombreBase}`,
-        type: "ultrastar_txt", 
-        audioBlob: null,       
-        textoPlano: contenidoFinalTxt, 
+        name: `Karaoke - ${nombreBase}`,
+        type: "karaoke",                 
+        audioBlob: selectedVoiceBlob,    
+        textoPlano: contenidoFinalTxt,   
         date: new Date().toLocaleString("es-ES"),
         transcription: baseTranscriptionSegments 
       });
 
-      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
-      await renderLibrary("ultrastar_txt");
-
-    } catch (err) {
-      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
-    }
-
-    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
-    if (selectedVoiceId) {
-      try {
-        await updateLibraryItem(selectedVoiceId, {
-          transcription: baseTranscriptionSegments 
-        });
-        console.log("✅ Transcripción vinculada a la voz original");
-      } catch (err) {
-        console.error("❌ Error guardando transcripción en la voz:", err);
+      console.log("✅ ¡Elemento de Karaoke creado con tipo 'karaoke' en IndexedDB!");
+      
+      if (typeof renderLibrary === "function") await renderLibrary("karaoke");
+      
+      // Actualizamos la voz original vinculada en segundo plano
+      if (selectedVoiceId) {
+        try {
+          await updateLibraryItem(selectedVoiceId, {
+            transcription: baseTranscriptionSegments 
+          });
+          console.log("✅ Transcripción vinculada a la voz original");
+        } catch (err) {
+          console.error("❌ Error guardando transcripción en la voz:", err);
+        }
       }
-    }
-
-    if (status) {
-      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+      
+      if (status) {
+        status.textContent = "Estado: Transcripción completada y guardada en la carpeta Karaoke ✅";
+      }
+    
+    } catch (saveError) {
+      console.error("Error al construir el archivo final:", saveError);
     }
 
   } catch (error) {
-    console.error(error);
+    console.error("Error crítico en la función:", error);
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
