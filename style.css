@@ -1150,3 +1150,87 @@ audio:hover {
 }
 
 /* 4. Reducir la separación interna de los bloques para aplastarlos más */
+
+#lyricsText { /* the element was textarea#lyricsText */
+  font-size: 18px;
+  font-family: Arial, sans-serif;
+  color: violet;
+  text-align: center;
+  height: auto;
+  line-height: 1.5;
+}
+
+.card p { /* the element was p */
+  font-size: 12px;
+  font-family: Arial, sans-serif;
+}
+
+.card h4 { /* the element was h4 */
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  margin-top: 0px;
+}
+
+.card p { /* the element was p */
+  font-weight: bold;
+}
+
+[data-theme="rock"] button { /* the element was button#btnSincronizarAuto */
+  background-color: gold;
+  color: black;
+  border-color: darkgoldenrod;
+  font-size: 12px;
+  padding: 4px 10px;
+  box-shadow: rgba(255, 215, 0, 0.7) 0px 0px 10px 2px;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+[data-theme="rock"] button { /* the element was button#startTapSyncBtn */
+  align-self: flex-end;
+  margin-top: auto;
+  font-size: 11px;
+  padding: 4px 10px;
+  height: auto;
+  width: auto;
+}
+
+.card div { /* the element was .studio-controls */
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.card div { /* the element was div */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+[data-theme="rock"] button { /* the element was button#toggleAutoScrollBtn */
+  margin-top: 0px;
+  margin-left: auto;
+}
+
+.card div { /* the element was div#autoSyncSection */
+  padding-top: 0px;
+  padding: 10px 20px 20px;
+  font-size: 14px;
+}
+
+.card p { /* the element was p */
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.card p { /* the element was p */
+  font-size: 16px;
+  color: gold;
+  font-weight: bold;
+}
+
+select { /* the element was select#karaokeThemeSelect */
+  background-color: rgb(45, 52, 54);
+  color: rgb(250, 177, 160);
+  border: 1px solid rgb(250, 177, 160);
+}
