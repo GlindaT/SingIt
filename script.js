@@ -2469,6 +2469,8 @@ async function guardarCancionEnBiblioteca() {
   // Aquí mandas el objeto a tu función de guardado existente en base de datos
   await guardarEnTuDB(nuevoKaraoke); 
   alert("✨ ¡Canción guardada en tu biblioteca con sincronización automática!");
+  // Guardar en tu BD local (IndexedDB / LocalStorage) que lee tu pestaña de librería
+  await saveLibraryItem("karaoke", nuevoKaraoke);
 }
 
 
@@ -2479,9 +2481,6 @@ const nuevoKaraoke = {
   metadata: { title: "Título", artist: "Artista" },
   sincronizacion: palabrasConTimestamps // El JSON generado automáticamente
 };
-
-// Guardar en tu BD local (IndexedDB / LocalStorage) que lee tu pestaña de librería
-await saveLibraryItem("karaoke", nuevoKaraoke);
 
 function exportStereoWav(buffer) {
   const numOfChan = buffer.numberOfChannels;
