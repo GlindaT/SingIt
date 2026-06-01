@@ -208,6 +208,7 @@ function showTab(tabId) {
     afinador: "btnAfinador",
     estudio: "btnEstudio",
     biblioteca: "btnBiblioteca",
+    karaokeLibrary: "btnKaraokeLibrary",
     karaoke: "btnKaraoke",
     splitter: "btnSplitter",
     config: "btnConfig"
@@ -1000,7 +1001,6 @@ async function loadTrackOptionsInStudio() {
     console.error(error);
   }
 }
-
 async function loadSelectedTrackFromLibraryStudio() {
   const select = $("studioTrackSelect");
   const player = $("player");
@@ -3232,6 +3232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
+    safeAdd("btnKaraokeLibrary", "click", () => showTab("karaokeLibrary"));
     safeAdd("btnKaraoke", "click", () => showTab("karaoke"));
     safeAdd("btnSplitter", "click", () => showTab("splitter"));
     safeAdd("btnConfig", "click", () => showTab("config"));
@@ -3277,8 +3278,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (typeof loadKaraokeCatalog === "function") await loadKaraokeCatalog();
       if (typeof loadMyKaraokeSongs === "function") await loadMyKaraokeSongs();
     });
-      
+
+    // Karaoke Library tab
+    safeAdd("refreshKaraokeLibraryBtn", "click", async () => {
+      if (typeof loadKaraokeLibraryTable === "function") await loadKaraokeLibraryTable();
+    });
+
     if (typeof loadKaraokeCatalog === "function") loadKaraokeCatalog();
+    if (typeof loadMyKaraokeSongs === "function") loadMyKaraokeSongs();
+    if (typeof loadKaraokeLibraryTable === "function") loadKaraokeLibraryTable();
     if (typeof loadMyKaraokeSongs === "function") loadMyKaraokeSongs();
     
     // Carga manual de archivos hacia la Biblioteca
@@ -3949,7 +3957,7 @@ async function loadKaraokeCatalog() {
           <p class="catalog-item-artist">${song.artist}</p>
         </div>
         <div class="catalog-item-actions">
-          <button type="button" class="load-catalog-btn" data-folder="${song.folder}" data-title="${song.title}" data-artist="${song.artist}" style="background: #22c55e;">▶️ Cantar</button>
+          <button type="button" class="load-catalog-btn" data-folder="${song.folder}" data-title="${song.title}" data-artist="${song.artist}" style="background: #3b82f6;">📥 Cargar</button>
         </div>
       `;
       
@@ -4022,29 +4030,29 @@ async function loadCatalogSong(folder, title, artist) {
       // Asignamos las variables de control antes del renderizado
       transcriptionSegments = segments;
       baseTranscriptionSegments = segments;
-      
+
       // Inicializar el monitor y las letras en el DOM
       cargarLetrasEnMonitor();
-      
-      // CORRECCIÓN AUTOPLAY: Enlazamos la reproducción controlando la promesa nativa del hardware
-      track.play()
-        .then(() => {
-          if (status) status.textContent = `Estado: 🎤 Reproduciendo "${title}". ¡A cantar!`;
-          // Encendemos el analizador de Pitch únicamente si la pista arrancó con éxito
-          if (typeof startKaraokePitchDetection === "function") startKaraokePitchDetection();
-        })
-        .catch(err => {
-          console.warn("Reproducción automática pausada por el navegador:", err);
-          if (status) status.textContent = `Estado: ⏸️ "${title}" cargada. Presiona el botón de iniciar para cantar.`;
-        });
+
+      // Mostrar información de la canción
+      const songInfo = $("loadedKaraokeSongInfo");
+      const songTitleEl = $("loadedKaraokeSongTitle");
+      const songArtistEl = $("loadedKaraokeSongArtist");
+      if (songInfo && songTitleEl && songArtistEl) {
+        songTitleEl.textContent = title;
+        songArtistEl.textContent = artist;
+        songInfo.style.display = "block";
+      }
+
+      if (status) status.textContent = `Estado: "${title}" cargada. ¡Lista para cantar!`;
+
+      // NO reproducir automáticamente - solo cargar
+      // El usuario debe presionar "Iniciar Grabación" manualmente
     }
-    
-    // Desplazamiento suave directo al Canvas de entrenamiento
-    const canvas = $("karaokeCanvas");
-    if (canvas) {
-      canvas.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-    
+
+    // Cambiar a la pestaña de Karaoke
+    showTab("karaoke");
+
     console.log("✅ Canción del catálogo cargada con éxito:", title);
     
   } catch (error) {
@@ -4080,22 +4088,22 @@ async function loadMyKaraokeSongs() {
 
       const title = song.metadata?.title || song.name || "Sin título";
       const artist = song.metadata?.artist || "";
-      
+
       div.innerHTML = `
         <div class="my-karaoke-item-info">
           <p class="my-karaoke-item-title">${title}</p>
           <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
         </div>
         <div class="my-karaoke-item-actions">
-          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
+          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #3b82f6;">📥 Cargar</button>
           <button type="button" class="share-karaoke-btn" data-id="${song.id}" style="background: #8b5cf6; padding: 8px 10px;" title="Compartir como .singit">📤</button>
           <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
         </div>
       `;
-      
+
       container.appendChild(div);
     });
-    
+
     container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         if (typeof loadKaraokeSong === "function") {
@@ -4133,7 +4141,7 @@ async function loadMyKaraokeSongs() {
 // ==========================================
 async function loadKaraokeSong(id) {
   try {
-    // CORRECCIÓN PROTECTORA: Detener bucles y liberar hardware previos antes de inyectar la nueva cancion
+    // CORRECCIÓN PROTECTORA: Detener bucles y liberar hardware previos
     if (typeof stopKaraokeRecording === "function") stopKaraokeRecording();
     if (typeof restartKaraokeRecording === "function") restartKaraokeRecording();
 
@@ -4142,7 +4150,7 @@ async function loadKaraokeSong(id) {
       alert("⚠️ Canción no encontrada");
       return;
     }
-    
+
     const track = $("karaokeTrack");
     if (track && song.audioBlob) {
       track.src = URL.createObjectURL(song.audioBlob);
@@ -4150,33 +4158,176 @@ async function loadKaraokeSong(id) {
       karaokeSelectedTrackBlob = song.audioBlob;
       karaokeSelectedTrackName = song.name;
     }
-    
+
     if (song.transcription && song.transcription.length > 0) {
       transcriptionSegments = song.transcription;
       baseTranscriptionSegments = song.transcription;
       cargarLetrasEnMonitor();
     }
-    
+
     const title = song.metadata?.title || song.name;
-    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
-    
-    // CORRECCIÓN AUTOPLAY: Evaluamos la promesa nativa del hardware para un arranque fluido
-    if (track) {
-      track.play()
-        .then(() => {
-          if (typeof startKaraokePitchDetection === "function") startKaraokePitchDetection();
-        })
-        .catch(err => console.log("Arranque manual requerido por políticas de privacidad del navegador:", err));
+    const artist = song.metadata?.artist || "Artista desconocido";
+    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar!`;
+
+    // Mostrar información de la canción
+    const songInfo = $("loadedKaraokeSongInfo");
+    const songTitleEl = $("loadedKaraokeSongTitle");
+    const songArtistEl = $("loadedKaraokeSongArtist");
+    if (songInfo && songTitleEl && songArtistEl) {
+      songTitleEl.textContent = title;
+      songArtistEl.textContent = artist;
+      songInfo.style.display = "block";
     }
 
-    const canvas = $("karaokeCanvas");
-    if (canvas) {
-      canvas.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-    
+    // NO reproducir automáticamente - solo cargar
+    // El usuario debe presionar "Iniciar Grabación" manualmente
+
+    // Cambiar a la pestaña de Karaoke
+    showTab("karaoke");
+
+    console.log(`✅ Canción "${title}" cargada en el monitor`);
   } catch (error) {
+    console.error("Error cargando canción de karaoke:", error);
+    alert("❌ No se pudo cargar la canción");
+  }
+}
+
+// ==========================================
+// KARAOKE LIBRARY TAB - Unified Table
+// ==========================================
+async function loadKaraokeLibraryTable() {
+  const tbody = $("karaokeLibraryTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td></tr>`;
+
+  try {
+    // Load both catalog songs and user karaoke songs
+    const response = await fetch("./karaoke-catalog/catalog.json");
+    const catalog = response.ok ? await response.json() : { songs: [] };
+    const userKaraokeSongs = await getLibraryItemsByType("karaoke");
+
+    const allSongs = [];
+
+    // Add catalog songs
+    if (catalog.songs) {
+      catalog.songs.forEach((song, index) => {
+        allSongs.push({
+          id: `catalog-${song.id}`,
+          number: index + 1,
+          title: song.title,
+          artist: song.artist,
+          source: "📚 Catálogo",
+          type: "catalog",
+          folder: song.folder
+        });
+      });
+    }
+
+    // Add user songs
+    userKaraokeSongs.forEach((song, index) => {
+      allSongs.push({
+        id: song.id,
+        number: catalog.songs ? catalog.songs.length + index + 1 : index + 1,
+        title: song.metadata?.title || song.name || "Sin título",
+        artist: song.metadata?.artist || "Artista desconocido",
+        source: "📁 Mis Canciones",
+        type: "user"
+      });
+    });
+
+    if (allSongs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">
+            No hay canciones disponibles.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = "";
+
+    allSongs.forEach(song => {
+      const tr = document.createElement("tr");
+      tr.style.cssText = "border-bottom: 1px solid var(--border); transition: background 0.2s ease;";
+
+      // 1. Celda de Número
+      const numberCell = document.createElement("td");
+      numberCell.style.cssText = "padding: 12px; color: var(--text-muted);";
+      numberCell.textContent = song.number;
+
+      // 2. Celda de Título
+      const titleCell = document.createElement("td");
+      titleCell.style.cssText = "padding: 12px; cursor: pointer; color: var(--accent);";
+      titleCell.textContent = song.title;
+      titleCell.addEventListener("click", () => {
+        if (song.type === "catalog") {
+          loadCatalogSong(song.folder, song.title, song.artist);
+        } else {
+          loadKaraokeSong(song.id);
+        }
+      });
+
+      // 3. Celda de Artista
+      const artistCell = document.createElement("td");
+      artistCell.style.cssText = "padding: 12px; cursor: pointer;";
+      artistCell.textContent = song.artist;
+      artistCell.addEventListener("click", () => {
+        if (song.type === "catalog") {
+          loadCatalogSong(song.folder, song.title, song.artist);
+        } else {
+          loadKaraokeSong(song.id);
+        }
+      });
+
+      // 4. Celda de Origen
+      const sourceCell = document.createElement("td");
+      sourceCell.style.cssText = "padding: 12px; font-size: 13px; color: var(--text-muted);";
+      sourceCell.textContent = song.source;
+
+      // 5. Celda de Acciones (Eliminar)
+      const actionCell = document.createElement("td");
+      actionCell.style.cssText = "padding: 12px; text-align: center;";
+      if (song.type === "user") {
+        actionCell.innerHTML = `<button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>`;
+      }
+
+      // Añadir todas las celdas en orden sin romper el DOM
+      tr.appendChild(numberCell);
+      tr.appendChild(titleCell);
+      tr.appendChild(artistCell);
+      tr.appendChild(sourceCell);
+      tr.appendChild(actionCell);
+
+      tbody.appendChild(tr);
+    });
+
+    // Add delete handlers for user songs
+    tbody.querySelectorAll(".delete-lib-karaoke-btn").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm("¿Deseas eliminar permanentemente esta canción de tu biblioteca?")) {
+          await deleteLibraryItemFromDB(Number(btn.dataset.id));
+          await loadKaraokeLibraryTable();
+        }
+      });
+    });
+
+    console.log(`✅ Tabla de biblioteca de karaoke cargada: ${allSongs.length} canciones`);
+  } catch (error) {
+    console.error("Error cargando tabla de karaoke:", error);
     console.error("Error cargando canción:", error);
     alert("❌ Error al cargar la canción");
+    
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">
+          Error al cargar canciones
+        </td>
+      </tr>
+    `;
   }
 }
 
