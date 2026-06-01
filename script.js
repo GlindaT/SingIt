@@ -793,10 +793,8 @@ async function renderLibrary(filter = 'todos') {
   // SOLUCIÓN 1: ILUMINAR LA CARPETA SELECCIONADA
   // ==========================================
   document.querySelectorAll(".folder-btn").forEach(btn => {
-    // 💡 LEER DESDE EL DATASET: Es mucho más seguro y rápido para el navegador
-    const folderType = btn.dataset.folder || btn.getAttribute("data-folder");
-    
-    if (folderType === filter) {
+    // Comprobamos si el evento onclick incluye el tipo de filtro actual
+    if (btn.getAttribute("onclick").includes(`'${filter}'`)) {
       btn.classList.add("active"); // Ilumina la carpeta actual
     } else {
       btn.classList.remove("active"); // Apaga las carpetas inactivas
@@ -876,7 +874,7 @@ async function renderLibrary(filter = 'todos') {
         
         if (item && item.textoPlano) {
           // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
+          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
           
           if (monitor) {
             monitor.value = item.textoPlano;
@@ -1120,7 +1118,7 @@ async function loadSelectedVoiceFromLibrary() {
           .join("\n")
           .trim();
       }
-      
+
       status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
     } else {
       baseTranscriptionSegments = [];
@@ -1141,10 +1139,6 @@ async function loadSelectedVoiceFromLibrary() {
 // ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (CORREGIDA)
 // ==========================================
-
-//Variable global
-let datosPalabrasOriginales = [];
-
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
@@ -1163,15 +1157,12 @@ async function transcribeSelectedVoice() {
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    const CHUNK_SECONDS = 30;
+    const CHUNK_SECONDS = 25;
     const sampleRate = audioBuffer.sampleRate;
     const totalSamples = audioBuffer.length;
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
-    
-    // 💡 CORRECCIÓN 1: Vaciamos la variable global real (SIN 'let') antes de empezar a acumular
-    datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
@@ -1195,9 +1186,9 @@ async function transcribeSelectedVoice() {
         const errorText = await response.text();
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
-      
-      const resultado = await response.json();
-      
+
+      const result = await response.json();
+
       const palabrasProhibidas = [
         "Amara",
         "Subtítulos",
@@ -1206,111 +1197,156 @@ async function transcribeSelectedVoice() {
         "Suscribete",
         "comunidad"
       ];
-      
-      const timeOffset = start / sampleRate;
-      
-      (resultado.words || []).forEach((w) => {
-        const wordText = (w?.word || "").trim();
 
-        if (!wordText) return;
+      const timeOffset = start / sampleRate;
+
+      (result.segments || []).forEach((seg) => {
+        const segText = (seg?.text || "").trim();
+
+        if (!segText) return;
 
         const esFantasma = palabrasProhibidas.some((palabra) =>
-          wordText.toLowerCase().includes(palabra.toLowerCase())
+          segText.toLowerCase().includes(palabra.toLowerCase())
         );
 
         if (esFantasma) return;
 
-        const wordWithOffset = {
-          start: Number(w.start || 0) + timeOffset,
-          end: Number(w.end || 0) + timeOffset,
-          text: wordText,
-          word: wordText 
+        const segmentWithOffset = {
+          start: Number(seg.start || 0) + timeOffset,
+          end: Number(seg.end || 0) + timeOffset,
+          text: segText
         };
 
-        fullSegments.push(wordWithOffset);
-
-        // 💡 CORRECCIÓN 2: Acumulamos las palabras en la lista global con sus tiempos ajustados
-        datosPalabrasOriginales.push({
-          text: wordText, // Añadido text para asegurar que el alineador lo encuentre
-          word: wordText,
-          start: wordWithOffset.start,
-          end: wordWithOffset.end
-        });
+        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
       });
+    }
+
+    baseTranscriptionSegments = fullSegments;
+    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
+
+    if (lyricsText) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    }
+
+    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
+    try {
+      const vozOriginal = await getLibraryItemById(selectedVoiceId); 
+      const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
       
-      baseTranscriptionSegments = fullSegments;
-      transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-      
-      renderKaraokeLyrics(transcriptionSegments);
-      cargarLetrasEnMonitor();
-      
-      if (lyricsText && baseTranscriptionSegments.length > 0) {
-        lyricsText.value = baseTranscriptionSegments.map(w => w.text.trim()).join(" ");
-      }
-      
-      // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
+      const bpmPorDefecto = 120;
+      const gapPorDefecto = 0;
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4); // Resolución x4 para evitar que se corra el tiempo
+
+      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
+      let lineasCuerpo = [];
+
+      // Mapeamos los segmentos nativos de Whisper a líneas de tiempo estructuradas de UltraStar
+      baseTranscriptionSegments.forEach((seg, index) => {
+        // Convertimos segundos absolutos a Beats de la rejilla matemática musical
+        const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
+        const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
+        const lengthBeats = endBeat - startBeat;
+        
+        // Pitch por defecto en 0 (Equivale a C4/Do Central) hasta que el usuario use los Taps o cante
+        const pitchBase = 0; 
+        
+        // Asegurar que el texto conserve un espacio si no es una sílaba unida
+        const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
+
+        lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
+
+        // Insertar un corte de línea reglamentario (-) si detectamos pausas naturales o signos de puntuación
+        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
+          lineasCuerpo.push("-");
+        }
+      });
+
+      // Añadimos el cierre obligatorio del archivo "E"
+      lineasCuerpo.push("E");
+
+      const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
+
+      await addLibraryItem({
+        name: `UltraStar - ${nombreBase}`,
+        type: "ultrastar_txt", 
+        audioBlob: null,       
+        textoPlano: contenidoFinalTxt, 
+        date: new Date().toLocaleString("es-ES"),
+        transcription: baseTranscriptionSegments 
+      });
+
+      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
+      await renderLibrary("ultrastar_txt");
+
+    } catch (err) {
+      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
+    }
+
+    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
+    if (selectedVoiceId) {
       try {
-        const vozOriginal = await getLibraryItemById(selectedVoiceId); 
-        const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
-        const bpmPorDefecto = 120;
-        const gapPorDefecto = 0;
-        const duracionUnBeat = 60 / (bpmPorDefecto * 4);
-        const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
-        let lineasCuerpo = [];
-        
-        baseTranscriptionSegments.forEach((seg, index) => {
-          const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
-          const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
-          const lengthBeats = endBeat - startBeat;
-          const pitchBase = 0; 
-          const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
-          
-          lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
-          
-          if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
-            lineasCuerpo.push("-");
-          }
-        });
-        
-        lineasCuerpo.push("E");
-        const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
-        
-        await addLibraryItem({
-          name: `UltraStar - ${nombreBase}`,
-          type: "ultrastar_txt", 
-          audioBlob: null,       
-          textoPlano: contenidoFinalTxt, 
-          date: new Date().toLocaleString("es-ES"),
+        await updateLibraryItem(selectedVoiceId, {
           transcription: baseTranscriptionSegments 
         });
-        
-        console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
-        await renderLibrary("ultrastar_txt");
-      
+        console.log("✅ Transcripción vinculada a la voz original");
       } catch (err) {
-        console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
-      }
-      
-      // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
-      if (selectedVoiceId) {
-        try {
-          await updateLibraryItem(selectedVoiceId, {
-            transcription: baseTranscriptionSegments 
-          });
-          console.log("✅ Transcripción vinculada a la voz original");
-        } catch (err) {
-          console.error("❌ Error guardando transcripción en la voz:", err);
-        }
-      }
-      
-      if (status) {
-        status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+        console.error("❌ Error guardando transcripción en la voz:", err);
       }
     }
+
+    if (status) {
+      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+    }
+
   } catch (error) {
     console.error(error);
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
+  }
+}
+
+async function guardarTextoUltraStarEnBiblioteca() {
+  try {
+    // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
+    const textoMonitor = document.getElementById("miniMonitorTextArea").textContent || document.getElementById("miniMonitorTextArea").innerText; 
+    
+    if (!textoMonitor.trim()) {
+      alert("⚠️ El monitor está vacío. No hay texto para guardar.");
+      return;
+    }
+
+    // 2. Extraer metadatos básicos para el nombre (puedes usar variables globales de tu app)
+    const tituloCancion = window.currentSongTitle || "Nueva Canción";
+    const artistaCancion = window.currentSongArtist || "Artista Desconocido";
+
+    // 3. Crear el objeto con el nuevo tipo especializado
+    const nuevoElemento = {
+      name: `UltraStar - ${tituloCancion} (${artistaCancion})`,
+      type: "ultrastar_txt", // <--- Este es el nuevo tipo de archivo para el filtro
+      audioBlob: null,       // No requiere audio directo
+      date: new Date().toLocaleString("es-ES"),
+      textoPlano: textoMonitor, // Guardamos el formato de texto plano estructurado
+      metadata: {
+        title: tituloCancion,
+        artist: artistaCancion,
+        generadoPor: "Whisper + Manual Tap"
+      }
+    };
+
+    // 4. Guardar en tu base de datos existente
+    await addLibraryItem(nuevoElemento);
+
+    // 5. Refrescar la vista actual de la biblioteca
+    await renderLibrary("ultrastar_txt");
+    
+    alert("✅ ¡Texto UltraStar guardado en la biblioteca con éxito!");
+
+  } catch (error) {
+    console.error("Error al guardar texto UltraStar:", error);
+    alert("❌ No se pudo guardar el archivo en la biblioteca.");
   }
 }
 
@@ -2331,207 +2367,6 @@ async function mixKaraoke() {
   }
 }
 
-// Tap automático
-
-async function sincronizarTapsAutomatico() {
-  const lyricsText = $("lyricsText");
-  if (!lyricsText) return;
-
-  const textoEditado = lyricsText.value.trim();
-
-  // Validamos usando tu arreglo global nativo
-  if (!datosPalabrasOriginales || datosPalabrasOriginales.length === 0) {
-    alert("⚠️ No hay datos de transcripción guardados. Primero debes transcribir la voz.");
-    return;
-  }
-
-  if (!textoEditado) {
-    alert("⚠️ El cuadro de texto está vacío. Escribe o carga una letra primero.");
-    return;
-  }
-
-  // 1. Separar el texto editado por palabras limpiando saltos de línea
-  const palabrasEditadas = textoEditado.replace(/\n/g, " ").split(/\s+/).filter(w => w.length > 0);
-  
-  let nuevosSegmentosBase = [];
-  let indiceOriginal = 0;
-
-  const limpiarStr = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
-
-  // 2. Algoritmo de alineación: Empareja el texto editado con los tiempos originales
-  palabrasEditadas.forEach((palabraEditada) => {
-    let infoTiempo = datosPalabrasOriginales[indiceOriginal];
-
-    // Búsqueda de proximidad por si el usuario insertó o corrigió una palabra
-    if (infoTiempo && limpiarStr(palabraEditada) !== limpiarStr(infoTiempo.text)) {
-      const rangoBusqueda = datosPalabrasOriginales.slice(indiceOriginal, indiceOriginal + 4);
-      const coincidencia = rangoBusqueda.findIndex(w => limpiarStr(w.text) === limpiarStr(palabraEditada));
-      
-      if (coincidencia !== -1) {
-        indiceOriginal += coincidencia;
-        infoTiempo = datosPalabrasOriginales[indiceOriginal];
-      }
-    }
-
-    // RESPETO TOTAL A TU OBJETO: 'text' debe llevar el espacio antes para tu monitor
-    const textoConEspacio = ` ${palabraEditada.trim()}`;
-
-    if (infoTiempo) {
-      nuevosSegmentosBase.push({
-        start: infoTiempo.start,
-        end: infoTiempo.end,
-        text: textoConEspacio
-      });
-      indiceOriginal++;
-    } else {
-      // Si es una palabra inventada/añadida, estimamos el tiempo usando el último nodo
-      const ultimo = nuevosSegmentosBase[nuevosSegmentosBase.length - 1];
-      const tiempoBase = ultimo ? ultimo.end : 0;
-      nuevosSegmentosBase.push({
-        start: tiempoBase,
-        end: tiempoBase + 0.4,
-        text: textoConEspacio
-      });
-    }
-  });
-
-  // 3. Actualizar tus variables globales nativas sin alterar sus nombres
-  baseTranscriptionSegments = nuevosSegmentosBase;
-  transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-
-  // 4. Invocar tus renderizadores existentes
-  renderKaraokeLyrics(transcriptionSegments);
-  cargarLetrasEnMonitor();
-
-  // 5. --- REGENERAR EL ARCHIVO ULTRASTAR TXT CON TU FORMATO NATIVO ---
-  try {
-    const vozOriginal = await getLibraryItemById(selectedVoiceId); 
-    const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
-    
-    const bpmPorDefecto = 120;
-    const gapPorDefecto = 0;
-    const duracionUnBeat = 60 / (bpmPorDefecto * 4); 
-
-    const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Sincronizado\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
-    let lineasCuerpo = [];
-
-    baseTranscriptionSegments.forEach((seg) => {
-      const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
-      const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
-      const lengthBeats = endBeat - startBeat;
-      
-      // Mantiene el formato exacto de tu cuerpo de UltraStar
-      lineasCuerpo.push(`: ${startBeat} ${lengthBeats} 0${seg.text}`);
-    });
-
-    lineasCuerpo.push("E");
-    const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
-
-    await addLibraryItem({
-      name: `UltraStar - ${nombreBase} (Sincronizado)`,
-      type: "ultrastar_txt", 
-      audioBlob: null,       
-      textoPlano: contenidoFinalTxt, 
-      date: new Date().toLocaleString("es-ES"),
-      transcription: baseTranscriptionSegments 
-    });
-
-    await renderLibrary("ultrastar_txt");
-    alert("✨ ¡Taps automatizados! Tu letra corregida ha heredado los tiempos perfectamente.");
-
-  } catch (err) {
-    console.error("❌ Error al actualizar UltraStar:", err);
-  }
-}
-
-
-async function guardarCancionEnBiblioteca() {
-  // 1. Usamos tu cuadro de texto real del HTML
-  const lyricsText = $("lyricsText"); 
-  if (!lyricsText) return;
-
-  const textoDelEditor = lyricsText.value.trim();
-  
-  // 2. Ejecutamos la sincronización con tu función real
-  const palabrasSincronizadas = sincronizarLetraAutomatica(textoDelEditor);
-  if (!palabrasSincronizadas) return;
-
-  try {
-    // 3. Extraemos el nombre de la voz seleccionada para armar el título automáticamente
-    const vozOriginal = await getLibraryItemById(selectedVoiceId); 
-    const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
-
-    // 4. Armamos el objeto EXACTO con las propiedades que lee tu base de datos local
-    const nuevoKaraoke = {
-      name: `Karaoke - ${nombreBase} (Auto)`,
-      type: "karaoke", 
-      date: new Date().toLocaleString("es-ES"),
-      transcription: palabrasSincronizadas // Tus marcas de tiempo automatizadas
-    };
-
-    // 5. Invocamos tu función de guardado real en base de datos
-    await addLibraryItem(nuevoKaraoke); 
-    
-    alert("✨ ¡Canción guardada en tu biblioteca con sincronización automática!");
-  } catch (error) {
-    console.error("Error al guardar en biblioteca:", error);
-    alert("❌ Hubo un error al guardar el archivo.");
-  }
-}
-
-function sincronizarLetraAutomatica(textoEditadoUsuario) {
-  // Validamos usando tu arreglo global nativo
-  if (!baseTranscriptionSegments || baseTranscriptionSegments.length === 0) {
-    alert("⚠️ Primero debes transcribir una pista de voz.");
-    return null;
-  }
-
-  // Separar el texto editado por palabras limpiando espacios
-  const palabrasEditadas = textoEditadoUsuario.replace(/\n/g, " ").split(/\s+/).filter(w => w.length > 0);
-  
-  // CORREGIDO: Sin espacio en medio del nombre de la variable
-  const palabrasSincronizadasFinal = []; 
-  let indiceOriginal = 0;
-
-  palabrasEditadas.forEach((palabraEditada) => {
-    const limpiar = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
-    
-    let infoTiempo = baseTranscriptionSegments[indiceOriginal];
-
-    if (infoTiempo && limpiar(palabraEditada) !== limpiar(infoTiempo.text)) {
-      const busquedaCercana = baseTranscriptionSegments.slice(indiceOriginal, indiceOriginal + 3)
-        .findIndex(w => limpiar(w.text) === limpiar(palabraEditada));
-      
-      if (busquedaCercana !== -1) {
-        indiceOriginal += busquedaCercana;
-        infoTiempo = baseTranscriptionSegments[indiceOriginal];
-      }
-    }
-
-    // RESPETO A TU MONITOR: Espacio inicial antes de cada palabra para que no se peguen
-    const textoConEspacio = ` ${palabraEditada.trim()}`;
-
-    if (infoTiempo) {
-      palabrasSincronizadasFinal.push({
-        start: infoTiempo.start,
-        end: infoTiempo.end,
-        text: textoConEspacio
-      });
-      indiceOriginal++;
-    } else {
-      const ultimoTiempo = palabrasSincronizadasFinal[palabrasSincronizadasFinal.length - 1];
-      const tiempoBase = ultimoTiempo ? ultimoTiempo.end : 0;
-      palabrasSincronizadasFinal.push({
-        start: tiempoBase,
-        end: tiempoBase + 0.4,
-        text: textoConEspacio
-      });
-    }
-  });
-
-  return palabrasSincronizadasFinal;
-}
-
 function exportStereoWav(buffer) {
   const numOfChan = buffer.numberOfChannels;
   const length = buffer.length * numOfChan * 2 + 44;
@@ -3433,7 +3268,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Eventos interactivos de sincronización con Taps manuales
     safeAdd("startTapSyncBtn", "click", startTapSync);
-    safeAdd("btnSincronizarAuto", "click", sincronizarTapsAutomatico);
     safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
     safeAdd("tapBeatBtn", "click", recordTap);
     safeAdd("applyTapSyncBtn", "click", applyTapSync);
@@ -4624,4 +4458,1905 @@ function inicializarEscenarioDesdeMemoria() {
 
   select.value = temaGuardado; 
   cambiarEscenarioKaraoke();   
+}
+
+html
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" href="data:,">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎤 SingIt</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <h2>🎤 SingIt</h2>
+    <button id="btnAfinador" type="button">Afinador</button>
+    <button id="btnEstudio" type="button">Estudio</button>
+    <button id="btnBiblioteca" type="button">Biblioteca</button>
+    <button id="btnKaraokeLibrary" type="button">Karaoke Library</button>
+    <button id="btnKaraoke" type="button">Karaoke</button>
+    <button id="btnSplitter" type="button">Splitter</button>
+    <button id="btnConfig" type="button">Configuración</button>
+  </nav>
+
+  <!-- CONTENIDO -->
+  <main class="content">
+
+    <!-- AFINADOR -->
+    <section id="afinador" class="tab active">
+      <h1>🎵 Afinador</h1>
+      
+      <div class="afinador-container">
+        <label for="targetNote">Nota objetivo:</label>
+        <select id="targetNote">
+          <option value="C2">Do 2 (C2)</option>
+          <option value="C#2">Do# 2 (C#2)</option>
+          <option value="D2">Re 2 (D2)</option>
+          <option value="D#2">Re# 2 (D#2)</option>
+          <option value="E2" selected>Mi 2 (E2)</option>
+          <option value="F2">Fa 2 (F2)</option>
+          <option value="F#2">Fa# 2 (F#2)</option>
+          <option value="G2">Sol 2 (G2)</option>
+          <option value="G#2">Sol# 2 (G#2)</option>
+          <option value="A2">La 2 (A2)</option>
+          <option value="A#2">La# 2 (A#2)</option>
+          <option value="B2">Si 2 (B2)</option>
+
+          <option value="C3">Do 3 (C3)</option>
+          <option value="C#3">Do# 3 (C#3)</option>
+          <option value="D3">Re 3 (D3)</option>
+          <option value="D#3">Re# 3 (D#3)</option>
+          <option value="E3">Mi 3 (E3)</option>
+          <option value="F3">Fa 3 (F3)</option>
+          <option value="F#3">Fa# 3 (F#3)</option>
+          <option value="G3">Sol 3 (G3)</option>
+          <option value="G#3">Sol# 3 (G#3)</option>
+          <option value="A3">La 3 (A3)</option>
+          <option value="A#3">La# 3 (A#3)</option>
+          <option value="B3">Si 3 (B3)</option>
+
+          <option value="C4">Do 4 (C4)</option>
+          <option value="C#4">Do# 4 (C#4)</option>
+          <option value="D4">Re 4 (D4)</option>
+          <option value="D#4">Re# 4 (D#4)</option>
+          <option value="E4">Mi 4 (E4)</option>
+          <option value="F4">Fa 4 (F4)</option>
+          <option value="F#4">Fa# 4 (F#4)</option>
+          <option value="G4">Sol 4 (G4)</option>
+          <option value="G#4">Sol# 4 (G#4)</option>
+          <option value="A4">La 4 (A4)</option>
+          <option value="A#4">La# 4 (A#4)</option>
+          <option value="B4">Si 4 (B4)</option>
+        </select>
+        <button id="recordBtn" type="button">Iniciar</button>
+        <h2 id="noteDisplay">--</h2>
+        <div id="guideText"></div>
+      </div>
+    </section>
+    
+    <!-- ESTUDIO -->
+    <section id="estudio" class="tab">
+      <h1>🎧 Estudio</h1>
+
+      <div class="card">
+        <h3>Pista musical</h3>
+        <div class="studio-controls">
+          <button id="refreshStudioTrackListBtn" type="button">🔄 Actualizar lista</button>
+        </div>
+        <select id="studioTrackSelect">
+          <option value="">Selecciona una pista desde Biblioteca</option>
+        </select>
+        <div class="studio-controls" style="margin-bottom: 15px;">
+          <button id="loadStudioTrackBtn" type="button">📥 Cargar pista seleccionada</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+        <input type="file" id="audioFile" accept="audio/*">
+        <audio id="player" controls></audio>
+        <div class="studio-controls">
+          <button id="playTrackBtn" type="button">▶️ Reproducir</button>
+          <button id="pauseTrackBtn" type="button">⏸️ Pausar</button>
+          <button id="stopTrackBtn" type="button">⏹️ Detener</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Voz desde Biblioteca</h3>
+        <div class="studio-controls">
+          <button id="refreshVoiceListBtn" type="button">🔄 Actualizar lista</button>
+        </div>
+        <select id="voiceLibrarySelect">
+          <option value="">Selecciona una voz guardada</option>
+        </select>
+        <div class="studio-controls">
+          <button id="loadSelectedVoiceBtn" type="button">📥 Cargar voz seleccionada</button>
+          <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
+        </div>
+        <audio id="selectedVoicePlayer" controls></audio>
+        <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
+      </div>
+
+      <div class="card">
+        <h3>Grabación de voz</h3>
+        <div class="studio-controls">
+          <button id="startStudioRecBtn" type="button">🎙️ Grabar voz</button>
+          <button id="stopStudioRecBtn" type="button">🛑 Detener grabación</button>
+          <button id="redoStudioRecBtn" type="button">🔁 Volver a grabar</button>
+          <button id="saveStudioRecBtn" type="button">💾 Guardar grabación</button>
+        </div>
+        <p id="studioStatus">Estado: sin grabación</p>
+        
+        <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+          <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+              <small>Mic 1:</small>
+              <!-- CORRECCIÓN VISUAL: Añadimos fondo amarillo nativo para emparejar con el tema -->
+              <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill" style="background:#facc15; box-shadow:0 0 10px rgba(250,204,21,0.5);"></div></div>
+            </div>
+            <div style="flex: 1;">
+              <small>Mic 2:</small>
+              <!-- CORRECCIÓN VISUAL: Añadimos fondo cian nativo para emparejar con el tema -->
+              <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill" style="background:#06b6d4; box-shadow:0 0 10px rgba(6,182,212,0.5);"></div></div>
+            </div>
+          </div>
+        </div>
+        <audio id="voicePlayer" controls></audio>
+      </div>
+
+      <div class="card">
+        <h3>Letra</h3>
+        <textarea id="lyricsText" rows="6" placeholder="Aquí vamos a mostrar o pegar la letra de la canción..."></textarea>
+        <div class="studio-controls">
+          <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar letra corregida</button>
+        </div>
+
+        <!-- SINCRONIZACIÓN MANUAL CON TAPS -->
+        <div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #60a5fa;">🎯 Sincronización Manual</h4>
+            <button id="toggleAutoScrollBtn" type="button" style="background: #f59e0b; font-size: 12px; padding: 5px 10px;">🔒 Auto-scroll: ON</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
+            Escucha el audio y presiona TAP (o ESPACIO) cada vez que empiece una nueva línea.
+          </p>
+          <div class="studio-controls" style="margin-bottom: 15px;">
+            <button id="startTapSyncBtn" type="button" style="background: #3b82f6; color: white;">▶️ Iniciar Sincronización</button>
+            <button id="cancelTapSyncBtn" type="button" style="background: #6b7280; display: none;">❌ Cancelar</button>
+          </div>
+          
+          <div id="tapSyncActive" style="display: none;">
+            <div style="text-align: center; padding: 20px; background: var(--bg-main); border-radius: 8px; margin-bottom: 15px;">
+              <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 10px 0;">Línea actual:</p>
+              <p id="tapCurrentLine" style="font-size: 20px; font-weight: bold; color: #facc15; margin: 0 0 15px 0;">---</p>
+              <p style="font-size: 14px; color: var(--text-muted); margin: 0 0 5px 0;">Progreso:</p>
+              <p id="tapProgress" style="font-size: 16px; color: #22c55e; margin: 0;">0 / 0 líneas</p>
+            </div>
+            <button id="tapBeatBtn" type="button" style="width: 100%; padding: 30px; font-size: 24px; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; border-radius: 12px;">
+              🎵 TAP (o presiona ESPACIO)
+            </button>
+            <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+              ⌨️ También puedes usar la barra espaciadora
+            </p>
+          </div>
+
+  
+  <!-- Resultado de Taps -->
+  <div id="tapSyncResult" style="display: none; margin-top: 15px; padding: 15px; background: #14532d; border-radius: 8px; border: 1px solid #22c55e;">
+    <p style="color: #22c55e; font-weight: bold; margin: 0 0 10px 0;">✅ ¡Sincronización completada!</p>
+    <div class="studio-controls">
+      <button id="applyTapSyncBtn" type="button" style="background: #22c55e;">✅ Aplicar tiempos</button>
+      <button id="redoTapSyncBtn" type="button" style="background: #f59e0b;">🔄 Repetir</button>
+    </div>
+  </div>
+</div>
+
+  <!-- CORRECCIÓN ID MONITOR: Cambiado a miniMonitorTextArea para acoplarse con la carga de la biblioteca -->
+  <div id=".textContent" class="karaoke-lyrics">
+    <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
+  </div>
+</div>
+</section>
+
+<!-- BIBLIOTECA -->
+<section id="biblioteca" class="tab">
+  <h1>📁 Biblioteca</h1>
+
+  <!-- BOTONES DE CARPETA -->
+  <div class="folder-controls">
+    <button class="folder-btn" type="button" onclick="renderLibrary('todos')">📂 Todos</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('pista')">🎵 Pistas</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('voz')">🎙️ Voces</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('grabación')">💾 Grabaciones</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+    <button class="folder-btn" type="button" onclick="renderLibrary('ultrastar_txt')">📝 Texto UltraStar</button>
+  </div>
+
+  <!-- SUBIR ARCHIVOS DESDE PC -->
+  <div class="card">
+    <h3>📤 Subir archivo desde PC</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
+      Sube pistas, voces o letras sincronizadas. Los archivos se guardan en tu navegador.
+    </p>
+
+    <div class="settings-group">
+      <label for="libraryFileInput">Archivo (Audio o Letra TXT)</label>
+      <input type="file" id="libraryFileInput" accept="audio/*,.txt">
+    </div>
+
+    <div class="settings-group">
+      <label for="libraryFileType">Tipo</label>
+      <select id="libraryFileType">
+        <option value="pista">🎵 Pista instrumental</option>
+        <option value="voz">🎙️ Voz</option>
+        <!-- CORRECCIÓN ORTOGRÁFICA: Cambiado a "grabación" con acento para coincidir con IndexedDB -->
+        <option value="grabación">💾 Grabación / Mezcla</option>
+        <option value="ultrastar_txt">📝 Texto UltraStar (.txt)</option>
+      </select>
+    </div>
+
+    <div class="settings-group">
+      <label for="libraryFileName">Nombre personalizado (opcional)</label>
+      <input type="text" id="libraryFileName" placeholder="Ej. Bohemian Rhapsody - Pista">
+    </div>
+
+    <div class="studio-controls">
+      <button id="saveLibraryFileBtn" type="button" style="background: #3b82f6; color: white;">💾 Guardar en Biblioteca</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Archivos guardados</h3>
+    <div id="libraryList"></div>
+  </div>
+</section>
+
+<!-- KARAOKE LIBRARY -->
+<section id="karaokeLibrary" class="tab">
+  <h1>🎵 Karaoke Library</h1>
+
+  <div class="card">
+    <h3>Lista de Canciones</h3>
+    <p style="color: var(--text-muted); margin-bottom: 15px;">Selecciona una canción para cargarla en el monitor de Karaoke.</p>
+
+    <div style="overflow-x: auto;">
+      <table id="karaokeLibraryTable" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>
+          <tr style="background: var(--bg-main); border-bottom: 2px solid var(--border);">
+            <th style="padding: 12px; text-align: left; color: var(--text-muted);">#</th>
+            <th style="padding: 12px; text-align: left; color: var(--text-muted);">Título</th>
+            <th style="padding: 12px; text-align: left; color: var(--text-muted);">Artista</th>
+            <th style="padding: 12px; text-align: left; color: var(--text-muted);">Fuente</th>
+            <th style="padding: 12px; text-align: center; color: var(--text-muted);">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="karaokeLibraryTableBody">
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="studio-controls" style="margin-top: 15px;">
+      <button id="refreshKaraokeLibraryBtn" type="button" style="background: #6b7280;">🔄 Actualizar Lista</button>
+    </div>
+  </div>
+</section>
+
+<!-- KARAOKE -->
+<section id="karaoke" class="tab">
+  <h1>🎤 Karaoke</h1>
+
+  <!-- MONITOR DE PENTAGRAMA -->
+  <div class="card" style="background: #1a1a1a; padding: 0;">
+    <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
+  </div>
+
+  <!-- MONITOR DE LETRAS -->
+  <div class="card">
+    <h3>Letra Sincronizada</h3>
+    <div id="miniMonitorTextArea" class="karaoke-lyrics" style="min-height: 200px; max-height: 400px; overflow-y: auto; padding: 15px; background: var(--bg-main); border-radius: 8px; font-size: 18px; line-height: 1.8;"></div>
+  </div>
+
+  <!-- INFO DE CANCIÓN CARGADA -->
+  <div class="card" id="loadedKaraokeSongInfo" style="display: none;">
+    <h3>Canción Cargada</h3>
+    <p id="loadedKaraokeSongTitle" style="font-size: 18px; font-weight: bold; color: var(--accent);"></p>
+    <p id="loadedKaraokeSongArtist" style="color: var(--text-muted);"></p>
+    <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
+  </div>
+
+  <!-- Paso 1: Grabación -->
+  <div class="card">
+    <h3>1. Grabación</h3>
+    <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando canción...</p>
+    
+    <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
+      <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+      <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+          <small>Mic 1:</small>
+          <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
+            <div id="karaokeDuoMic1Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #facc15; transition: width 0.05s ease;"></div>
+          </div>
+        </div>
+        <div style="flex: 1;">
+          <small>Mic 2:</small>
+          <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
+            <div id="karaokeDuoMic2Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #06b6d4; transition: width 0.05s ease;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="studio-controls">
+      <button id="karaokeStartBtn" class="btn-danger" type="button">🎙️ Iniciar Grabación</button>
+      <button id="karaokeStopBtn" type="button">⏹️ Detener</button>
+      <button id="karaokeRestartBtn" type="button">🔄 Volver a intentar</button>
+    </div>
+
+    <h4 style="margin-top: 20px;">Tu voz grabada:</h4>
+    <audio id="karaokeVoicePlayer" controls></audio>
+  </div>
+
+  <!-- Paso 2: Mezcla -->
+  <div class="card">
+    <h3>2. Mezcla Final</h3>
+    <p style="color: var(--text-muted); margin-bottom: 15px;">Une la pista instrumental con tu voz en un solo archivo de audio.</p>
+
+    <div class="studio-controls">
+      <button id="karaokeMixBtn" type="button" style="background: #a855f7; color: white;">🎧 Mezclar Pista + Voz</button>
+    </div>
+
+    <div id="karaokeMixResult" style="margin-top: 15px;"></div>
+  </div>
+</section>
+
+<!-- SPLITTER -->
+<section id="splitter" class="tab">
+      <h1>✂️ Splitter IA</h1>
+
+      <div class="card">
+        <h3>Separar Voz e Instrumental</h3>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">
+          Sube una canción. La Inteligencia Artificial la separará y la guardará en tu Biblioteca.
+        </p>
+
+        <input type="file" id="splitterFile" accept="audio/*">
+        
+        <div class="studio-controls">
+          <button id="splitBtn" type="button" style="background: #3b82f6; color: white;">✨ Separar Audio con IA</button>
+        </div>
+
+        <div id="splitterStatusBox" style="margin-top: 20px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border); display: none;">
+          <h4 id="splitterStatusText" style="color: var(--accent); margin: 0;">Iniciando IA...</h4>
+          <p id="splitterDetailText" style="color: var(--text-muted); font-size: 14px;">Esto puede tardar un poco.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section id="config" class="tab">
+      <h1>⚙️ Configuración</h1>
+      
+      <div class="card">
+        <h3>Preferencias de la App</h3>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">Los cambios se guardan automáticamente.</p>
+        
+        <div class="settings-group">
+          <label for="userVoiceType">👤 Tipo de voz</label>
+          <select id="userVoiceType">
+            <option value="grave">Grave</option>
+            <option value="media">Media</option>
+            <option value="aguda">Aguda</option>
+            <option value="todas">Todas</option>
+          </select>
+        </div>
+        
+        <div class="settings-group">
+          <label for="micCount">🔊 Cantidad de micrófonos</label>
+          <select id="micCount">
+            <option value="1">1 Micrófono (Solo)</option>
+            <option value="2">2 Micrófonos (Dúo)</option>
+          </select>
+        </div>
+        
+        <!-- CONTROL DEL HARDWARE - MICRÓFONO 1 -->
+        <div class="settings-group">
+          <button type="button" id="refreshMicsBtn" style="background: #6b7280;">🔄 Actualizar lista de micrófonos</button>
+        </div>
+        <div class="settings-group">
+          <label for="mic1Select">🎙️ Micrófono Principal (Cantante 1)</label>
+          <select id="mic1Select">
+            <option value="">Cargando dispositivos...</option>
+          </select>
+          <div class="studio-controls">
+            <button type="button" id="testMic1Btn" style="background: #3b82f6;">🔊 Probar Mic 1</button>
+          </div>
+          <div id="mic1Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
+        </div>
+
+        <!-- CORRECCIÓN COMPLEMENTARIA: Añadimos la maquetación física del Micrófono 2 para el modo Dúo -->
+        <div id="mic2Group" class="settings-group" style="display: none;">
+          <label for="mic2Select">🎙️ Micrófono Secundario (Cantante 2)</label>
+          <select id="mic2Select">
+            <option value="">Cargando dispositivos...</option>
+          </select>
+          <div class="studio-controls">
+            <button type="button" id="testMic2Btn" style="background: #3b82f6;">🔊 Probar Mic 2</button>
+          </div>
+          <div id="mic2Level" class="mic-level-bar"><div class="mic-level-fill"></div></div>
+        </div>
+        
+        <div class="settings-group">
+          <label for="micSensitivity">🎚️ Sensibilidad del Micrófono (Umbral)</label>
+          <input type="range" id="micSensitivity" min="0.000" max="0.010" step="0.001" value="0.015">
+          <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
+        </div>
+        
+        <div class="settings-group">
+          <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
+          <select id="difficultyLevel">
+            <option value="facil">Fácil</option>
+            <option value="medio">Medio</option>
+            <option value="dificil">Difícil</option>
+            <option value="experto">Experto</option>
+          </select>
+        </div>
+        
+        <div class="settings-group">
+          <label for="pentagramDifficulty">📊 Dificultad para el Pentagrama</label>
+          <select id="pentagramDifficulty">
+            <option value="facil">Fácil</option>
+            <option value="medio">Medio</option>
+            <option value="dificil">Difícil</option>
+          </select>
+        </div>
+
+        <!-- CORRECCIÓN INTERFAZ SELECTOR ESCENARIOS: Vinculamos los nombres y el nuevo Retrowave -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <label for="karaokeThemeSelect">🎨 Escenario de Karaoke (Tema Visual)</label>
+          <select id="karaokeThemeSelect">
+            <option value="theme-clasico">Clásico (Slate)</option>
+            <option value="theme-moderno">Moderno (Neón Azul)</option>
+            <option value="theme-disco">Disco (Magenta/Rosa)</option>
+            <option value="theme-acustico">Acústico (Madera Cálida)</option>
+            <option value="theme-fiesta">Fiesta (Luces Animadas)</option>
+            <option value="theme-retrowave">Retrowave (Synthwave Ochentero) 🚀</option>
+          </select>
+        </div>
+
+        <!-- CORRECCIÓN INTERFAZ TEMAS GLOBALES: Añadimos el conmutador data-theme -->
+        <div class="settings-group">
+          <label for="appTheme">🎨 Tema Global de la Interfaz</label>
+          <select id="appTheme">
+            <option value="oscuro">Oscuro (Por defecto)</option>
+            <option value="claro">Claro</option>
+            <option value="rock">Rock Metal (Rojo/Piedra)</option>
+            <option value="pop">Pop Star (Rosa/Pastel)</option>
+            <option value="neon">Cyber Neon (Púrpura Eléctrico)</option>
+            <option value="naturaleza">Naturaleza (Verde Bosque)</option>
+          </select>
+        </div>
+
+        <!-- NOTIFICACIÓN DE GUARDADO EXIGIDA POR JAVASCRIPT -->
+        <div id="saveNotification" class="save-notification">💾 Configuración guardada en el almacenamiento local...</div>
+      </div>
+    </section>
+
+  </main> <!-- Cierre del contenedor de contenido central -->
+</div> <!-- Cierre de la envoltura global de la app -->
+
+<!-- INYECCIÓN UNIFICADA DE SCRIPTS DE MOTOR DE AUDIO (Mantenemos tu script principal) -->
+<script src="script.js"></script>
+</body>
+</html>
+
+
+css
+
+/* 1. Add the Cursive Font (Requires Google Fonts import at top of CSS) */
+@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap");
+
+/* ==========================================
+   VARIABLES (ESCALABLE)
+========================================== */
+:root {
+  --bg-main: #0f172a;
+  --bg-sidebar: #1e293b;
+  --bg-card: #1e293b;
+
+  --text-main: #ffffff;
+  --text-muted: #94a3b8;
+
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+
+  --danger: #ef4444;
+  --border: #334155;
+}
+
+/* ==========================================
+   RESET BÁSICO
+========================================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* ==========================================
+   LAYOUT
+========================================== */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: var(--bg-sidebar);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  margin-bottom: 20px;
+}
+
+/* ==========================================
+   BOTONES SIDEBAR
+========================================== */
+.sidebar button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.sidebar button:hover,
+.sidebar button.active {
+  background: var(--border);
+  color: var(--text-main);
+}
+
+/* ==========================================
+   CONTENIDO
+========================================== */
+
+.content {
+  flex: 1;
+  padding: 12px 20px; /* Reducido para ahorrar espacio vertical */
+  overflow-y: auto;
+}
+
+.tab {
+  display: none;
+}
+
+.tab.active {
+  display: block;
+}
+
+/* ==========================================
+   TARJETAS
+========================================== */
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 12px 16px; /* Reducido de 20px a 12px vertical */
+  margin-bottom: 10px; /* Reducido de 20px a 10px para juntar más los bloques */
+}
+
+/* ==========================================
+   BOTONES GENERALES
+========================================== */
+/* 2. Global Section Styles (Font, Size, Spacing) */
+#tapSyncSection,
+#lyricsText {
+  font-family: "Dancing Script", cursive !important;
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+/* 3. Neon Pop Animation Definition */
+@keyframes neon-pop {
+  0% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+  50% {
+    transform: scale(1.15);
+    color: #39ff14; /* Neon Green */
+    text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14;
+  }
+  100% {
+    transform: scale(1.1);
+  }
+}
+
+
+/* 5. Light Blue Aligned Button */
+#tapBeatBtn {
+  width: 100%;
+  background: linear-gradient(to bottom, #00d4ff, #00a3ff);
+  color: white;
+  padding: 15px;
+  font-size: 18px;
+  margin: 10px 0;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 8px;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px; /* Reducido de 10px a 6px de alto */
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+select,
+input[type="text"] {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+#selectedVoiceStatus {
+  margin-top: 15px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+/* Botón peligro */
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* ==========================================
+   INPUTS
+========================================== */
+input[type="file"],
+input[type="password"],
+input[type="text"],
+select,
+textarea {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+textarea {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  resize: vertical;
+  margin-top: 10px;
+  font-family: Arial, sans-serif;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ==========================================
+   AFINADOR
+========================================== */
+#noteDisplay {
+  font-size: 120px;
+  font-weight: 900;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+#guideText {
+  font-size: 32px;
+  margin: 20px 0;
+  font-weight: bold;
+  text-align: center;
+}
+
+#recordBtn {
+  background-color: #22c55e !important;
+  color: white !important;
+  padding: 10px 40px;
+  font-size: 18px;
+}
+
+#recordBtn.recording {
+  background-color: #ef4444 !important;
+}
+
+.afinador-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  height: 60vh;
+  text-align: center;
+}
+
+.success {
+  color: #22c55e !important;
+  transform: scale(1.2);
+}
+
+/* ==========================================
+   ESTUDIO Y BIBLIOTECA
+========================================== */
+.studio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+#studioStatus,
+#selectedVoiceStatus {
+  margin-top: 15px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+#libraryList div,
+.library-item {
+  background: var(--bg-card);
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
+.karaoke-placeholder {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ==========================================
+   MONITORES DE LETRAS (ESTUDIO)
+========================================= */
+.karaoke-lyrics {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  /* CORRECCIÓN SCROLL FLUIDO: Sincroniza el suavizado del auto-scroll */
+  scroll-behavior: smooth;
+}
+
+.karaoke-line {
+  font-size: 22px;
+  line-height: 1.6;
+  margin: 14px 0;
+  text-align: center;
+  color: var(--text-muted);
+  transition: all 0.25s ease;
+}
+
+.karaoke-line.active {
+  color: #22c55e;
+  font-weight: bold;
+  transform: scale(1.03);
+}
+
+.karaoke-line.past {
+  color: #64748b;
+}
+
+/* ==========================================
+   MONITOR REPRODUCTOR ULTRASTAR (KARAOKE)
+========================================== */
+.karaoke-live-line {
+  font-size: 26px;
+  color: #475569;
+  margin: 10px 0;
+  text-align: center;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.karaoke-live-line.active {
+  color: #22c55e; /* Verde neón brillante */
+  font-size: 34px;
+  font-weight: 900;
+  opacity: 1;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6); /* Brillo neón */
+  transform: scale(1.1);
+}
+
+.karaoke-live-line.past {
+  color: #ffffff;
+  opacity: 0.8;
+  font-size: 26px;
+}
+
+.karaoke-line.upcoming {
+  color: var(--text-muted);
+}
+
+/* ==========================================
+   RESALTADO DE SÍLABAS / PALABRAS
+========================================== */
+.karaoke-word,
+.karaoke-live-word {
+  display: inline-block;
+  color: inherit;
+  transition: color 0.1s ease, transform 0.1s ease, text-shadow 0.1s ease;
+  white-space: pre-wrap;
+}
+
+/* Palabra activa sonando en este preciso instante */
+.karaoke-word.active-word,
+.karaoke-live-word.active-word {
+  color: #facc15 !important;
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(250, 204, 21, 0.8);
+  transform: scale(1.08);
+}
+
+/* CORRECCIÓN: Las palabras que ya pasaron toman un gris limpio translúcido 
+   para no confundirse con el verde de la línea activa general */
+.karaoke-word.past-word,
+.karaoke-live-word.past-word {
+  color: rgba(255, 255, 255, 0.4) !important;
+  text-shadow: none;
+  transform: scale(1);
+}
+
+/* ==========================================
+   🔥 COMPONENTE: ESCENARIOS / TEMAS VISUALES INTERACTIVOS
+========================================== */
+/* Tema Clásico (Por defecto) */
+.karaoke-lyrics.theme-clasico {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+/* Tema Moderno (Cian Neón) */
+.karaoke-lyrics.theme-moderno {
+  background: #082f49 !important;
+  border-color: #06b6d4 !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+}
+.karaoke-lyrics.theme-moderno .karaoke-live-line.active,
+.karaoke-lyrics.theme-moderno .karaoke-line.active {
+  color: #06b6d4 !important;
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+}
+
+/* Tema Disco / Fiesta (Magenta Vibrante) */
+.karaoke-lyrics.theme-disco {
+  background: #2e1065 !important;
+  border-color: #db2777 !important;
+  box-shadow: 0 0 15px rgba(219, 39, 119, 0.3);
+}
+.karaoke-lyrics.theme-disco .karaoke-live-line.active,
+.karaoke-lyrics.theme-disco .karaoke-line.active {
+  color: #db2777 !important;
+  text-shadow: 0 0 10px rgba(219, 39, 119, 0.6);
+}
+
+/* Tema Acústico (Madera Cálida) */
+.karaoke-lyrics.theme-acustico {
+  background: #451a03 !important;
+  border-color: #b45309 !important;
+}
+.karaoke-lyrics.theme-acustico .karaoke-live-line.active,
+.karaoke-lyrics.theme-acustico .karaoke-line.active {
+  color: #fcd34d !important;
+  text-shadow: none;
+}
+
+/* Tema Fiesta Animada (Fondo manejado por JS, texto eléctrico) */
+.karaoke-lyrics.theme-fiesta .karaoke-live-line.active,
+.karaoke-lyrics.theme-fiesta .karaoke-line.active {
+  color: #ff007f !important;
+  text-shadow: 0 0 12px #ff007f;
+}
+
+/* NUEVA CARACTERÍSTICA: Tema Retrowave (Synthwave ochentero) */
+.karaoke-lyrics.theme-retrowave {
+  background: #1e0b36 !important;
+  border-color: #ff007f !important;
+  box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
+}
+
+.karaoke-lyrics.theme-retrowave .karaoke-live-line.active,
+.karaoke-lyrics.theme-retrowave .karaoke-line.active {
+  color: #39ff14 !important; /* Verde Cyberpunk */
+  text-shadow: 0 0 10px #39ff14, 0 0 20px #ff007f;
+}
+.karaoke-lyrics.theme-retrowave .active-word {
+  color: #ff007f !important;
+  text-shadow: 0 0 8px #ff007f;
+}
+
+/* ==========================================
+   DESPLEGABLES Y CONFIGURACIÓN
+========================================== */
+.contenido-desplegable.oculto {
+  display: none !important;
+}
+
+.flecha {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.flecha.rotada {
+  transform: rotate(90deg);
+}
+
+.settings-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-group label {
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: var(--text-main);
+  font-size: 16px;
+}
+
+.save-notification {
+  color: var(--accent);
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.save-notification.show {
+  opacity: 1;
+}
+
+/* ==========================================
+   SCROLL PERSONALIZADO
+========================================== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+
+#studioStatus {
+  margin-top: 15px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+.library-item {
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  transition: box-shadow 0.3s ease;
+}
+
+#tapCurrentLine {
+  font-size: 24px !important;
+  font-family: Arial, sans-serif !important;
+  color: #ff4500 !important; /* Orange-Red */
+  text-shadow: 0 0 10px #ff4500 !important; /* Pop effect */
+  letter-spacing: 1px !important;
+  font-weight: bold !important;
+  text-transform: none !important;
+}
+
+/* Tap effect for the current line */
+#tapCurrentLine:active {
+  color: #ff4500 !important;
+  text-shadow: 0 0 20px #ff4500 !important;
+  transform: scale(0.98) !important;
+}
+
+/* ==========================================
+   ESCENARIOS DE KARAOKE (TEMAS VISUALES - CORREGIDO)
+========================================== */
+/* CORRECCIÓN: Apuntamos al ID real de tu monitor unificado "#karaokeLiveLyrics" o ".karaoke-lyrics" */
+/* Nota: karaokeLiveLyrics no existe en HTML, usando miniMonitorTextArea */
+#miniMonitorTextArea.theme-clasico,
+.karaoke-lyrics.theme-clasico {
+  background: transparent;
+}
+
+/* Moderno (Neón Azul) */
+#miniMonitorTextArea.theme-moderno,
+.karaoke-lyrics.theme-moderno {
+  background: #082f49 !important;
+  border: 2px solid #06b6d4 !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+}
+#karaokeLiveLyrics.theme-moderno .karaoke-live-line.active,
+.karaoke-lyrics.theme-moderno .karaoke-line.active {
+  color: #06b6d4 !important;
+  text-shadow: 0 0 15px #06b6d4 !important;
+}
+
+/* Disco (Gradiente Vibrante) */
+#miniMonitorTextArea.theme-disco,
+.karaoke-lyrics.theme-disco {
+  background: linear-gradient(45deg, #4c1d95, #be185d) !important;
+  border: 2px solid #db2777 !important;
+  box-shadow: 0 0 15px rgba(219, 39, 119, 0.4);
+}
+#karaokeLiveLyrics.theme-disco .karaoke-live-line.active,
+.karaoke-lyrics.theme-disco .karaoke-line.active {
+  color: #facc15 !important;
+  text-shadow: 0 0 12px #facc15 !important;
+  font-size: 34px !important;
+}
+
+/* Acústico (Madera Cálida) */
+#miniMonitorTextArea.theme-acustico,
+.karaoke-lyrics.theme-acustico {
+  background: #451a03 !important;
+  border: 2px solid #78350f !important;
+}
+#karaokeLiveLyrics.theme-acustico .karaoke-live-line.active,
+.karaoke-lyrics.theme-acustico .karaoke-line.active {
+  color: #fcd34d !important;
+  text-shadow: none !important;
+  font-style: italic;
+}
+
+/* Fiesta Animada (Fondo con luces locas) */
+#miniMonitorTextArea.theme-fiesta,
+.karaoke-lyrics.theme-fiesta {
+  border: 2px solid #ff007f !important;
+  /* CORRECCIÓN: Enlazamos el ciclo de animaciones de luces neón */
+  animation: luces-fiesta 4s infinite alternate !important;
+}
+#karaokeLiveLyrics.theme-fiesta .karaoke-live-line.active,
+.karaoke-lyrics.theme-fiesta .karaoke-line.active {
+  color: #ff007f !important;
+  text-shadow: 0 0 20px #ff007f !important;
+}
+
+/* NUEVA CARACTERÍSTICA: Escenario Retrowave (Synthwave Ochentero) */
+#miniMonitorTextArea.theme-retrowave,
+.karaoke-lyrics.theme-retrowave {
+  background: #1e0b36 !important;
+  border: 2px solid #ff007f !important;
+  box-shadow: 0 0 20px rgba(255, 0, 127, 0.5);
+}
+#karaokeLiveLyrics.theme-retrowave .karaoke-live-line.active,
+.karaoke-lyrics.theme-retrowave .karaoke-line.active {
+  color: #39ff14 !important; /* Verde Cyberpunk */
+  text-shadow: 0 0 10px #39ff14, 0 0 20px #ff007f !important;
+}
+
+/* CORRECCIÓN ANIMACIÓN FIESTA: Estructuramos los fotogramas para simular luces de discoteca */
+@keyframes luces-fiesta {
+  0% {
+    background-color: #1e1b4b;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    background-color: #311042;
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+  }
+  100% {
+    background-color: #062f22;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+  }
+}
+
+/* ==========================================
+   MODO CELULAR (RESPONSIVE DESIGN)
+========================================== */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column-reverse;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: 70px;
+    padding: 5px 10px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .sidebar h2 {
+    display: none;
+  }
+
+  .sidebar button {
+    text-align: center;
+    padding: 10px;
+    font-size: 14px;
+    flex: 1;
+    margin: 0 2px;
+  }
+
+  .content {
+    height: calc(100vh - 70px);
+    padding: 15px;
+  }
+
+  #noteDisplay {
+    font-size: 80px;
+  }
+}
+
+/* ==========================================
+   SISTEMA DE CARPETAS DE BIBLIOTECA
+========================================== */
+.folder-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: var(--bg-main);
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.folder-btn {
+  padding: 10px 20px;
+  /* CORRECCIÓN VARIABLES: Mapeamos a tus nombres reales de variables globales */
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.folder-btn:hover,
+.folder-btn.active {
+  background: var(--accent);
+  color: black;
+  border-color: var(--accent-hover);
+  transform: translateY(-2px);
+}
+
+.library-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.delete-library-btn {
+  background: #444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: background 0.2s ease;
+}
+
+.delete-library-btn:hover {
+  background: #ef4444;
+}
+
+#karaokeCanvas {
+  background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+  display: block;
+  height: 420px; /* Aumentado de 300px a 420px para ocupar más de la mitad */
+  width: 100%;
+  border-radius: 8px;
+  border: 2px solid #3b82f6;
+}
+
+/* ==========================================
+   SISTEMA DE TEMAS GLOBALES
+========================================== */
+/* TEMA CLARO */
+[data-theme="claro"] {
+  --bg-main: #f1f5f9;
+  --bg-sidebar: #e2e8f0;
+  --bg-card: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+  --danger: #ef4444;
+  --border: #cbd5e1;
+}
+[data-theme="claro"] .sidebar button {
+  color: #475569;
+}
+[data-theme="claro"] .sidebar button:hover,
+[data-theme="claro"] .sidebar button.active {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+[data-theme="claro"] audio {
+  filter: invert(0);
+}
+
+/* TEMA ROCK */
+[data-theme="rock"] {
+  --bg-main: #1c1917;
+  --bg-sidebar: #292524;
+  --bg-card: #292524;
+  --text-main: #fafaf9;
+  --text-muted: #a8a29e;
+  --accent: #dc2626;
+  --accent-hover: #b91c1c;
+  --danger: #f97316;
+  --border: #44403c;
+}
+[data-theme="rock"] .sidebar h2 {
+  color: #dc2626;
+}
+[data-theme="rock"] button {
+  background: #dc2626;
+  color: white;
+}
+[data-theme="rock"] button:hover {
+  background: #b91c1c;
+}
+
+/* TEMA POP */
+[data-theme="pop"] {
+  --bg-main: #fdf2f8;
+  --bg-sidebar: #fbcfe8;
+  --bg-card: #fce7f3;
+  --text-main: #831843;
+  --text-muted: #9d174d;
+  --accent: #ec4899;
+  --accent-hover: #db2777;
+  --danger: #f43f5e;
+  --border: #f9a8d4;
+}
+[data-theme="pop"] .sidebar h2 {
+  color: #be185d;
+}
+[data-theme="pop"] .sidebar button {
+  color: #9d174d;
+}
+[data-theme="pop"] .sidebar button:hover,
+[data-theme="pop"] .sidebar button.active {
+  background: #f9a8d4;
+  color: #831843;
+}
+[data-theme="pop"] button {
+  background: #ec4899;
+  color: white;
+}
+[data-theme="pop"] button:hover {
+  background: #db2777;
+}
+
+/* TEMA NEÓN */
+[data-theme="neon"] {
+  --bg-main: #0a0a0a;
+  --bg-sidebar: #18181b;
+  --bg-card: #18181b;
+  --text-main: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --accent: #a855f7;
+  --accent-hover: #9333ea;
+  --danger: #f43f5e;
+  --border: #3f3f46;
+}
+[data-theme="neon"] .sidebar h2 {
+  color: #a855f7;
+  text-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7;
+}
+[data-theme="neon"] button {
+  background: #a855f7;
+  color: white;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+[data-theme="neon"] button:hover {
+  background: #9333ea;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+}
+[data-theme="neon"] .card {
+  border: 1px solid #a855f7;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+/* TEMA NATURALEZA */
+[data-theme="naturaleza"] {
+  --bg-main: #14532d;
+  --bg-sidebar: #166534;
+  --bg-card: #15803d;
+  --text-main: #f0fdf4;
+  --text-muted: #bbf7d0;
+  --accent: #84cc16;
+  --accent-hover: #65a30d;
+  --danger: #f97316;
+  --border: #22c55e;
+}
+[data-theme="naturaleza"] .sidebar h2 {
+  color: #84cc16;
+}
+[data-theme="naturaleza"] button {
+  background: #84cc16;
+  color: #14532d;
+}
+[data-theme="naturaleza"] button:hover {
+  background: #65a30d;
+}
+[data-theme="naturaleza"] .sidebar button {
+  color: #bbf7d0;
+}
+[data-theme="naturaleza"] .sidebar button:hover,
+[data-theme="naturaleza"] .sidebar button.active {
+  background: #22c55e;
+  color: #14532d;
+}
+/* ==========================================
+   VÚMETROS DE HARDWARE DE MICRÓFONOS
+========================================== */
+.mic-level-bar {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.mic-level-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(
+    90deg,
+    #22c55e,
+    #84cc16,
+    #facc15,
+    #f97316,
+    #ef4444
+  );
+  border-radius: 6px;
+  transition: width 0.05s ease-out;
+}
+
+.mic-level-fill.active {
+  animation: pulse-mic 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-mic {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+#mic2Group {
+  border-top: 1px dashed var(--border);
+  padding-top: 20px;
+  margin-top: 10px;
+}
+
+/* ==========================================
+   CATÁLOGO DE KARAOKE Y PLAYLISTS
+========================================== */
+.catalog-item,
+.my-karaoke-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.catalog-item:hover,
+.my-karaoke-item:hover {
+  border-color: var(--accent);
+  transform: translateX(5px);
+}
+
+.catalog-item-info,
+.my-karaoke-item-info {
+  flex: 1;
+}
+
+.catalog-item-title,
+.my-karaoke-item-title {
+  font-weight: bold;
+  color: var(--text-main);
+  margin: 0 0 4px 0;
+}
+
+.catalog-item-artist,
+.my-karaoke-item-artist {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.catalog-item-actions,
+.my-karaoke-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.catalog-item-actions button,
+.my-karaoke-item-actions button {
+  padding: 8px 15px;
+  font-size: 13px;
+}
+
+/* Modales e Inputs de carga */
+#ultrastarModal .settings-group {
+  margin-bottom: 15px;
+}
+
+#ultrastarModal input[type="file"] {
+  margin-top: 8px;
+}
+
+/* ==========================================
+   BARRAS DE VOLUMEN MODO DÚO (INTEGRADO VISUAL)
+========================================== */
+/* CORRECCIÓN: Usamos especificidad avanzada para que convivan en armonía
+   las barras fijas del Karaoke con el vúmetro multicolor del test de hardware */
+
+/* Color personalizado y sombreado exclusivo mediante su ID */
+#karaokeDuoMic1Level {
+  background: #facc15 !important;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+}
+
+#karaokeDuoMic2Level {
+  background: #06b6d4 !important;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+}
+
+/* Color destacado para saber qué carpeta de la biblioteca está abierta */
+.folder-btn.active {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border: 1px solid #22c55e !important;
+  font-weight: bold;
+  transform: scale(1.03);
+}
+
+/* ====================================================================
+   🎨 TEMA GLOBAL ORIGINAL: RETRO WAVE / CYBERPUNK (ANIMADO)
+   ==================================================================== */
+/* CORRECCIÓN INTERFAZ: Adaptamos el selector para que responda al 
+   sistema de atributos data-theme unificado de tu motor JS */
+[data-theme="retrowave"] {
+  --bg-main: #0b001a;
+  --bg-sidebar: #1e0936;
+  --bg-card: rgba(30, 9, 54, 0.6);
+  --text-main: #ffffff;
+  --text-muted: #bbf7d0;
+  --accent: #ff007f;
+  --accent-hover: #db2777;
+  --danger: #ef4444;
+  --border: #ff007f;
+}
+
+[data-theme="retrowave"] body {
+  background-color: #0b001a !important;
+  background-image: linear-gradient(rgba(255, 0, 128, 0.1) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 2px, transparent 2px) !important;
+  background-size: 40px 40px;
+  background-position: center bottom;
+  animation: grid-scroll 4s linear infinite !important;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* El sol brillante ochentero de fondo */
+[data-theme="retrowave"] body::before {
+  content: "";
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(#ff007f, #facc15);
+  border-radius: 50%;
+  filter: blur(2px);
+  box-shadow: 0 0 60px rgba(255, 0, 127, 0.6);
+  opacity: 0.4;
+  z-index: -1;
+  animation: sun-pulse 3s ease-in-out infinite alternate;
+}
+
+/* Estilo para las tarjetas del menú bajo este tema */
+[data-theme="retrowave"] .card {
+  background: rgba(30, 9, 54, 0.6) !important;
+  border: 1px solid #ff007f !important;
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="retrowave"] button {
+  background: #ff007f;
+  color: white;
+  box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
+}
+
+[data-theme="retrowave"] button:hover {
+  background: #db2777;
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.7);
+}
+
+[data-theme="retrowave"] .sidebar button:hover,
+[data-theme="retrowave"] .sidebar button.active {
+  background: rgba(255, 0, 127, 0.2);
+  color: #ffffff;
+  border: 1px solid #ff007f;
+}
+
+/* --- ANIMACIONES NATIVAS RETROWAVE --- */
+@keyframes grid-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 40px;
+  }
+}
+
+@keyframes sun-pulse {
+  from {
+    transform: translateX(-50%) scale(0.95);
+    opacity: 0.3;
+  }
+  to {
+    transform: translateX(-50%) scale(1.05);
+    opacity: 0.55;
+  }
+}
+
+/* ==========================================================
+   EFECTO PIE DE PÁGINA (MINIMALISTA Y ULTRA-COMPACTO)
+   ========================================================== */
+
+/* 1. Volver los títulos diminutos como notas al pie */
+.card h1,
+.card h2,
+.card h3,
+.card h4,
+.card h5,
+.card h6 {
+  font-size: 11px !important; /* Tamaño micro de nota al pie */
+  font-weight: bold !important;
+  text-transform: uppercase; /* En mayúsculas para que sea legible a pesar de ser mini */
+  margin: 2px 0 !important;
+  color: var(
+    --text-muted
+  ) !important; /* Color gris suave para que no compita con el karaoke */
+}
+
+/* 2. Textos descriptivos aún más pequeños */
+.card p,
+.card span,
+.card div,
+.card label {
+  font-size: 12px !important; /* Tamaño mínimo legible */
+  margin: 1px 0 !important;
+  color: rgba(255, 255, 255, 0.4) !important; /* Súper sutil */
+}
+
+/* 3. Volver el reproductor de audio una barrita minimalista */
+audio {
+  height: 24px !important; /* Reduce la altura a la mitad de su tamaño original */
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+  opacity: 0.7; /* Lo hace sutil para que se mezcle con el fondo */
+  transition: opacity 0.2s;
+}
+audio:hover {
+  opacity: 1; /* Se aclara solo cuando pasas el mouse por encima */
+}
+
+/* 4. Reducir la separación interna de los bloques para aplastarlos más */
+
+
+export default async function handler(req, res) {
+  // 💡 1. Configurar cabeceras CORS obligatorias al inicio
+  const origin = req.headers.origin || req.headers.referer?.split('/').slice(0, 3).join('/') || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  // 💡 2. Responder de inmediato con éxito a la verificación previa (Preflight)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // 💡 3. Validar el método permitido posterior
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Método no permitido" });
+  }
+
+  try {
+    const { audioBase64 } = req.body || {};
+
+    if (!audioBase64) {
+      return res.status(400).json({ error: "Falta el audio" });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "Falta configurar OPENAI_API_KEY en el servidor" });
+    }
+
+    // Convertir base64 a binario
+    const audioBuffer = Buffer.from(audioBase64, "base64");
+
+    // Crear archivo compatible para enviar a OpenAI
+    const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
+    const formData = new FormData();
+    formData.append("file", audioBlob, "chunk.wav");
+    formData.append("model", "whisper-1");
+    formData.append("language", "es");
+    formData.append("response_format", "verbose_json");
+    formData.append("timestamp_granularities[]", "segment");
+
+    const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: formData
+    });
+
+    const responseText = await openAIResponse.text();
+
+    if (!openAIResponse.ok) {
+      console.error("Error de OpenAI:", responseText);
+      return res.status(openAIResponse.status).json({
+        error: "Error al transcribir en OpenAI",
+        detail: responseText
+      });
+    }
+
+    const data = JSON.parse(responseText);
+    return res.status(200).json(data);
+
+  } catch (error) {
+    console.error("Error del servidor:", error);
+    return res.status(500).json({
+      error: "Error interno del servidor",
+      detail: error.message
+    });
+  }
+}
+
+
+
+Voz transcribir
+
+async function transcribeSelectedVoice() {
+  if (!selectedVoiceBlob) {
+    alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
+    return;
+  }
+
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  try {
+    if (status) {
+      status.textContent = "Estado: Preparando audio (cortando en porciones)...";
+    }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    const CHUNK_SECONDS = 25;
+    const sampleRate = audioBuffer.sampleRate;
+    const totalSamples = audioBuffer.length;
+    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
+
+    let fullSegments = [];
+
+    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
+      const end = Math.min(start + samplesPerChunk, totalSamples);
+      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
+      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
+
+      if (status) {
+        status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+      }
+
+      const wavBlob = audioBufferToWav(audioBuffer, start, end);
+      const base64Audio = await blobToBase64(wavBlob);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioBase64: base64Audio })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      const palabrasProhibidas = [
+        "Amara",
+        "Subtítulos",
+        "subtítulos",
+        "Almorzo",
+        "Suscribete",
+        "comunidad"
+      ];
+
+      const timeOffset = start / sampleRate;
+
+      (result.segments || []).forEach((seg) => {
+        const segText = (seg?.text || "").trim();
+
+        if (!segText) return;
+
+        const esFantasma = palabrasProhibidas.some((palabra) =>
+          segText.toLowerCase().includes(palabra.toLowerCase())
+        );
+
+        if (esFantasma) return;
+
+        const segmentWithOffset = {
+          start: Number(seg.start || 0) + timeOffset,
+          end: Number(seg.end || 0) + timeOffset,
+          text: segText
+        };
+
+        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+      });
+    }
+
+    baseTranscriptionSegments = fullSegments;
+    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
+
+    if (lyricsText) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    }
+
+    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
+    try {
+      const vozOriginal = await getLibraryItemById(selectedVoiceId); 
+      const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
+      
+      const bpmPorDefecto = 120;
+      const gapPorDefecto = 0;
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4); // Resolución x4 para evitar que se corra el tiempo
+
+      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
+      let lineasCuerpo = [];
+
+      // Mapeamos los segmentos nativos de Whisper a líneas de tiempo estructuradas de UltraStar
+      baseTranscriptionSegments.forEach((seg, index) => {
+        // Convertimos segundos absolutos a Beats de la rejilla matemática musical
+        const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
+        const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
+        const lengthBeats = endBeat - startBeat;
+        
+        // Pitch por defecto en 0 (Equivale a C4/Do Central) hasta que el usuario use los Taps o cante
+        const pitchBase = 0; 
+        
+        // Asegurar que el texto conserve un espacio si no es una sílaba unida
+        const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
+
+        lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
+
+        // Insertar un corte de línea reglamentario (-) si detectamos pausas naturales o signos de puntuación
+        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
+          lineasCuerpo.push("-");
+        }
+      });
+
+      // Añadimos el cierre obligatorio del archivo "E"
+      lineasCuerpo.push("E");
+
+      const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
+
+      await addLibraryItem({
+        name: `UltraStar - ${nombreBase}`,
+        type: "ultrastar_txt", 
+        audioBlob: null,       
+        textoPlano: contenidoFinalTxt, 
+        date: new Date().toLocaleString("es-ES"),
+        transcription: baseTranscriptionSegments 
+      });
+
+      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
+      await renderLibrary("ultrastar_txt");
+
+    } catch (err) {
+      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
+    }
+
+    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
+    if (selectedVoiceId) {
+      try {
+        await updateLibraryItem(selectedVoiceId, {
+          transcription: baseTranscriptionSegments 
+        });
+        console.log("✅ Transcripción vinculada a la voz original");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la voz:", err);
+      }
+    }
+
+    if (status) {
+      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+    }
+
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al transcribir el audio.");
+    if (status) status.textContent = "Estado: Error en la transcripción";
+  }
 }
