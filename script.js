@@ -2452,78 +2452,85 @@ async function sincronizarTapsAutomatico() {
 
 
 async function guardarCancionEnBiblioteca() {
-  const textoDelEditor = document.getElementById("miniMonitorTextArea").value;
-  const palabrasSincronizadas = sincronizarLetraAutomatica(textoDelEditor);
+  // 1. Usamos tu cuadro de texto real del HTML
+  const lyricsText = $("lyricsText"); 
+  if (!lyricsText) return;
 
+  const textoDelEditor = lyricsText.value.trim();
+  
+  // 2. Ejecutamos la sincronización con tu función real
+  const palabrasSincronizadas = sincronizarLetraAutomatica(textoDelEditor);
   if (!palabrasSincronizadas) return;
 
-  const nuevoKaraoke = {
-    id: Date.now(),
-    name: "Canción Sincronizada Automáticamente",
-    pistaAudioUrl: urlDeLaPistaSubida, // El archivo de la pista que requiere tu app
-    metadata: {
-      title: document.getElementById("inputTitulo").value || "Sin título",
-      artist: document.getElementById("inputArtista").value || "Artista desconocido"
-    },
-    // Este objeto reemplaza por completo los "taps" manuales
-    type: "user",
-    sincronizacion: palabrasSincronizadas 
-  };
+  try {
+    // 3. Extraemos el nombre de la voz seleccionada para armar el título automáticamente
+    const vozOriginal = await getLibraryItemById(selectedVoiceId); 
+    const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
 
-  // Aquí mandas el objeto a tu función de guardado existente en base de datos
-  await guardarEnTuDB(nuevoKaraoke); 
-  alert("✨ ¡Canción guardada en tu biblioteca con sincronización automática!");
+    // 4. Armamos el objeto EXACTO con las propiedades que lee tu base de datos local
+    const nuevoKaraoke = {
+      name: `Karaoke - ${nombreBase} (Auto)`,
+      type: "karaoke", 
+      date: new Date().toLocaleString("es-ES"),
+      transcription: palabrasSincronizadas // Tus marcas de tiempo automatizadas
+    };
+
+    // 5. Invocamos tu función de guardado real en base de datos
+    await addLibraryItem(nuevoKaraoke); 
+    
+    alert("✨ ¡Canción guardada en tu biblioteca con sincronización automática!");
+  } catch (error) {
+    console.error("Error al guardar en biblioteca:", error);
+    alert("❌ Hubo un error al guardar el archivo.");
+  }
 }
 
 function sincronizarLetraAutomatica(textoEditadoUsuario) {
-  if (!datosPalabrasOriginales || datosPalabrasOriginales.length === 0) {
+  // Validamos usando tu arreglo global nativo
+  if (!baseTranscriptionSegments || baseTranscriptionSegments.length === 0) {
     alert("⚠️ Primero debes transcribir una pista de voz.");
     return null;
   }
 
-  // Separar el texto editado por palabras limpiando espacios y saltos de línea
-  const palabrasEditadas = textoEditadoUsuario
-    .trim()
-    .replace(/\n/g, " ")
-    .split(/\s+/);
-
-  const palabrasSincronizadas Final = [];
+  // Separar el texto editado por palabras limpiando espacios
+  const palabrasEditadas = textoEditadoUsuario.replace(/\n/g, " ").split(/\s+/).filter(w => w.length > 0);
+  
+  // CORREGIDO: Sin espacio en medio del nombre de la variable
+  const palabrasSincronizadasFinal = []; 
   let indiceOriginal = 0;
 
-  // Recorremos las palabras editadas e intentamos emparejarlas con los tiempos de Whisper
   palabrasEditadas.forEach((palabraEditada) => {
-    // Limpiamos signos de puntuación para comparar el texto real
     const limpiar = (str) => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()¿?¡!]/g, "");
     
-    let infoTiempo = datosPalabrasOriginales[indiceOriginal];
+    let infoTiempo = baseTranscriptionSegments[indiceOriginal];
 
-    // Si por la edición el usuario agregó o cambió una palabra, buscamos una coincidencia cercana
-    if (infoTiempo && limpiar(palabraEditada) !== limpiar(infoTiempo.word)) {
-      const busquedaCercana = datosPalabrasOriginales.slice(indiceOriginal, indiceOriginal + 3)
-        .findIndex(w => limpiar(w.word) === limpiar(palabraEditada));
+    if (infoTiempo && limpiar(palabraEditada) !== limpiar(infoTiempo.text)) {
+      const busquedaCercana = baseTranscriptionSegments.slice(indiceOriginal, indiceOriginal + 3)
+        .findIndex(w => limpiar(w.text) === limpiar(palabraEditada));
       
       if (busquedaCercana !== -1) {
         indiceOriginal += busquedaCercana;
-        infoTiempo = datosPalabrasOriginales[indiceOriginal];
+        infoTiempo = baseTranscriptionSegments[indiceOriginal];
       }
     }
 
-    // Si encontramos el tiempo asignamos start y end, si no, aproximamos con el tiempo anterior
+    // RESPETO A TU MONITOR: Espacio inicial antes de cada palabra para que no se peguen
+    const textoConEspacio = ` ${palabraEditada.trim()}`;
+
     if (infoTiempo) {
       palabrasSincronizadasFinal.push({
-        word: palabraEditada,
         start: infoTiempo.start,
-        end: infoTiempo.end
+        end: infoTiempo.end,
+        text: textoConEspacio
       });
       indiceOriginal++;
     } else {
-      // Caso de respaldo si el usuario escribió texto extra que Whisper nunca escuchó
       const ultimoTiempo = palabrasSincronizadasFinal[palabrasSincronizadasFinal.length - 1];
       const tiempoBase = ultimoTiempo ? ultimoTiempo.end : 0;
       palabrasSincronizadasFinal.push({
-        word: palabraEditada,
         start: tiempoBase,
-        end: tiempoBase + 0.5 // Le asignamos medio segundo por defecto
+        end: tiempoBase + 0.4,
+        text: textoConEspacio
       });
     }
   });
