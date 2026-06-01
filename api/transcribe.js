@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     }
 
     // Convertir base64 a binario
-    const audioBuffer = Buffer.from(audioBase64, "base64");
+   const audioBuffer = Buffer.from(audioBase64, "base64");
 
     // Crear archivo compatible para enviar a OpenAI
     const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
@@ -37,8 +37,8 @@ export default async function handler(req, res) {
     formData.append("language", "es");
     formData.append("response_format", "verbose_json");
     
-    // Cambiado de "segment" a "word" para obtener marcas de tiempo por palabra individual
-    formData.append("timestamp_granularities[]", "word"); 
+    // CORRECCIÓN AQUÍ: Mandar el parámetro limpio sin los corchetes en la llave para Node.js
+    formData.append("timestamp_granularities", "word"); 
 
     const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
