@@ -2473,15 +2473,6 @@ async function guardarCancionEnBiblioteca() {
   await saveLibraryItem("karaoke", nuevoKaraoke);
 }
 
-
-const nuevoKaraoke = {
-  id: Date.now(),
-  name: "Mi canción sincronizada",
-  pistaAudio: urlPistaSube, // Tu archivo de música de fondo
-  metadata: { title: "Título", artist: "Artista" },
-  sincronizacion: palabrasConTimestamps // El JSON generado automáticamente
-};
-
 function exportStereoWav(buffer) {
   const numOfChan = buffer.numberOfChannels;
   const length = buffer.length * numOfChan * 2 + 44;
