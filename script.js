@@ -1143,31 +1143,6 @@ async function loadSelectedVoiceFromLibrary() {
 //Variable global
 let datosPalabrasOriginales = [];
 
-async function transcribirAudioVoz(audioBase64) {
-  try {
-    const response = await fetch("/api/transcribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ audioBase64 })
-    });
-
-    const resultado = await response.json();
-
-    if (resultado.error) throw new Error(resultado.error);
-
-    // Guardamos las palabras con sus milisegundos en la variable global
-    datosPalabrasOriginales = resultado.words; 
-
-    // Colocamos el texto en tu textarea o contenedor de edición actual
-    // (Reemplaza 'textareaLetra' por el ID real de tu HTML)
-    document.getElementById("textareaLetra").value = resultado.text;
-
-    console.log("¡Transcripción cargada con tiempos por palabra!");
-  } catch (error) {
-    console.error("Error al procesar transcripción:", error);
-  }
-}
-
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
@@ -1207,7 +1182,17 @@ async function transcribeSelectedVoice() {
       const base64Audio = await blobToBase64(wavBlob);
 
       // En tu script.js (Frontend)
-      const response = await fetch("/api/transcribe", { method: "POST", body: });
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }, // Crucial para que Vercel entienda el JSON
+        body: JSON.stringify({ audioBase64: base64Audio }) // 👈 ¡Aquí pones tu variable de audio!
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+      
       const resultado = await response.json();
       
       // Guardas los tiempos en memoria para cuando el usuario edite y le dé a "Sincronizar"
