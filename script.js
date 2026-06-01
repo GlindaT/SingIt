@@ -793,14 +793,11 @@ async function renderLibrary(filter = 'todos') {
   // SOLUCIÓN 1: ILUMINAR LA CARPETA SELECCIONADA
   // ==========================================
   document.querySelectorAll(".folder-btn").forEach(btn => {
-    // Leemos el filtro guardado en el botón (ej: data-filter="ultrastar_txt")
     const botonFiltro = btn.dataset.filter;
-    
-    // Comprobamos si coincide con el filtro que está activo en la app
     if (botonFiltro === filter) {
-      btn.classList.add("active");    // Ilumina la carpeta actual
+      btn.classList.add("active");    
     } else {
-      btn.classList.remove("active"); // Apaga las carpetas inactivas
+      btn.classList.remove("active"); 
     }
   });
 
@@ -825,9 +822,8 @@ async function renderLibrary(filter = 'todos') {
         div.className = "library-item card"; 
         div.style.marginBottom = "10px";
 
-        // Condicional: Si es un archivo de texto UltraStar
+        // 🎯 CASO A: Si es un archivo de texto estructurado UltraStar listo para cantar o editar
         if (item.type === 'ultrastar_txt') {
-          // Cortamos el texto para mostrar solo un adelanto de las primeras líneas
           const previewTexto = item.textoPlano ? item.textoPlano.substring(0, 120) + "..." : "Sin contenido";
 
           div.innerHTML = `
@@ -837,79 +833,105 @@ async function renderLibrary(filter = 'todos') {
               ${previewTexto}
             </div>
             <div style="display: flex; gap: 10px;">
-              <button type="button" data-id="${item.id}" class="load-monitor-btn" style="background:#3b82f6; color:white;">📥 Cargar en Monitor</button>
-              <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+              <button type="button" data-id="${item.id}" class="load-monitor-btn" style="background:#3b82f6; color:white; border-radius:4px; padding:6px 12px; cursor:pointer;">📥 Editar en Estudio</button>
+              <button type="button" data-id="${item.id}" class="play-karaoke-btn" style="background:#10b981; color:white; border-radius:4px; padding:6px 12px; font-weight:bold; cursor:pointer;">🎤 ¡Cantar ya!</button>
+              <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48; border-radius:4px; padding:6px 12px; cursor:pointer;">🗑️ Eliminar</button>
             </div>
           `;
         } 
-        // Si es cualquier otro archivo (pista, voz, grabación, karaoke con audio)
+        // CASO B: Si es cualquier otro archivo con audio directo
         else {
-          // Validamos que exista el blob antes de crear la URL para evitar errores accidentales
           const audioURL = item.audioBlob ? URL.createObjectURL(item.audioBlob) : "";
 
           div.innerHTML = `
             <p><strong>${item.name}</strong></p>
             <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
             ${audioURL ? `<audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>` : '<p style="color:red; font-size:12px;">Audio no encontrado</p>'}
-            <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
+            <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48; border-radius:4px; padding:6px 12px; cursor:pointer;">🗑️ Eliminar</button>
           `;
         }
         container.appendChild(div);
       });
     }
     
-    // Reactivar botones de borrar
-    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
+    // ========================================================
+    // ⚡ ESCUCHADOR EN RENDERLIBRARY HACIA EL KARAOKE AUTOMÁTICO
+    // ========================================================
+    document.querySelectorAll(".play-karaoke-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
-        await deleteLibraryItem(id);
-        renderLibrary(filter); 
+        
+        // 1. Ejecutamos la carga directa de audio, letra y monitor usando el ID
+        await cargarCancionDirectaEnKaraoke(id);
+
+        // 2. Forzamos el salto visual automático a la pestaña de Karaoke
+        const botonMenuKaraoke = document.getElementById("tab-karaoke") || 
+                                 document.querySelector('[data-tab="karaoke"]') || 
+                                 Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Karaoke'));
+          
+        if (botonMenuKaraoke) {
+          botonMenuKaraoke.click(); // Simula el clic en el menú
+        }
       });
     });
     
     // ========================================================
-    // SOLUCIÓN 2: CORRECCIÓN DEL ID PARA CARGAR EN EL MONITOR
+    // ⚡ ENLACE DIRECTO DEL BOTÓN VERDE "¡CANTAR YA!"
     // ========================================================
-    document.querySelectorAll(".load-monitor-btn").forEach((btn) => {
+    document.querySelectorAll(".play-karaoke-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = Number(btn.dataset.id);
+        
+        // Ejecutamos la carga limpia en el reproductor y monitor de Karaoke
+        await cargarCancionDirectaEnKaraoke(id);
+
+        // Buscamos tu botón de menú lateral izquierdo "Karaoke" para cambiar de pantalla
+        const botonMenuKaraoke = document.getElementById("tab-karaoke") || 
+                                 document.querySelector('[data-tab="karaoke"]') || 
+                                 Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Karaoke'));
+          
+        if (botonMenuKaraoke) {
+          botonMenuKaraoke.click(); // Salto automático de pestaña
+        }
+      });
+    });
+
+    // ========================================================
+    // ⚡ NUEVO: FLUJO DIRECTO HACIA LA PESTAÑA KARAOKE TO PLAY
+    // ========================================================
+    document.querySelectorAll(".play-karaoke-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
         const item = library.find(i => i.id === id);
-        
-        if (item && item.textoPlano) {
-          // 🎯 CORRECCIÓN 1: Selector limpio directo al Textarea del Estudio
-          const monitor = document.getElementById("lyricsText");
-          
-          if (monitor) {
-            monitor.value = item.textoPlano;
-            
-            // Si el archivo contiene los tiempos guardados, los reactivamos en memoria
-            if (item.transcription) {
-              baseTranscriptionSegments = item.transcription;
-              
-              // 🎯 CORRECCIÓN 2: Agrupamos en líneas de 6 palabras antes de pasarlo al monitor
-              if (typeof splitSegmentsIntoKaraokeLines === "function") {
-                transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-              } else {
-                transcriptionSegments = baseTranscriptionSegments;
-              }
-              
-              // Lanzamos los renderizadores para actualizar la pantalla
-              if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
-              if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
-            }
 
-            alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
+        if (item) {
+          // 1. Cargamos la letra y la segmentamos para la pantalla de juego
+          if (item.transcription) {
+            baseTranscriptionSegments = item.transcription;
+            if (typeof splitSegmentsIntoKaraokeLines === "function") {
+              transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+            } else {
+              transcriptionSegments = baseTranscriptionSegments;
+            }
             
-            // Scroll suave automático directo al monitor de texto para empezar a trabajar
-            monitor.scrollIntoView({ behavior: "smooth", block: "center" });
+            // Renderizamos los componentes visuales del monitor de karaoke
+            if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+          }
+
+          // 2. Buscamos el botón de tu menú lateral izquierdo para saltar a la pestaña Karaoke
+          // Nota: Revisa si tu botón del menú lateral se llama exactamente así o usa su clase
+          const botonMenuKaraoke = document.getElementById("tab-karaoke") || document.querySelector('[data-tab="karaoke"]') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Karaoke'));
+          
+          if (botonMenuKaraoke) {
+            botonMenuKaraoke.click(); // Hack de simulación de clic de usuario
           } else {
-            alert("⚠️ No se encontró el cuadro de texto 'lyricsText' en esta pantalla.");
+            alert("✅ Archivo montado en el reproductor. Haz clic en la pestaña 'Karaoke' para iniciar.");
           }
         }
       });
     });
 
-    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
+    // Actualizamos losselectores secundarios de la interfaz
     if (typeof loadVoiceOptionsInStudio === "function") await loadVoiceOptionsInStudio();
     if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
     if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
@@ -1153,7 +1175,7 @@ async function loadSelectedVoiceFromLibrary() {
 }
 
 // ==========================================
-// ⚡ MOTOR DE SINCRONIZACIÓN AUTOMÁTICA IA ⚡
+// ⚡ MOTOR DE SINCRONIZACIÓN AUTOMÁTICA IA (CORREGIDO)
 // ==========================================
 async function sincronizarTapsAutomatico() {
   const lyricsText = document.getElementById("lyricsText");
@@ -1168,7 +1190,6 @@ async function sincronizarTapsAutomatico() {
     return;
   }
 
-  // Verificamos si tenemos los datos de las palabras originales guardados por Whisper
   if (!window.datosPalabrasOriginales || window.datosPalabrasOriginales.length === 0) {
     alert("⚠️ No hay tiempos de Whisper en memoria. Primero selecciona una voz y presiona 'Transcribir'.");
     return;
@@ -1177,24 +1198,26 @@ async function sincronizarTapsAutomatico() {
   if (status) status.textContent = "Estado: Sincronizando texto con tiempos de IA... ⚡";
 
   try {
-    // Re-alineamos el texto que editó el usuario con los tiempos que guardó Whisper
-    const nuevosSegmentosBase = buildSegmentsFromMultilineLyrics(textoModificado, [{ words: window.datosPalabrasOriginales }]);
+    // 🎯 CORRECCIÓN: Creamos un objeto segmento simulado correcto para que el alineador no se pierda
+    const segmentoSimulado = {
+      text: textoModificado,
+      words: window.datosPalabrasOriginales
+    };
+
+    // Pasamos el segmento simulado dentro del arreglo base
+    const nuevosSegmentosBase = buildSegmentsFromMultilineLyrics(textoModificado, [segmentoSimulado]);
 
     if (nuevosSegmentosBase && nuevosSegmentosBase.length > 0) {
-      // Guardamos los segmentos base corregidos
       baseTranscriptionSegments = [];
       nuevosSegmentosBase.forEach(seg => {
         if (seg.words) baseTranscriptionSegments.push(...seg.words);
       });
 
-      // Agrupamos en bloques de 6 palabras para el monitor visual del Karaoke
       transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
-      // Refrescamos los dos monitores en vivo para que se vea el cambio de inmediato
       if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
       if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
 
-      // --- ACTUALIZAMOS EL ARCHIVO ULTRASTAR EXISTENTE EN LA BIBLIOTECA ---
       if (window.selectedVoiceId) {
         try {
           await updateLibraryItem(window.selectedVoiceId, {
@@ -1206,17 +1229,15 @@ async function sincronizarTapsAutomatico() {
         }
       }
 
-      alert("⚡ ¡Sincronización Automática IA completada! La letra se ha emparejado con la música perfectamente.");
+      alert("⚡ ¡Sincronización Automática IA completada! Tiempos alineados perfectamente.");
       if (status) status.textContent = "Estado: Sincronización IA completada con éxito ✅";
     } else {
       alert("⚠️ No se pudieron generar los tiempos para este texto.");
-      if (status) status.textContent = "Estado: Error al alinear texto";
     }
 
   } catch (error) {
     console.error("Error en sincronizarTapsAutomatico:", error);
     alert("❌ Ocurrió un error durante la sincronización inteligente.");
-    if (status) status.textContent = "Estado: Error crítico en Sincronización IA";
   }
 }
 
@@ -1994,6 +2015,60 @@ async function loadSelectedTrackFromLibraryKaraoke() {
   } catch (error) {
     console.error(error);
     alert("❌ Error al cargar la pista.");
+  }
+}
+
+// ========================================================
+// 🎤 CARGA DIRECTA DESDE BIBLIOTECA AL MONITOR (SISTEMA REAL)
+// ========================================================
+async function cargarCancionDirectaEnKaraoke(id) {
+  // Buscamos los elementos reales de tu pantalla de Karaoke
+  const status = document.getElementById("karaokeStatus") || $("karaokeStatus");
+  const track = document.getElementById("karaokeTrack") || $("karaokeTrack");
+
+  try {
+    const item = await getLibraryItemById(id);
+    if (!item) {
+      alert("⚠️ No se encontró el archivo seleccionado en la biblioteca.");
+      return;
+    }
+
+    // 1. Si el archivo UltraStar o de voz guardado tiene su letra y tiempos, los montamos en memoria
+    if (item.transcription) {
+      baseTranscriptionSegments = item.transcription;
+      if (typeof splitSegmentsIntoKaraokeLines === "function") {
+        transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+      } else {
+        transcriptionSegments = baseTranscriptionSegments;
+      }
+    } else {
+      baseTranscriptionSegments = [];
+      transcriptionSegments = [];
+    }
+
+    // 2. Pintamos la letra formateada en bloques en tu monitor inferior de Karaoke
+    if (typeof cargarLetrasEnMonitor === "function") {
+      cargarLetrasEnMonitor();
+    }
+
+    // 3. Inyectamos la pista de audio directamente en tu reproductor de música visible en pantalla
+    if (item.audioBlob && track) {
+      karaokeSelectedTrackBlob = item.audioBlob;
+      karaokeSelectedTrackName = item.name;
+      
+      // Creamos la URL del archivo de música y la asignamos al reproductor
+      track.src = URL.createObjectURL(item.audioBlob);
+      track.volume = 0.4;
+    }
+
+    // 4. Actualizamos el texto de estado indicando que el entorno está listo
+    if (status) {
+      status.textContent = `Estado: pista cargada desde Biblioteca (${item.name}). ¡Inicia grabación!`;
+    }
+
+  } catch (error) {
+    console.error("Error cargando canción en Karaoke:", error);
+    alert("❌ Error al montar los datos de la canción.");
   }
 }
 
