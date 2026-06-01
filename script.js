@@ -1153,6 +1153,74 @@ async function loadSelectedVoiceFromLibrary() {
 }
 
 // ==========================================
+// ⚡ MOTOR DE SINCRONIZACIÓN AUTOMÁTICA IA ⚡
+// ==========================================
+async function sincronizarTapsAutomatico() {
+  const lyricsText = document.getElementById("lyricsText");
+  const status = document.getElementById("selectedVoiceStatus");
+
+  if (!lyricsText) return;
+
+  const textoModificado = lyricsText.value.trim();
+
+  if (!textoModificado) {
+    alert("⚠️ No hay texto en el editor para sincronizar.");
+    return;
+  }
+
+  // Verificamos si tenemos los datos de las palabras originales guardados por Whisper
+  if (!window.datosPalabrasOriginales || window.datosPalabrasOriginales.length === 0) {
+    alert("⚠️ No hay tiempos de Whisper en memoria. Primero selecciona una voz y presiona 'Transcribir'.");
+    return;
+  }
+
+  if (status) status.textContent = "Estado: Sincronizando texto con tiempos de IA... ⚡";
+
+  try {
+    // Re-alineamos el texto que editó el usuario con los tiempos que guardó Whisper
+    const nuevosSegmentosBase = buildSegmentsFromMultilineLyrics(textoModificado, [{ words: window.datosPalabrasOriginales }]);
+
+    if (nuevosSegmentosBase && nuevosSegmentosBase.length > 0) {
+      // Guardamos los segmentos base corregidos
+      baseTranscriptionSegments = [];
+      nuevosSegmentosBase.forEach(seg => {
+        if (seg.words) baseTranscriptionSegments.push(...seg.words);
+      });
+
+      // Agrupamos en bloques de 6 palabras para el monitor visual del Karaoke
+      transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+      // Refrescamos los dos monitores en vivo para que se vea el cambio de inmediato
+      if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+      if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+
+      // --- ACTUALIZAMOS EL ARCHIVO ULTRASTAR EXISTENTE EN LA BIBLIOTECA ---
+      if (window.selectedVoiceId) {
+        try {
+          await updateLibraryItem(window.selectedVoiceId, {
+            transcription: baseTranscriptionSegments
+          });
+          console.log("✅ Transcripción IA actualizada en la voz activa.");
+        } catch (err) {
+          console.error("Error al actualizar la voz en la biblioteca:", err);
+        }
+      }
+
+      alert("⚡ ¡Sincronización Automática IA completada! La letra se ha emparejado con la música perfectamente.");
+      if (status) status.textContent = "Estado: Sincronización IA completada con éxito ✅";
+    } else {
+      alert("⚠️ No se pudieron generar los tiempos para este texto.");
+      if (status) status.textContent = "Estado: Error al alinear texto";
+    }
+
+  } catch (error) {
+    console.error("Error en sincronizarTapsAutomatico:", error);
+    alert("❌ Ocurrió un error durante la sincronización inteligente.");
+    if (status) status.textContent = "Estado: Error crítico en Sincronización IA";
+  }
+}
+
+// ==========================================
 // TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (CORREGIDA)
 // ==========================================
 async function transcribeSelectedVoice() {
