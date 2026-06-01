@@ -208,7 +208,6 @@ function showTab(tabId) {
     afinador: "btnAfinador",
     estudio: "btnEstudio",
     biblioteca: "btnBiblioteca",
-    karaokeLibrary: "btnKaraokeLibrary",
     karaoke: "btnKaraoke",
     splitter: "btnSplitter",
     config: "btnConfig"
@@ -793,11 +792,11 @@ async function renderLibrary(filter = 'todos') {
   // SOLUCIÓN 1: ILUMINAR LA CARPETA SELECCIONADA
   // ==========================================
   document.querySelectorAll(".folder-btn").forEach(btn => {
-    const botonFiltro = btn.dataset.filter;
-    if (botonFiltro === filter) {
-      btn.classList.add("active");    
+    // Comprobamos si el evento onclick incluye el tipo de filtro actual
+    if (btn.getAttribute("onclick").includes(`'${filter}'`)) {
+      btn.classList.add("active"); // Ilumina la carpeta actual
     } else {
-      btn.classList.remove("active"); 
+      btn.classList.remove("active"); // Apaga las carpetas inactivas
     }
   });
 
@@ -822,8 +821,9 @@ async function renderLibrary(filter = 'todos') {
         div.className = "library-item card"; 
         div.style.marginBottom = "10px";
 
-        // 🎯 CASO A: Si es un archivo de texto estructurado UltraStar listo para cantar o editar
+        // Condicional: Si es un archivo de texto UltraStar
         if (item.type === 'ultrastar_txt') {
+          // Cortamos el texto para mostrar solo un adelanto de las primeras líneas
           const previewTexto = item.textoPlano ? item.textoPlano.substring(0, 120) + "..." : "Sin contenido";
 
           div.innerHTML = `
@@ -833,105 +833,72 @@ async function renderLibrary(filter = 'todos') {
               ${previewTexto}
             </div>
             <div style="display: flex; gap: 10px;">
-              <button type="button" data-id="${item.id}" class="load-monitor-btn" style="background:#3b82f6; color:white; border-radius:4px; padding:6px 12px; cursor:pointer;">📥 Editar en Estudio</button>
-              <button type="button" data-id="${item.id}" class="play-karaoke-btn" style="background:#10b981; color:white; border-radius:4px; padding:6px 12px; font-weight:bold; cursor:pointer;">🎤 ¡Cantar ya!</button>
-              <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48; border-radius:4px; padding:6px 12px; cursor:pointer;">🗑️ Eliminar</button>
+              <button type="button" data-id="${item.id}" class="load-monitor-btn" style="background:#3b82f6; color:white;">📥 Cargar en Monitor</button>
+              <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
             </div>
           `;
         } 
-        // CASO B: Si es cualquier otro archivo con audio directo
+        // Si es cualquier otro archivo (pista, voz, grabación, karaoke con audio)
         else {
+          // Validamos que exista el blob antes de crear la URL para evitar errores accidentales
           const audioURL = item.audioBlob ? URL.createObjectURL(item.audioBlob) : "";
 
           div.innerHTML = `
             <p><strong>${item.name}</strong></p>
             <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
             ${audioURL ? `<audio controls src="${audioURL}" style="width:100%; margin: 10px 0;"></audio>` : '<p style="color:red; font-size:12px;">Audio no encontrado</p>'}
-            <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48; border-radius:4px; padding:6px 12px; cursor:pointer;">🗑️ Eliminar</button>
+            <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
           `;
         }
         container.appendChild(div);
       });
     }
     
-    // ========================================================
-    // ⚡ ESCUCHADOR EN RENDERLIBRARY HACIA EL KARAOKE AUTOMÁTICO
-    // ========================================================
-    document.querySelectorAll(".play-karaoke-btn").forEach((btn) => {
+    // Reactivar botones de borrar
+    document.querySelectorAll(".delete-library-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
-        
-        // 1. Ejecutamos la carga directa de audio, letra y monitor usando el ID
-        await cargarCancionDirectaEnKaraoke(id);
-
-        // 2. Forzamos el salto visual automático a la pestaña de Karaoke
-        const botonMenuKaraoke = document.getElementById("tab-karaoke") || 
-                                 document.querySelector('[data-tab="karaoke"]') || 
-                                 Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Karaoke'));
-          
-        if (botonMenuKaraoke) {
-          botonMenuKaraoke.click(); // Simula el clic en el menú
-        }
+        await deleteLibraryItem(id);
+        renderLibrary(filter); 
       });
     });
     
     // ========================================================
-    // ⚡ ENLACE DIRECTO DEL BOTÓN VERDE "¡CANTAR YA!"
+    // SOLUCIÓN 2: CORRECCIÓN DEL ID PARA CARGAR EN EL MONITOR
     // ========================================================
-    document.querySelectorAll(".play-karaoke-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = Number(btn.dataset.id);
-        
-        // Ejecutamos la carga limpia en el reproductor y monitor de Karaoke
-        await cargarCancionDirectaEnKaraoke(id);
-
-        // Buscamos tu botón de menú lateral izquierdo "Karaoke" para cambiar de pantalla
-        const botonMenuKaraoke = document.getElementById("tab-karaoke") || 
-                                 document.querySelector('[data-tab="karaoke"]') || 
-                                 Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Karaoke'));
-          
-        if (botonMenuKaraoke) {
-          botonMenuKaraoke.click(); // Salto automático de pestaña
-        }
-      });
-    });
-
-    // ========================================================
-    // ⚡ NUEVO: FLUJO DIRECTO HACIA LA PESTAÑA KARAOKE TO PLAY
-    // ========================================================
-    document.querySelectorAll(".play-karaoke-btn").forEach((btn) => {
+    document.querySelectorAll(".load-monitor-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
         const item = library.find(i => i.id === id);
-
-        if (item) {
-          // 1. Cargamos la letra y la segmentamos para la pantalla de juego
-          if (item.transcription) {
-            baseTranscriptionSegments = item.transcription;
-            if (typeof splitSegmentsIntoKaraokeLines === "function") {
-              transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-            } else {
-              transcriptionSegments = baseTranscriptionSegments;
-            }
-            
-            // Renderizamos los componentes visuales del monitor de karaoke
-            if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
-          }
-
-          // 2. Buscamos el botón de tu menú lateral izquierdo para saltar a la pestaña Karaoke
-          // Nota: Revisa si tu botón del menú lateral se llama exactamente así o usa su clase
-          const botonMenuKaraoke = document.getElementById("tab-karaoke") || document.querySelector('[data-tab="karaoke"]') || Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('Karaoke'));
+        
+        if (item && item.textoPlano) {
+          // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
+          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
           
-          if (botonMenuKaraoke) {
-            botonMenuKaraoke.click(); // Hack de simulación de clic de usuario
+          if (monitor) {
+            monitor.value = item.textoPlano;
+            
+            // Si el archivo UltraStar contiene los tiempos de los taps guardados en memoria, los reactivamos
+            if (item.transcription) {
+              baseTranscriptionSegments = item.transcription;
+              transcriptionSegments = item.transcription;
+              
+              if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+              if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+            }
+
+            alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
+            
+            // Scroll suave automático directo al monitor de texto para empezar a trabajar
+            monitor.scrollIntoView({ behavior: "smooth", block: "center" });
           } else {
-            alert("✅ Archivo montado en el reproductor. Haz clic en la pestaña 'Karaoke' para iniciar.");
+            alert("⚠️ No se encontró el contenedor visual del monitor en esta pantalla.");
           }
         }
       });
     });
 
-    // Actualizamos losselectores secundarios de la interfaz
+    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
     if (typeof loadVoiceOptionsInStudio === "function") await loadVoiceOptionsInStudio();
     if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
     if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
@@ -1033,6 +1000,7 @@ async function loadTrackOptionsInStudio() {
     console.error(error);
   }
 }
+
 async function loadSelectedTrackFromLibraryStudio() {
   const select = $("studioTrackSelect");
   const player = $("player");
@@ -1133,27 +1101,21 @@ async function loadSelectedVoiceFromLibrary() {
     status.textContent = `Estado: voz seleccionada -> ${item.name}`;
 
     if (Array.isArray(item.transcription) && item.transcription.length > 0) {
-      
-      // Mapeamos los segmentos guardados en memoria
       baseTranscriptionSegments = item.transcription.map(seg =>
         buildWordTimingFromSegment(seg)
       );
 
-      // 💡 CORRECCIÓN 1: Agrupamos las palabras en renglones de 6 antes de pasarlo al monitor
-      if (typeof splitSegmentsIntoKaraokeLines === "function") {
-        transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-      } else {
-        transcriptionSegments = baseTranscriptionSegments;
-      }
+      // IMPORTANTE:
+      // aquí respetamos exactamente las líneas guardadas
+      transcriptionSegments = baseTranscriptionSegments;
 
       renderKaraokeLyrics(transcriptionSegments);
       cargarLetrasEnMonitor();
 
-      // 💡 CORRECCIÓN 2: Unimos las palabras con espacios (" ") para que el cuadro de texto sea legible y fácil de editar
       if (lyricsText) {
-        lyricsText.value = baseTranscriptionSegments
-          .map(seg => (seg.text || "").trim())
-          .join(" ")
+        lyricsText.value = transcriptionSegments
+          .map(seg => seg.text || "")
+          .join("\n")
           .trim();
       }
 
@@ -1175,93 +1137,7 @@ async function loadSelectedVoiceFromLibrary() {
 }
 
 // ==========================================
-// ⚡ MOTOR DE SINCRONIZACIÓN AUTOMÁTICA IA (CORREGIDO)
-// ==========================================
-async function sincronizarTapsAutomatico() {
-  const lyricsText = document.getElementById("lyricsText");
-  const status = document.getElementById("selectedVoiceStatus");
-
-  if (!lyricsText) return;
-  const textoModificado = lyricsText.value.trim();
-
-  if (!textoModificado) {
-    alert("⚠️ No hay texto en el editor para sincronizar.");
-    return;
-  }
-
-  if (!window.datosPalabrasOriginales || window.datosPalabrasOriginales.length === 0) {
-    alert("⚠️ No hay tiempos en memoria. Primero selecciona una voz y presiona 'Transcribir'.");
-    return;
-  }
-
-  if (status) status.textContent = "Estado: Sincronizando texto con tiempos de IA... ⚡";
-
-  try {
-    // Estructuramos el segmento base de forma limpia para que buildSegments no se desplace temporalmente
-    const segmentoSimulado = {
-      text: textoModificado,
-      words: [...window.datosPalabrasOriginales]
-    };
-
-    const nuevosSegmentosBase = buildSegmentsFromMultilineLyrics(textoModificado, [segmentoSimulado]);
-
-    if (nuevosSegmentosBase && nuevosSegmentosBase.length > 0) {
-      baseTranscriptionSegments = [];
-      nuevosSegmentosBase.forEach(seg => {
-        if (seg.words) baseTranscriptionSegments.push(...seg.words);
-      });
-
-      // Dividimos las líneas para el monitor de forma balanceada
-      transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-
-      if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
-      if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
-
-      // --- RE-GENERAR Y ACTUALIZAR EL ARCHIVO EN LA CARPETA KARAOKE ---
-      const bpmPorDefecto = 120;
-      const duracionUnBeat = 60 / (bpmPorDefecto * 4);
-      let lineasCuerpo = [];
-
-      baseTranscriptionSegments.forEach((seg) => {
-        const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
-        const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
-        const lengthBeats = endBeat - startBeat;
-        lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${seg.pitch || 0} ${seg.text || ""}`);
-      });
-      lineasCuerpo.push("E");
-      
-      const nombreBase = "Canción Sincronizada";
-      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:IA Sincro\n#BPM:${bpmPorDefecto}\n#GAP:0\n`;
-      const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
-
-      // 🎯 CORRECCIÓN CLAVE: Enlazamos con la variable real del reproductor de Karaoke
-      const pistaAAsociar = window.karaokeSelectedTrackBlob || karaokeSelectedTrackBlob || selectedVoiceBlob;
-
-      await addLibraryItem({
-        name: `${nombreBase} (IA Sync)`,
-        type: "karaoke",
-        audioBlob: pistaAAsociar, // 👈 Conserva la música instrumental de fondo
-        textoPlano: contenidoFinalTxt,
-        date: new Date().toLocaleString("es-ES"),
-        transcription: baseTranscriptionSegments
-      });
-      
-      alert("⚡ ¡Sincronización Automática IA completada! Guardado en la carpeta Karaoke.");
-      if (status) status.textContent = "Estado: Sincronización IA completada con éxito ✅";
-      
-      if (typeof renderLibrary === "function") await renderLibrary("karaoke");
-    } else {
-      alert("⚠️ No se pudieron emparejar los tiempos.");
-    }
-
-  } catch (error) {
-    console.error("Error en sincronizarTapsAutomatico:", error);
-    alert("❌ Ocurrió un error durante la sincronización inteligente.");
-  }
-}
-
-// ==========================================
-// TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (COMPLETA Y CORREGIDA)
+// TRANSCRIPCIÓN CON TÉCNICA DE CHUNKING (CORREGIDA)
 // ==========================================
 async function transcribeSelectedVoice() {
   if (!selectedVoiceBlob) {
@@ -1269,8 +1145,8 @@ async function transcribeSelectedVoice() {
     return;
   }
 
-  const status = document.getElementById("selectedVoiceStatus") || $("selectedVoiceStatus");
-  const lyricsText = document.getElementById("lyricsText") || $("lyricsText");
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
 
   try {
     if (status) {
@@ -1287,7 +1163,6 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
-    window.datosPalabrasOriginales = []; 
 
     for (let start = 0; start < totalSamples; start += samplesPerChunk) {
       const end = Math.min(start + samplesPerChunk, totalSamples);
@@ -1313,128 +1188,147 @@ async function transcribeSelectedVoice() {
       }
 
       const result = await response.json();
-      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
+
+      const palabrasProhibidas = [
+        "Amara",
+        "Subtítulos",
+        "subtítulos",
+        "Almorzo",
+        "Suscribete",
+        "comunidad"
+      ];
+
       const timeOffset = start / sampleRate;
-      const listaPalabras = result.words || result.segments || [];
 
-      listaPalabras.forEach((w) => {
-        const wordText = (w?.word || w?.text || "").trim();
-        if (!wordText) return;
+      (result.segments || []).forEach((seg) => {
+        const segText = (seg?.text || "").trim();
 
-        if (palabrasProhibidas.some(p => wordText.toLowerCase().includes(p.toLowerCase()))) return;
+        if (!segText) return;
 
-        const wordWithOffset = {
-          start: Number(w.start || 0) + timeOffset,
-          end: Number(w.end || 0) + timeOffset,
-          text: wordText,
-          word: wordText,
-          pitch: w.pitch || 0,
-          note: w.note || "C4"
+        const esFantasma = palabrasProhibidas.some((palabra) =>
+          segText.toLowerCase().includes(palabra.toLowerCase())
+        );
+
+        if (esFantasma) return;
+
+        const segmentWithOffset = {
+          start: Number(seg.start || 0) + timeOffset,
+          end: Number(seg.end || 0) + timeOffset,
+          text: segText
         };
-        
-        fullSegments.push(wordWithOffset);
 
-        window.datosPalabrasOriginales.push({
-          text: wordText,
-          word: wordText,
-          start: wordWithOffset.start,
-          end: wordWithOffset.end,
-          pitch: wordWithOffset.pitch,
-          note: wordWithOffset.note
-        });
+        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
       });
     }
-    
+
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
-    if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
-    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
 
-    if (lyricsText && baseTranscriptionSegments.length > 0) {
-      lyricsText.value = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
+    if (lyricsText) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
 
-    // --- GUARDADO AUTOMÁTICO REPARADO ---
+    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
       
       const bpmPorDefecto = 120;
       const gapPorDefecto = 0;
-      const duracionUnBeat = 60 / (bpmPorDefecto * 4);
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4); // Resolución x4 para evitar que se corra el tiempo
 
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
       let lineasCuerpo = [];
 
+      // Mapeamos los segmentos nativos de Whisper a líneas de tiempo estructuradas de UltraStar
       baseTranscriptionSegments.forEach((seg, index) => {
+        // Convertimos segundos absolutos a Beats de la rejilla matemática musical
         const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
         const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
         const lengthBeats = endBeat - startBeat;
-        const pitchBase = seg.pitch || 0; 
-        const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
         
+        // Pitch por defecto en 0 (Equivale a C4/Do Central) hasta que el usuario use los Taps o cante
+        const pitchBase = 0; 
+        
+        // Asegurar que el texto conserve un espacio si no es una sílaba unida
+        const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
+
         lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
 
-        // 🎯 CORRECCIÓN: Forzamos salto de renglón cada 6 palabras para mantener el monitor fluido
-        if ((index + 1) % 6 === 0 && index !== baseTranscriptionSegments.length - 1) {
+        // Insertar un corte de línea reglamentario (-) si detectamos pausas naturales o signos de puntuación
+        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
           lineasCuerpo.push("-");
         }
       });
 
+      // Añadimos el cierre obligatorio del archivo "E"
       lineasCuerpo.push("E");
+
       const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
 
-      // 🎯 CORRECCIÓN DE PISTA: Usamos la variable global real del entorno de Karaoke
-      const pistaAAsociar = window.karaokeSelectedTrackBlob || karaokeSelectedTrackBlob || selectedVoiceBlob; 
-
       await addLibraryItem({
-        name: `${nombreBase} - Pista Karaoke`,
-        type: "karaoke",                 
-        audioBlob: pistaAAsociar, 
-        textoPlano: contenidoFinalTxt,   
+        name: `UltraStar - ${nombreBase}`,
+        type: "ultrastar_txt", 
+        audioBlob: null,       
+        textoPlano: contenidoFinalTxt, 
         date: new Date().toLocaleString("es-ES"),
         transcription: baseTranscriptionSegments 
       });
 
-      console.log("✅ Archivo de Karaoke vinculado a la pista instrumental.");
-      if (typeof renderLibrary === "function") await renderLibrary("karaoke");
-      
-      if (status) {
-        status.textContent = "Estado: Transcripción completada. ¡Pista lista en la carpeta Karaoke! ✅";
+      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
+      await renderLibrary("ultrastar_txt");
+
+    } catch (err) {
+      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
+    }
+
+    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
+    if (selectedVoiceId) {
+      try {
+        await updateLibraryItem(selectedVoiceId, {
+          transcription: baseTranscriptionSegments 
+        });
+        console.log("✅ Transcripción vinculada a la voz original");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la voz:", err);
       }
-    } catch (saveError) {
-      console.error("Error al construir el archivo final:", saveError);
+    }
+
+    if (status) {
+      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
     }
 
   } catch (error) {
-    console.error("Error crítico en la función:", error);
+    console.error(error);
+    alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
 }
 
-
-    
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
-    // 💡 CORRECCIÓN 4: Cambiado .textContent por .value para extraer correctamente lo que hay en el Textarea
-    const editorTexto = document.getElementById("lyricsText");
-    const textoMonitor = editorTexto ? editorTexto.value.trim() : ""; 
+    // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
+    const textoMonitor = document.getElementById("miniMonitorTextArea").textContent || document.getElementById("miniMonitorTextArea").innerText; 
     
-    if (!textoMonitor) {
-      alert("⚠️ El monitor de texto está vacío. No hay letras para guardar.");
+    if (!textoMonitor.trim()) {
+      alert("⚠️ El monitor está vacío. No hay texto para guardar.");
       return;
     }
 
+    // 2. Extraer metadatos básicos para el nombre (puedes usar variables globales de tu app)
     const tituloCancion = window.currentSongTitle || "Nueva Canción";
     const artistaCancion = window.currentSongArtist || "Artista Desconocido";
 
+    // 3. Crear el objeto con el nuevo tipo especializado
     const nuevoElemento = {
       name: `UltraStar - ${tituloCancion} (${artistaCancion})`,
-      type: "ultrastar_txt", 
-      audioBlob: null,       
+      type: "ultrastar_txt", // <--- Este es el nuevo tipo de archivo para el filtro
+      audioBlob: null,       // No requiere audio directo
       date: new Date().toLocaleString("es-ES"),
-      textoPlano: textoMonitor, 
+      textoPlano: textoMonitor, // Guardamos el formato de texto plano estructurado
       metadata: {
         title: tituloCancion,
         artist: artistaCancion,
@@ -1442,7 +1336,10 @@ async function guardarTextoUltraStarEnBiblioteca() {
       }
     };
 
+    // 4. Guardar en tu base de datos existente
     await addLibraryItem(nuevoElemento);
+
+    // 5. Refrescar la vista actual de la biblioteca
     await renderLibrary("ultrastar_txt");
     
     alert("✅ ¡Texto UltraStar guardado en la biblioteca con éxito!");
@@ -1509,7 +1406,7 @@ function blobToBase64(blob) {
 }
 
 // ==========================================
-// PROCESADOR DE TIEMPOS VINCULADO A TAPS (CORREGIDO TOTAL)
+// PROCESADOR DE TIEMPOS VINCULADO A TAPS (CORREGIDO)
 // ==========================================
 function buildWordTimingFromSegment(segment) {
   const cleanText = (segment.text || "").trim();
@@ -1530,7 +1427,6 @@ function buildWordTimingFromSegment(segment) {
       ...segment,
       words: rawWords.map(word => ({
         word: word,
-        text: word, // 💡 CORRECCIÓN: Aseguramos duplicidad para compatibilidad total
         start: segment.start,
         end: segment.end,
         pitch: segment.pitch || 0,
@@ -1540,6 +1436,7 @@ function buildWordTimingFromSegment(segment) {
   }
 
   // Corrección de estabilidad: División equitativa base en fragmentos del segmento
+  // Esto previene que palabras largas bloqueen la memoria del capturador de Taps
   const sliceDuration = segmentDuration / rawWords.length;
   let cursor = segment.start;
 
@@ -1548,10 +1445,9 @@ function buildWordTimingFromSegment(segment) {
     const wordEnd = cursor + sliceDuration;
     cursor = wordEnd;
 
-    // Retornamos la estructura limpia nativa de tu app, lista para los Taps y el Monitor
+    // Retornamos la estructura limpia nativa de tu app, lista para los Taps
     return {
       word: word,
-      text: word, // 💡 CORRECCIÓN CLAVE: Agregamos 'text' para que el monitor y el sincronizador IA no se queden vacíos
       start: wordStart,
       end: wordEnd,
       pitch: segment.pitch || 0,
@@ -1768,6 +1664,8 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     return [];
   }
 
+  // CORRECCIÓN: En lugar de destruir los tiempos proporcionalmente,
+  // mapeamos las palabras editadas preservando las marcas de tiempo del buffer original
   let palabraIndexGlobal = 0;
   const todasLasPalabrasBase = [];
   
@@ -1776,6 +1674,7 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
   });
 
   if (todasLasPalabrasBase.length === 0) {
+    // Si no hay base previa, recurrimos a una aproximación temporal segura
     return aproximarTiemposPorDefecto(lines, baseSegments);
   }
 
@@ -1784,11 +1683,11 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     const timedWords = [];
 
     rawWords.forEach((word) => {
+      // Intentamos emparejar con el tiempo real guardado por Whisper/Taps
       const baseWord = todasLasPalabrasBase[palabraIndexGlobal] || todasLasPalabrasBase[todasLasPalabrasBase.length - 1];
       
       timedWords.push({
         word: word,
-        text: word, // 💡 CORRECCIÓN 1: Añadimos 'text' para que el monitor reconozca la palabra
         start: baseWord ? baseWord.start : 0,
         end: baseWord ? baseWord.end : 1,
         pitch: baseWord ? baseWord.pitch : 0,
@@ -1822,8 +1721,7 @@ function aproximarTiemposPorDefecto(lines, baseSegments) {
 }
 
 function renderKaraokeLyrics(segments) {
-  // 💡 CORRECCIÓN 2: Apuntamos al ID real que pusimos en tu HTML ("studioKaraokeMonitor")
-  const container = document.getElementById("studioKaraokeMonitor");
+  const container = $("karaokeLyrics");
   if (!container) return;
 
   container.innerHTML = "";
@@ -1835,8 +1733,8 @@ function renderKaraokeLyrics(segments) {
 
   segments.forEach((segment, index) => {
     const line = document.createElement("p");
-    line.className = "karaoke-line upcoming"; 
-    line.id = `k-line-${index}`; 
+    line.className = "karaoke-line upcoming"; // Por defecto todas están en el futuro
+    line.id = `k-line-${index}`; // ID único directo para acelerar la búsqueda
     line.dataset.index = index;
     line.dataset.start = Number(segment.start || 0);
     line.dataset.end = Number(segment.end || 0);
@@ -1849,9 +1747,7 @@ function renderKaraokeLyrics(segments) {
         span.className = "karaoke-word";
         span.dataset.start = Number(wordObj.start || 0);
         span.dataset.end = Number(wordObj.end || 0);
-        
-        // 💡 CORRECCIÓN 3: Usamos wordObj.text o wordObj.word de respaldo para pintar la palabra
-        span.textContent = (wordObj.text || wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
+        span.textContent = (wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
         line.appendChild(span);
       });
     } else {
@@ -2013,77 +1909,11 @@ async function loadSelectedTrackFromLibraryKaraoke() {
   }
 }
 
-// ========================================================
-// 🎤 CARGA DIRECTA DESDE BIBLIOTECA AL MONITOR (SISTEMA REAL)
-// ========================================================
-async function cargarCancionDirectaEnKaraoke(id) {
-  // Buscamos los elementos reales de tu pantalla de Karaoke
-  const status = document.getElementById("karaokeStatus") || $("karaokeStatus");
-  const track = document.getElementById("karaokeTrack") || $("karaokeTrack");
-
-  try {
-    const item = await getLibraryItemById(id);
-    if (!item) {
-      alert("⚠️ No se encontró el archivo seleccionado en la biblioteca.");
-      return;
-    }
-
-    // 1. Si el archivo UltraStar o de voz guardado tiene su letra y tiempos, los montamos en memoria
-    if (item.transcription) {
-      baseTranscriptionSegments = item.transcription;
-      if (typeof splitSegmentsIntoKaraokeLines === "function") {
-        transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-      } else {
-        transcriptionSegments = baseTranscriptionSegments;
-      }
-    } else {
-      baseTranscriptionSegments = [];
-      transcriptionSegments = [];
-    }
-
-    // 🎯 CORRECCIÓN 1: Forzamos el renderizado de las cajitas de notas en el canvas/gráfico superior
-    if (typeof renderKaraokeLyrics === "function" && transcriptionSegments.length > 0) {
-      renderKaraokeLyrics(transcriptionSegments);
-    }
-
-    // 2. Pintamos la letra formateada en bloques en tu monitor inferior de Karaoke
-    if (typeof cargarLetrasEnMonitor === "function") {
-      cargarLetrasEnMonitor();
-    }
-
-    // 3. Inyectamos la pista de audio directamente en tu reproductor de música visible en pantalla
-    if (item.audioBlob && track) {
-      karaokeSelectedTrackBlob = item.audioBlob;
-      karaokeSelectedTrackName = item.name;
-      
-      // Creamos la URL del archivo de música y la asignamos al reproductor
-      track.src = URL.createObjectURL(item.audioBlob);
-      track.volume = 0.4;
-      
-      // 🎯 CORRECCIÓN 2: Reiniciamos el tiempo del reproductor a cero para evitar desajustes
-      track.currentTime = 0; 
-    }
-
-    // 🎯 CORRECCIÓN 3: Reiniciamos las variables de control de línea activa para que el monitor empiece desde el inicio
-    if (window.hasOwnProperty('lastActiveLine')) window.lastActiveLine = null;
-    lastActiveLine = null;
-
-    // 4. Actualizamos el texto de estado indicando que el entorno está listo
-    if (status) {
-      status.textContent = `Estado: Pista cargada desde Biblioteca (${item.name}). ¡Inicia grabación!`;
-    }
-
-  } catch (error) {
-    console.error("Error cargando canción en Karaoke:", error);
-    alert("❌ Error al montar los datos de la canción.");
-  }
-}
 // ==========================================
 // MONITOR DE LYRICS PARA KARAOKE (CORREGIDO)
 // ==========================================
 function cargarLetrasEnMonitor() {
-  // Busca el contenedor del monitor del Karaoke usando el ID de tu HTML
-  const container = document.getElementById("miniMonitorTextArea") || $("miniMonitorTextArea");
+  const container = $("miniMonitorTextArea");
   if (!container) return;
 
   console.log("cargarLetrasEnMonitor -> transcriptionSegments:", transcriptionSegments);
@@ -2098,7 +1928,7 @@ function cargarLetrasEnMonitor() {
   transcriptionSegments.forEach((seg, index) => {
     const p = document.createElement("p");
     p.className = "karaoke-live-line upcoming"; // Añadimos clase de estado por defecto
-    p.id = `k-live-line-${index}`; // ID directo para evitar lag en búsquedas masivas
+    p.id = `k-live-line-${index}`; // ID directo para evitar lag en busquedas masivas
     p.dataset.index = index;
     p.dataset.start = Number(seg.start || 0);
     p.dataset.end = Number(seg.end || 0);
@@ -2111,9 +1941,7 @@ function cargarLetrasEnMonitor() {
         span.className = "karaoke-live-word";
         span.dataset.start = Number(wordObj.start || 0);
         span.dataset.end = Number(wordObj.end || 0);
-        
-        // 💡 CORRECCIÓN: Respaldo doble (text o word) para asegurar que la palabra pinte texto real siempre
-        span.textContent = (wordObj.text || wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
+        span.textContent = (wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
         p.appendChild(span);
       });
     } else {
@@ -2123,6 +1951,7 @@ function cargarLetrasEnMonitor() {
     container.appendChild(p);
   });
 }
+
 // NUEVA VARIABLE CACHÉ EXCLUSIVA PARA LA PESTAÑA DE KARAOKE
 let lineaLiveActivaIndexCache = -1;
 
@@ -3403,7 +3232,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
-    safeAdd("btnKaraokeLibrary", "click", () => showTab("karaokeLibrary"));
     safeAdd("btnKaraoke", "click", () => showTab("karaoke"));
     safeAdd("btnSplitter", "click", () => showTab("splitter"));
     safeAdd("btnConfig", "click", () => showTab("config"));
@@ -3449,23 +3277,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (typeof loadKaraokeCatalog === "function") await loadKaraokeCatalog();
       if (typeof loadMyKaraokeSongs === "function") await loadMyKaraokeSongs();
     });
-
-    // Escuchador para el botón de Sincronización Automática IA
-    const btnSincronizarAuto = document.getElementById("btnSincronizarAuto");
-    if (btnSincronizarAuto) {
-      btnSincronizarAuto.addEventListener("click", async () => {
-        await sincronizarTapsAutomatico();
-      });
-    }
-
-    // Karaoke Library tab
-    safeAdd("refreshKaraokeLibraryBtn", "click", async () => {
-      if (typeof loadKaraokeLibraryTable === "function") await loadKaraokeLibraryTable();
-    });
-
+      
     if (typeof loadKaraokeCatalog === "function") loadKaraokeCatalog();
-    if (typeof loadMyKaraokeSongs === "function") loadMyKaraokeSongs();
-    if (typeof loadKaraokeLibraryTable === "function") loadKaraokeLibraryTable();
     if (typeof loadMyKaraokeSongs === "function") loadMyKaraokeSongs();
     
     // Carga manual de archivos hacia la Biblioteca
@@ -4136,7 +3949,7 @@ async function loadKaraokeCatalog() {
           <p class="catalog-item-artist">${song.artist}</p>
         </div>
         <div class="catalog-item-actions">
-          <button type="button" class="load-catalog-btn" data-folder="${song.folder}" data-title="${song.title}" data-artist="${song.artist}" style="background: #3b82f6;">📥 Cargar</button>
+          <button type="button" class="load-catalog-btn" data-folder="${song.folder}" data-title="${song.title}" data-artist="${song.artist}" style="background: #22c55e;">▶️ Cantar</button>
         </div>
       `;
       
@@ -4168,17 +3981,21 @@ async function loadCatalogSong(folder, title, artist) {
   try {
     if (status) status.textContent = `Estado: Deteniendo procesos anteriores...`;
     
+    // CORRECCIÓN PROTECTORA: Forzamos el apagado completo de streams y bucles gráficos anteriores
+    // para prevenir hilos de renderizado duplicados colisionando en el mismo Canvas
     if (typeof stopKaraokeRecording === "function") stopKaraokeRecording();
     if (typeof restartKaraokeRecording === "function") restartKaraokeRecording();
 
     if (status) status.textContent = `Estado: Descargando archivos de "${title}"... ⏳`;
     
+    // 1. Descargar marcas de tiempo UltraStar nativas
     const syncResponse = await fetch(`./karaoke-catalog/${folder}/sync.txt`);
     if (!syncResponse.ok) {
       throw new Error("No se pudo descargar el archivo de sincronización .txt");
     }
     const syncContent = await syncResponse.text();
     
+    // Parsear el archivo utilizando el módulo de alta resolución del Bloque 16
     const parsed = parseUltrastarTxt(syncContent);
     const segments = ultrastarToSegments(parsed);
     
@@ -4186,12 +4003,14 @@ async function loadCatalogSong(folder, title, artist) {
       throw new Error("El parseador no encontró marcas numéricas estables en el archivo");
     }
     
+    // 2. Descargar el archivo binario de audio de la pista
     const audioResponse = await fetch(`./karaoke-catalog/${folder}/audio.mp3`);
     if (!audioResponse.ok) {
       throw new Error("No se pudo descargar el archivo de audio instrumental");
     }
     const audioBlob = await audioResponse.blob();
     
+    // 3. Configurar el buffer y el reproductor de forma segura
     const track = $("karaokeTrack");
     if (track) {
       track.src = URL.createObjectURL(audioBlob);
@@ -4200,30 +4019,32 @@ async function loadCatalogSong(folder, title, artist) {
       karaokeSelectedTrackBlob = audioBlob;
       karaokeSelectedTrackName = `${title} - ${artist}`;
       
+      // Asignamos las variables de control antes del renderizado
       transcriptionSegments = segments;
       baseTranscriptionSegments = segments;
-
-      // 🎯 CORRECCIÓN CLAVE: Pintamos las cajitas de notas en el canvas superior
-      if (typeof renderKaraokeLyrics === "function") {
-        renderKaraokeLyrics(transcriptionSegments);
-      }
-
-      // Inicializar el monitor inferior
+      
+      // Inicializar el monitor y las letras en el DOM
       cargarLetrasEnMonitor();
-
-      const songInfo = $("loadedKaraokeSongInfo");
-      const songTitleEl = $("loadedKaraokeSongTitle");
-      const songArtistEl = $("loadedKaraokeSongArtist");
-      if (songInfo && songTitleEl && songArtistEl) {
-        songTitleEl.textContent = title;
-        songArtistEl.textContent = artist;
-        songInfo.style.display = "block";
-      }
-
-      if (status) status.textContent = `Estado: "${title}" cargada. ¡Lista para cantar!`;
+      
+      // CORRECCIÓN AUTOPLAY: Enlazamos la reproducción controlando la promesa nativa del hardware
+      track.play()
+        .then(() => {
+          if (status) status.textContent = `Estado: 🎤 Reproduciendo "${title}". ¡A cantar!`;
+          // Encendemos el analizador de Pitch únicamente si la pista arrancó con éxito
+          if (typeof startKaraokePitchDetection === "function") startKaraokePitchDetection();
+        })
+        .catch(err => {
+          console.warn("Reproducción automática pausada por el navegador:", err);
+          if (status) status.textContent = `Estado: ⏸️ "${title}" cargada. Presiona el botón de iniciar para cantar.`;
+        });
     }
-
-    showTab("karaoke");
+    
+    // Desplazamiento suave directo al Canvas de entrenamiento
+    const canvas = $("karaokeCanvas");
+    if (canvas) {
+      canvas.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    
     console.log("✅ Canción del catálogo cargada con éxito:", title);
     
   } catch (error) {
@@ -4238,6 +4059,7 @@ async function loadMyKaraokeSongs() {
   if (!container) return;
 
   try {
+    // Solo cargar canciones de tipo "karaoke" (no archivos de voz)
     const karaokeSongs = await getLibraryItemsByType("karaoke");
 
     if (karaokeSongs.length === 0) {
@@ -4258,34 +4080,28 @@ async function loadMyKaraokeSongs() {
 
       const title = song.metadata?.title || song.name || "Sin título";
       const artist = song.metadata?.artist || "";
-
+      
       div.innerHTML = `
         <div class="my-karaoke-item-info">
           <p class="my-karaoke-item-title">${title}</p>
           <p class="my-karaoke-item-artist">${artist || "Artista desconocido"}</p>
         </div>
         <div class="my-karaoke-item-actions">
-          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #3b82f6;">📥 Cargar</button>
+          <button type="button" class="load-karaoke-btn" data-id="${song.id}" style="background: #22c55e;">▶️ Cantar</button>
           <button type="button" class="share-karaoke-btn" data-id="${song.id}" style="background: #8b5cf6; padding: 8px 10px;" title="Compartir como .singit">📤</button>
           <button type="button" class="delete-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 8px 10px;">🗑️</button>
         </div>
       `;
-
+      
       container.appendChild(div);
     });
-
+    
     container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        // 🎯 CORRECCIÓN: Cambiado de la función inexistente a tu función real
-        if (typeof cargarCancionDirectaEnKaraoke === "function") {
-          await cargarCancionDirectaEnKaraoke(Number(btn.dataset.id));
-          
-          // 🎯 CORRECCIÓN: Cambiado showTab por una simulación de clic en tu Sidebar real
-          const botonMenuKaraoke = document.getElementById("btnKaraoke");
-          if (botonMenuKaraoke) {
-            botonMenuKaraoke.click();
-          }
+      btn.addEventListener("click", () => {
+        if (typeof loadKaraokeSong === "function") {
+          loadKaraokeSong(Number(btn.dataset.id));
         } else {
+          // Fallback polimórfico directo si se invoca desde el monitor unificado
           console.log("Cargando ID local de biblioteca:", btn.dataset.id);
         }
       });
@@ -4317,7 +4133,7 @@ async function loadMyKaraokeSongs() {
 // ==========================================
 async function loadKaraokeSong(id) {
   try {
-    // CORRECCIÓN PROTECTORA: Detener bucles y liberar hardware previos
+    // CORRECCIÓN PROTECTORA: Detener bucles y liberar hardware previos antes de inyectar la nueva cancion
     if (typeof stopKaraokeRecording === "function") stopKaraokeRecording();
     if (typeof restartKaraokeRecording === "function") restartKaraokeRecording();
 
@@ -4326,7 +4142,7 @@ async function loadKaraokeSong(id) {
       alert("⚠️ Canción no encontrada");
       return;
     }
-
+    
     const track = $("karaokeTrack");
     if (track && song.audioBlob) {
       track.src = URL.createObjectURL(song.audioBlob);
@@ -4334,176 +4150,33 @@ async function loadKaraokeSong(id) {
       karaokeSelectedTrackBlob = song.audioBlob;
       karaokeSelectedTrackName = song.name;
     }
-
+    
     if (song.transcription && song.transcription.length > 0) {
       transcriptionSegments = song.transcription;
       baseTranscriptionSegments = song.transcription;
       cargarLetrasEnMonitor();
     }
-
+    
     const title = song.metadata?.title || song.name;
-    const artist = song.metadata?.artist || "Artista desconocido";
-    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar!`;
-
-    // Mostrar información de la canción
-    const songInfo = $("loadedKaraokeSongInfo");
-    const songTitleEl = $("loadedKaraokeSongTitle");
-    const songArtistEl = $("loadedKaraokeSongArtist");
-    if (songInfo && songTitleEl && songArtistEl) {
-      songTitleEl.textContent = title;
-      songArtistEl.textContent = artist;
-      songInfo.style.display = "block";
+    $("karaokeStatus").textContent = `Estado: "${title}" cargada. ¡Lista para cantar! 🎤`;
+    
+    // CORRECCIÓN AUTOPLAY: Evaluamos la promesa nativa del hardware para un arranque fluido
+    if (track) {
+      track.play()
+        .then(() => {
+          if (typeof startKaraokePitchDetection === "function") startKaraokePitchDetection();
+        })
+        .catch(err => console.log("Arranque manual requerido por políticas de privacidad del navegador:", err));
     }
 
-    // NO reproducir automáticamente - solo cargar
-    // El usuario debe presionar "Iniciar Grabación" manualmente
-
-    // Cambiar a la pestaña de Karaoke
-    showTab("karaoke");
-
-    console.log(`✅ Canción "${title}" cargada en el monitor`);
+    const canvas = $("karaokeCanvas");
+    if (canvas) {
+      canvas.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    
   } catch (error) {
-    console.error("Error cargando canción de karaoke:", error);
-    alert("❌ No se pudo cargar la canción");
-  }
-}
-
-// ==========================================
-// KARAOKE LIBRARY TAB - Unified Table
-// ==========================================
-async function loadKaraokeLibraryTable() {
-  const tbody = $("karaokeLibraryTableBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td></tr>`;
-
-  try {
-    // Load both catalog songs and user karaoke songs
-    const response = await fetch("./karaoke-catalog/catalog.json");
-    const catalog = response.ok ? await response.json() : { songs: [] };
-    const userKaraokeSongs = await getLibraryItemsByType("karaoke");
-
-    const allSongs = [];
-
-    // Add catalog songs
-    if (catalog.songs) {
-      catalog.songs.forEach((song, index) => {
-        allSongs.push({
-          id: `catalog-${song.id}`,
-          number: index + 1,
-          title: song.title,
-          artist: song.artist,
-          source: "📚 Catálogo",
-          type: "catalog",
-          folder: song.folder
-        });
-      });
-    }
-
-    // Add user songs
-    userKaraokeSongs.forEach((song, index) => {
-      allSongs.push({
-        id: song.id,
-        number: catalog.songs ? catalog.songs.length + index + 1 : index + 1,
-        title: song.metadata?.title || song.name || "Sin título",
-        artist: song.metadata?.artist || "Artista desconocido",
-        source: "📁 Mis Canciones",
-        type: "user"
-      });
-    });
-
-    if (allSongs.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">
-            No hay canciones disponibles.
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    tbody.innerHTML = "";
-
-    allSongs.forEach(song => {
-      const tr = document.createElement("tr");
-      tr.style.cssText = "border-bottom: 1px solid var(--border); transition: background 0.2s ease;";
-
-      // 1. Celda de Número
-      const numberCell = document.createElement("td");
-      numberCell.style.cssText = "padding: 12px; color: var(--text-muted);";
-      numberCell.textContent = song.number;
-
-      // 2. Celda de Título
-      const titleCell = document.createElement("td");
-      titleCell.style.cssText = "padding: 12px; cursor: pointer; color: var(--accent);";
-      titleCell.textContent = song.title;
-      titleCell.addEventListener("click", () => {
-        if (song.type === "catalog") {
-          loadCatalogSong(song.folder, song.title, song.artist);
-        } else {
-          loadKaraokeSong(song.id);
-        }
-      });
-
-      // 3. Celda de Artista
-      const artistCell = document.createElement("td");
-      artistCell.style.cssText = "padding: 12px; cursor: pointer;";
-      artistCell.textContent = song.artist;
-      artistCell.addEventListener("click", () => {
-        if (song.type === "catalog") {
-          loadCatalogSong(song.folder, song.title, song.artist);
-        } else {
-          loadKaraokeSong(song.id);
-        }
-      });
-
-      // 4. Celda de Origen
-      const sourceCell = document.createElement("td");
-      sourceCell.style.cssText = "padding: 12px; font-size: 13px; color: var(--text-muted);";
-      sourceCell.textContent = song.source;
-
-      // 5. Celda de Acciones (Eliminar)
-      const actionCell = document.createElement("td");
-      actionCell.style.cssText = "padding: 12px; text-align: center;";
-      if (song.type === "user") {
-        actionCell.innerHTML = `<button class="delete-lib-karaoke-btn" data-id="${song.id}" style="background: #ef4444; padding: 6px 10px; font-size: 13px;">🗑️</button>`;
-      }
-
-      // Añadir todas las celdas en orden sin romper el DOM
-      tr.appendChild(numberCell);
-      tr.appendChild(titleCell);
-      tr.appendChild(artistCell);
-      tr.appendChild(sourceCell);
-      tr.appendChild(actionCell);
-
-      tbody.appendChild(tr);
-    });
-
-    // Add delete handlers for user songs
-    tbody.querySelectorAll(".delete-lib-karaoke-btn").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        if (confirm("¿Deseas eliminar permanentemente esta canción de tu biblioteca?")) {
-          await deleteLibraryItemFromDB(Number(btn.dataset.id));
-          await loadKaraokeLibraryTable();
-        }
-      });
-    });
-
-    console.log(`✅ Tabla de biblioteca de karaoke cargada: ${allSongs.length} canciones`);
-  } catch (error) {
-    console.error("Error cargando tabla de karaoke:", error);
     console.error("Error cargando canción:", error);
     alert("❌ Error al cargar la canción");
-    
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" style="text-align: center; padding: 20px; color: #ef4444;">
-          Error al cargar canciones
-        </td>
-      </tr>
-    `;
   }
 }
 
@@ -4541,8 +4214,6 @@ async function exportKaraokeSong(id) {
       type: item.type,
       metadata: item.metadata || {},
       transcription: item.transcription || [],
-      // 🎯 CORRECCIÓN: Guardamos el texto UltraStar estructurado para que no se pierda la letra
-      textoPlano: item.textoPlano || "", 
       audio: item.audioBlob ? await blobToBase64Full(item.audioBlob) : null,
       vocals: item.vocalsBlob ? await blobToBase64Full(item.vocalsBlob) : null
     };
@@ -4556,7 +4227,7 @@ async function exportKaraokeSong(id) {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    console.log("✅ Karaoke exportado con éxito con su texto UltraStar:", safeName);
+    console.log("✅ Karaoke exportado con éxito:", safeName);
   } catch (err) {
     console.error("❌ Error exportando:", err);
     alert("❌ Error al exportar el karaoke");
@@ -4585,19 +4256,16 @@ async function importKaraokeFile(file) {
       vocalsBlob: vocalsBlob,
       date: new Date().toLocaleString("es-ES"),
       transcription: data.transcription || [],
-      // 🎯 CORRECCIÓN: Recuperamos el formato UltraStar al desempaquetar el archivo
-      textoPlano: data.textoPlano || "", 
       metadata: data.metadata || {}
     });
     await loadMyKaraokeSongs();
-    if (typeof renderLibrary === "function") await renderLibrary("todos");
+    await renderLibrary("todos");
     alert(`✅ "${data.name}" importado en la Biblioteca y en Karaoke → Mis Canciones`);
   } catch (err) {
     console.error("❌ Error importando .singit:", err);
     alert("❌ Archivo .singit inválido o corrupto");
   }
 }
-
 
 function cambiarEscenarioKaraoke() {
   const select = document.getElementById("karaokeThemeSelect");
