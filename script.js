@@ -1233,16 +1233,22 @@ async function transcribeSelectedVoice() {
       });
     } // 👈 ¡EL CICLO FOR DEBE CERRAR AQUÍ! Una vez recopilados todos los trozos de audio.
       
-    baseTranscriptionSegments = fullSegments;
+    baseTranscriptionSegments = (fullSegments && fullSegments.length > 0) ? fullSegments : datosPalabrasOriginales;
     
+    console.log("📊 Palabras totales acumuladas:", baseTranscriptionSegments.length);
+
     // Agrupación por líneas de karaoke (ej. 6 palabras por línea)
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
     
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
     
-    if (lyricsText) {
-      lyricsText.value = baseTranscriptionSegments.map(w => w.text).join(" ");
+    // 💡 INYECTAMOS DIRECTAMENTE AL TEXTAREA:
+    if (lyricsText && baseTranscriptionSegments.length > 0) {
+      lyricsText.value = baseTranscriptionSegments.map(w => w.text || w.word).join(" ");
+      console.log("📝 Texto inyectado con éxito en el Textarea");
+    } else if (lyricsText && transcriptionSegments.length > 0) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
     
     // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
