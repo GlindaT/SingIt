@@ -1207,7 +1207,7 @@ async function transcribeSelectedVoice() {
       const base64Audio = await blobToBase64(wavBlob);
 
       // En tu script.js (Frontend)
-      const response = await fetch("/api/transcribe", { method: "POST", body: ... });
+      const response = await fetch("/api/transcribe", { method: "POST", body: });
       const resultado = await response.json();
       
       // Guardas los tiempos en memoria para cuando el usuario edite y le dé a "Sincronizar"
