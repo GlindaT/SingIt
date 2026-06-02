@@ -851,8 +851,8 @@ async function renderLibrary(filter = 'todos') {
         const item = library.find(i => i.id === id);
         
         if (item && item.textoPlano) {
-          // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
+         
+          const monitor = document.getElementById("lyricsText") || document.getElementById("textarea");
           
           if (monitor) {
             monitor.value = item.textoPlano;
