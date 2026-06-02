@@ -852,7 +852,7 @@ async function renderLibrary(filter = 'todos') {
         
         if (item && item.textoPlano) {
          
-          const monitor = document.getElementById("lyricsText") || document.getElementById("placeholder");
+          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
           
           if (monitor) {
             monitor.value = item.textoPlano;
