@@ -178,3 +178,22 @@ export default async function handler(req, res) {
     });
   }
 }
+
+
+
+
+VERCEL FONT
+
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "font-src 'self' *.vercel.com *.gstatic.com vercel.live https://*.public.blob.vercel-storage.com;"
+        }
+      ]
+    }
+  ]
+}
