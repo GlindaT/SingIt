@@ -841,7 +841,6 @@ async function renderLibrary(filter = 'todos') {
         renderLibrary(filter); 
       });
     });
-    
     // ========================================================
     // SOLUCIÓN 2: CORRECCIÓN DEL ID PARA CARGAR EN EL MONITOR
     // ========================================================
@@ -850,24 +849,33 @@ async function renderLibrary(filter = 'todos') {
         const id = Number(btn.dataset.id);
         const item = library.find(i => i.id === id);
         
-        if (item && item.textoPlano) {
-         
-          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
-          
+        // CORRECCIÓN: Quitamos la obligación estricta de 'item.textoPlano'
+        if (item) {
+          const monitor = document.getElementById("lyricsText");
           if (monitor) {
-            monitor.value = item.textoPlano;
             
-            // Si el archivo UltraStar contiene los tiempos de los taps guardados en memoria, los reactivamos
+            // Asignamos la transcripción a las variables globales de tu app
             if (item.transcription) {
               baseTranscriptionSegments = item.transcription;
               transcriptionSegments = item.transcription;
-              
+            }
+            
+            // CORRECCIÓN: Si no hay texto plano listo, lo generamos uniendo los segmentos de Whisper
+            if (item.textoPlano) {
+              monitor.value = item.textoPlano;
+            } else if (Array.isArray(transcriptionSegments)) {
+              monitor.value = transcriptionSegments.map(line => line.text).join("\n");
+            } else {
+              monitor.value = ""; // Si de verdad no hay nada
+            }
+            
+            // Si hay segmentos de Whisper, renderizamos la interfaz visual del karaoke abajo
+            if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
               if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
               if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
             }
-
-            alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
             
+            alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
             // Scroll suave automático directo al monitor de texto para empezar a trabajar
             monitor.scrollIntoView({ behavior: "smooth", block: "center" });
           } else {
@@ -876,18 +884,10 @@ async function renderLibrary(filter = 'todos') {
         }
       });
     });
-
-    // Actualizamos los selectores del Estudio y Karaoke para que vean los cambios
-    if (typeof loadVoiceOptionsInStudio === "function") await loadVoiceOptionsInStudio();
-    if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
-    if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
-  
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
   }
 }
 
+    
 async function deleteLibraryItem(id) {
   try {
     await deleteLibraryItemFromDB(id);
