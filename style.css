@@ -1,8 +1,3 @@
-css
-
-/* 1. Add the Cursive Font (Requires Google Fonts import at top of CSS) */
-@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap");
-
 /* ==========================================
    VARIABLES (ESCALABLE)
 ========================================== */
@@ -70,7 +65,11 @@ body {
   transition: 0.2s;
 }
 
-.sidebar button:hover,
+.sidebar button:hover {
+  background: var(--border);
+  color: var(--text-main);
+}
+
 .sidebar button.active {
   background: var(--border);
   color: var(--text-main);
@@ -79,10 +78,9 @@ body {
 /* ==========================================
    CONTENIDO
 ========================================== */
-
 .content {
   flex: 1;
-  padding: 12px 20px; /* Reducido para ahorrar espacio vertical */
+  padding: clamp(16px, 4vw, 40px);
   overflow-y: auto;
 }
 
@@ -100,73 +98,179 @@ body {
 .card {
   background: var(--bg-card);
   border-radius: 12px;
-  padding: 12px 16px; /* Reducido de 20px a 12px vertical */
-  margin-bottom: 10px; /* Reducido de 20px a 10px para juntar más los bloques */
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
 /* ==========================================
    BOTONES GENERALES
 ========================================== */
-/* 2. Global Section Styles (Font, Size, Spacing) */
-#tapSyncSection,
-#lyricsText {
-  font-family: "Dancing Script", cursive !important;
-  font-size: 14px;
-  letter-spacing: 2px;
-}
-
-/* 3. Neon Pop Animation Definition */
-@keyframes neon-pop {
-  0% {
-    transform: scale(1);
-    text-shadow: none;
-  }
-  50% {
-    transform: scale(1.15);
-    color: #39ff14; /* Neon Green */
-    text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14;
-  }
-  100% {
-    transform: scale(1.1);
-  }
-}
-
-/* 4. Current Line and Progress States */
-#tapCurrentLine,
-#tapProgress {
-  font-size: 24px;
-  transition: color 0.3s ease;
-  /* Default/Before Tap Color: Neon Cyan */
-  color: #00f3ff;
-}
-
-/* Class to trigger via JavaScript on tap */
-.tap-active {
-  animation: neon-pop 0.2s ease-out forwards;
-  /* After Tap Color: Golden Yellow */
-  color: #ffd700 !important;
-}
-
-/* 5. Light Blue Aligned Button */
-#tapBeatBtn {
-  width: 100%;
-  background: linear-gradient(to bottom, #00d4ff, #00a3ff);
-  color: white;
-  padding: 15px;
-  font-size: 18px;
-  margin: 10px 0;
-  box-sizing: border-box;
-  border: none;
-  border-radius: 8px;
-}
-
 button {
   border: none;
   border-radius: 8px;
-  padding: 6px 14px; /* Reducido de 10px a 6px de alto */
+  padding: 10px 18px;
   font-weight: bold;
   cursor: pointer;
   transition: 0.2s;
+}
+
+/* Botón principal */
+button {
+  background: var(--accent);
+  color: black;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+.sidebar button {
+  background: none;
+  color: var(--text-muted);
+}
+
+.sidebar button:hover {
+  background: var(--border);
+  color: var(--text-main);
+}
+
+/* Botón peligro */
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+/* ==========================================
+   INPUTS
+========================================== */
+input[type="file"],
+input[type="password"] {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ==========================================
+   AUDIO PLAYER
+========================================== */
+audio {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* ==========================================
+   AFINADOR
+========================================== */
+
+#noteDisplay {
+  font-size: 120px; /* Mucho más grande */
+  font-weight: 900;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+#guideText {
+  font-size: 32px;
+  margin: 20px 0;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Botón de grabar "Inactivo" (Verde) */
+#recordBtn {
+  background-color: #22c55e !important;
+  color: white !important;
+  padding: 10px 40px;
+  font-size: 18px;
+}
+
+/* Botón de grabar "Activo" (Rojo) */
+#recordBtn.recording {
+  background-color: #ef4444 !important;
+}
+
+/* ==========================================
+   BIBLIOTECA
+========================================== */
+#libraryList div {
+  background: var(--bg-card);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+/* ==========================================
+   SCROLL PERSONALIZADO (OPCIONAL)
+========================================== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+.afinador-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  height: 60vh;
+  text-align: center; /* Esto ayuda a que el texto no se rompa */
+}
+
+.success {
+  color: #22c55e !important; /* Verde */
+  transform: scale(1.2);
+}
+
+/* ==========================================
+   ESTUDIO
+========================================== */
+.studio-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+#studioStatus {
+  margin-top: 15px;
+  color: var(--text-muted);
+  font-weight: bold;
+}
+
+textarea {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  resize: vertical;
+  margin-top: 10px;
+  font-family: Arial, sans-serif;
+}
+
+.library-item {
+  background: var(--bg-card);
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
 }
 
 select,
@@ -185,130 +289,6 @@ input[type="text"] {
   font-weight: bold;
 }
 
-button:hover {
-  background: var(--accent-hover);
-}
-
-/* Botón peligro */
-.btn-danger {
-  background: var(--danger);
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
-}
-
-/* ==========================================
-   INPUTS
-========================================== */
-input[type="file"],
-input[type="password"],
-input[type="text"],
-select,
-textarea {
-  width: 100%;
-  background: var(--bg-main);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  margin-top: 8px;
-}
-
-textarea {
-  width: 100%;
-  background: var(--bg-main);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  resize: vertical;
-  margin-top: 10px;
-  font-family: Arial, sans-serif;
-}
-
-input::placeholder {
-  color: var(--text-muted);
-}
-
-/* ==========================================
-   AFINADOR
-========================================== */
-#noteDisplay {
-  font-size: 120px;
-  font-weight: 900;
-  margin: 0;
-  transition: color 0.3s ease;
-}
-
-#guideText {
-  font-size: 32px;
-  margin: 20px 0;
-  font-weight: bold;
-  text-align: center;
-}
-
-#recordBtn {
-  background-color: #22c55e !important;
-  color: white !important;
-  padding: 10px 40px;
-  font-size: 18px;
-}
-
-#recordBtn.recording {
-  background-color: #ef4444 !important;
-}
-
-.afinador-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  height: 60vh;
-  text-align: center;
-}
-
-.success {
-  color: #22c55e !important;
-  transform: scale(1.2);
-}
-
-/* ==========================================
-   ESTUDIO Y BIBLIOTECA
-========================================== */
-.studio-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-#studioStatus,
-#selectedVoiceStatus {
-  margin-top: 15px;
-  color: var(--text-muted);
-  font-weight: bold;
-}
-
-#libraryList div,
-.library-item {
-  background: var(--bg-card);
-  padding: 16px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  border: 1px solid var(--border);
-}
-
-.karaoke-placeholder {
-  color: var(--text-muted);
-  margin: 0;
-}
-
-/* ==========================================
-   MONITORES DE LETRAS (ESTUDIO)
-========================================= */
 .karaoke-lyrics {
   margin-top: 20px;
   padding: 20px;
@@ -317,8 +297,11 @@ input::placeholder {
   border-radius: 12px;
   max-height: 320px;
   overflow-y: auto;
-  /* CORRECCIÓN SCROLL FLUIDO: Sincroniza el suavizado del auto-scroll */
-  scroll-behavior: smooth;
+}
+
+.karaoke-placeholder {
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .karaoke-line {
@@ -330,160 +313,27 @@ input::placeholder {
   transition: all 0.25s ease;
 }
 
-.karaoke-line.active {
-  color: #22c55e;
-  font-weight: bold;
-  transform: scale(1.03);
-}
-
 .karaoke-line.past {
   color: #64748b;
-}
-
-/* ==========================================
-   MONITOR REPRODUCTOR ULTRASTAR (KARAOKE)
-========================================== */
-.karaoke-live-line {
-  font-size: 26px;
-  color: #475569;
-  margin: 10px 0;
-  text-align: center;
-  transition: all 0.2s ease;
-  opacity: 0.5;
-}
-
-.karaoke-live-line.active {
-  color: #22c55e; /* Verde neón brillante */
-  font-size: 34px;
-  font-weight: 900;
-  opacity: 1;
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6); /* Brillo neón */
-  transform: scale(1.1);
-}
-
-.karaoke-live-line.past {
-  color: #ffffff;
-  opacity: 0.8;
-  font-size: 26px;
 }
 
 .karaoke-line.upcoming {
   color: var(--text-muted);
 }
 
-/* ==========================================
-   RESALTADO DE SÍLABAS / PALABRAS
-========================================== */
-.karaoke-word,
-.karaoke-live-word {
-  display: inline-block;
-  color: inherit;
-  transition: color 0.1s ease, transform 0.1s ease, text-shadow 0.1s ease;
-  white-space: pre-wrap;
-}
-
-/* Palabra activa sonando en este preciso instante */
-.karaoke-word.active-word,
-.karaoke-live-word.active-word {
-  color: #facc15 !important;
-  font-weight: 800;
-  text-shadow: 0 0 12px rgba(250, 204, 21, 0.8);
-  transform: scale(1.08);
-}
-
-/* CORRECCIÓN: Las palabras que ya pasaron toman un gris limpio translúcido 
-   para no confundirse con el verde de la línea activa general */
-.karaoke-word.past-word,
-.karaoke-live-word.past-word {
-  color: rgba(255, 255, 255, 0.4) !important;
-  text-shadow: none;
-  transform: scale(1);
-}
-
-/* ==========================================
-   🔥 COMPONENTE: ESCENARIOS / TEMAS VISUALES INTERACTIVOS
-========================================== */
-/* Tema Clásico (Por defecto) */
-.karaoke-lyrics.theme-clasico {
-  background: #0f172a;
-  border-color: #334155;
-}
-
-/* Tema Moderno (Cian Neón) */
-.karaoke-lyrics.theme-moderno {
-  background: #082f49 !important;
-  border-color: #06b6d4 !important;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
-}
-.karaoke-lyrics.theme-moderno .karaoke-live-line.active,
-.karaoke-lyrics.theme-moderno .karaoke-line.active {
-  color: #06b6d4 !important;
-  text-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
-}
-
-/* Tema Disco / Fiesta (Magenta Vibrante) */
-.karaoke-lyrics.theme-disco {
-  background: #2e1065 !important;
-  border-color: #db2777 !important;
-  box-shadow: 0 0 15px rgba(219, 39, 119, 0.3);
-}
-.karaoke-lyrics.theme-disco .karaoke-live-line.active,
-.karaoke-lyrics.theme-disco .karaoke-line.active {
-  color: #db2777 !important;
-  text-shadow: 0 0 10px rgba(219, 39, 119, 0.6);
-}
-
-/* Tema Acústico (Madera Cálida) */
-.karaoke-lyrics.theme-acustico {
-  background: #451a03 !important;
-  border-color: #b45309 !important;
-}
-.karaoke-lyrics.theme-acustico .karaoke-live-line.active,
-.karaoke-lyrics.theme-acustico .karaoke-line.active {
-  color: #fcd34d !important;
-  text-shadow: none;
-}
-
-/* Tema Fiesta Animada (Fondo manejado por JS, texto eléctrico) */
-.karaoke-lyrics.theme-fiesta .karaoke-live-line.active,
-.karaoke-lyrics.theme-fiesta .karaoke-line.active {
-  color: #ff007f !important;
-  text-shadow: 0 0 12px #ff007f;
-}
-
-/* NUEVA CARACTERÍSTICA: Tema Retrowave (Synthwave ochentero) */
-.karaoke-lyrics.theme-retrowave {
-  background: #1e0b36 !important;
-  border-color: #ff007f !important;
-  box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
-}
-
-.karaoke-lyrics.theme-retrowave .karaoke-live-line.active,
-.karaoke-lyrics.theme-retrowave .karaoke-line.active {
-  color: #39ff14 !important; /* Verde Cyberpunk */
-  text-shadow: 0 0 10px #39ff14, 0 0 20px #ff007f;
-}
-.karaoke-lyrics.theme-retrowave .active-word {
-  color: #ff007f !important;
-  text-shadow: 0 0 8px #ff007f;
-}
-
-/* ==========================================
-   DESPLEGABLES Y CONFIGURACIÓN
-========================================== */
+/* Oculta por completo la sección si tiene la clase .oculto */
 .contenido-desplegable.oculto {
-  display: none !important;
+    display: none !important;
 }
 
-.flecha {
-  display: inline-block;
-  transition: transform 0.2s ease;
-}
-
+/* Rota la flecha 90 grados apuntando abajo cuando el menú esté desplegado */
 .flecha.rotada {
-  transform: rotate(90deg);
+    transform: rotate(90deg);
 }
 
+/* ==========================================
+   CONFIGURACIÓN
+========================================== */
 .settings-group {
   margin-bottom: 20px;
   display: flex;
@@ -500,157 +350,101 @@ input::placeholder {
 .save-notification {
   color: var(--accent);
   font-weight: bold;
-  opacity: 0;
+  opacity: 0; /* Oculto por defecto */
   transition: opacity 0.3s ease;
   margin-top: 15px;
   font-size: 14px;
 }
 
 .save-notification.show {
-  opacity: 1;
+  opacity: 1; /* Se hace visible cuando JS le pone esta clase */
 }
-
-/* ==========================================
-   SCROLL PERSONALIZADO
-========================================== */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
-}
-
-#studioStatus {
-  margin-top: 15px;
-  color: var(--text-muted);
+.karaoke-line.active {
+  color: #22c55e;
   font-weight: bold;
-}
-
-.library-item {
-  background: var(--bg-main);
-  border: 1px solid var(--border);
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  transition: box-shadow 0.3s ease;
-}
-
-#tapCurrentLine {
-  font-size: 24px !important;
-  font-family: Arial, sans-serif !important;
-  color: #ff4500 !important; /* Orange-Red */
-  text-shadow: 0 0 10px #ff4500 !important; /* Pop effect */
-  letter-spacing: 1px !important;
-  font-weight: bold !important;
-  text-transform: none !important;
-}
-
-/* Tap effect for the current line */
-#tapCurrentLine:active {
-  color: #ff4500 !important;
-  text-shadow: 0 0 20px #ff4500 !important;
-  transform: scale(0.98) !important;
+  transform: scale(1.05);
 }
 
 /* ==========================================
-   ESCENARIOS DE KARAOKE (TEMAS VISUALES - CORREGIDO)
+   RESALTADO POR PALABRA
 ========================================== */
-/* CORRECCIÓN: Apuntamos al ID real de tu monitor unificado "#karaokeLiveLyrics" o ".karaoke-lyrics" */
-#karaokeLiveLyrics.theme-clasico,
-.karaoke-lyrics.theme-clasico {
-  background: transparent;
+.karaoke-word,
+.karaoke-live-word {
+  display: inline-block;
+  color: inherit;
+  transition: color 0.12s ease, transform 0.12s ease, text-shadow 0.12s ease;
+  white-space: pre-wrap;
 }
+
+.karaoke-word.active-word,
+.karaoke-live-word.active-word {
+  color: #facc15;
+  font-weight: 800;
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+  transform: scale(1.08);
+}
+
+.karaoke-word.past-word,
+.karaoke-live-word.past-word {
+  color: #22c55e;
+}
+
+/* ==========================================
+   MONITOR KARAOKE ULTRASTAR
+========================================== */
+.karaoke-live-line {
+  font-size: 26px;
+  color: #475569; /* Gris oscuro para las que no han sonado */
+  margin: 10px 0;
+  text-align: center;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.karaoke-live-line.active {
+  color: #22c55e; /* Verde neón brillante */
+  font-size: 34px;
+  font-weight: 900;
+  opacity: 1;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6); /* Brillo neón */
+  transform: scale(1.1);
+}
+
+.karaoke-live-line.past {
+  color: #ffffff; /* Blanco para las que ya pasaron */
+  opacity: 0.8;
+  font-size: 26px;
+}
+
+/* ==========================================
+   ESCENARIOS DE KARAOKE (TEMAS VISUALES)
+========================================== */
+/* Clásico */
+#karaokeLyrics.theme-clasico { background: transparent; }
 
 /* Moderno (Neón Azul) */
-#karaokeLiveLyrics.theme-moderno,
-.karaoke-lyrics.theme-moderno {
-  background: #082f49 !important;
-  border: 2px solid #06b6d4 !important;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
-}
-#karaokeLiveLyrics.theme-moderno .karaoke-live-line.active,
-.karaoke-lyrics.theme-moderno .karaoke-line.active {
-  color: #06b6d4 !important;
-  text-shadow: 0 0 15px #06b6d4 !important;
-}
+#karaokeLyrics.theme-moderno { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
+#karaokeLyrics.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
 
-/* Disco (Gradiente Vibrante) */
-#karaokeLiveLyrics.theme-disco,
-.karaoke-lyrics.theme-disco {
-  background: linear-gradient(45deg, #4c1d95, #be185d) !important;
-  border: 2px solid #db2777 !important;
-  box-shadow: 0 0 15px rgba(219, 39, 119, 0.4);
-}
-#karaokeLiveLyrics.theme-disco .karaoke-live-line.active,
-.karaoke-lyrics.theme-disco .karaoke-line.active {
-  color: #facc15 !important;
-  text-shadow: 0 0 12px #facc15 !important;
-  font-size: 34px !important;
-}
+/* Disco */
+#karaokeLyrics.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
+#karaokeLyrics.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
 
-/* Acústico (Madera Cálida) */
-#karaokeLiveLyrics.theme-acustico,
-.karaoke-lyrics.theme-acustico {
-  background: #451a03 !important;
-  border: 2px solid #78350f !important;
-}
-#karaokeLiveLyrics.theme-acustico .karaoke-live-line.active,
-.karaoke-lyrics.theme-acustico .karaoke-line.active {
-  color: #fcd34d !important;
-  text-shadow: none !important;
-  font-style: italic;
-}
+/* Acústico */
+#karaokeLyrics.theme-acustico { background: #451a03 !important; border: 2px solid #78350f !important; }
+#karaokeLyrics.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
 
-/* Fiesta Animada (Fondo con luces locas) */
-#karaokeLiveLyrics.theme-fiesta,
-.karaoke-lyrics.theme-fiesta {
-  border: 2px solid #ff007f !important;
-  /* CORRECCIÓN: Enlazamos el ciclo de animaciones de luces neón */
-  animation: luces-fiesta 4s infinite alternate !important;
-}
-#karaokeLiveLyrics.theme-fiesta .karaoke-live-line.active,
-.karaoke-lyrics.theme-fiesta .karaoke-line.active {
-  color: #ff007f !important;
-  text-shadow: 0 0 20px #ff007f !important;
-}
+/* Fiesta */
+#karaokeLyrics.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
+#karaokeLyrics.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
 
-/* NUEVA CARACTERÍSTICA: Escenario Retrowave (Synthwave Ochentero) */
-#karaokeLiveLyrics.theme-retrowave,
-.karaoke-lyrics.theme-retrowave {
-  background: #1e0b36 !important;
-  border: 2px solid #ff007f !important;
-  box-shadow: 0 0 20px rgba(255, 0, 127, 0.5);
-}
-#karaokeLiveLyrics.theme-retrowave .karaoke-live-line.active,
-.karaoke-lyrics.theme-retrowave .karaoke-line.active {
-  color: #39ff14 !important; /* Verde Cyberpunk */
-  text-shadow: 0 0 10px #39ff14, 0 0 20px #ff007f !important;
-}
-
-/* CORRECCIÓN ANIMACIÓN FIESTA: Estructuramos los fotogramas para simular luces de discoteca */
-@keyframes luces-fiesta {
-  0% {
-    background-color: #1e1b4b;
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-  }
-  50% {
-    background-color: #311042;
-    box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
-  }
-  100% {
-    background-color: #062f22;
-    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
-  }
-}
 
 /* ==========================================
    MODO CELULAR (RESPONSIVE DESIGN)
 ========================================== */
 @media (max-width: 768px) {
   .app {
-    flex-direction: column-reverse;
+    flex-direction: column-reverse; /* Pone el menú abajo y el contenido arriba */
     height: 100vh;
     overflow: hidden;
   }
@@ -663,12 +457,12 @@ input::placeholder {
     justify-content: space-between;
     align-items: center;
     border-top: 1px solid var(--border);
-    overflow-x: auto;
+    overflow-x: auto; /* Permite deslizar si los botones no caben */
     white-space: nowrap;
   }
 
   .sidebar h2 {
-    display: none;
+    display: none; /* Ocultamos el título grande en el celular para ganar espacio */
   }
 
   .sidebar button {
@@ -680,82 +474,86 @@ input::placeholder {
   }
 
   .content {
-    height: calc(100vh - 70px);
+    height: calc(100vh - 70px); /* El contenido toma el resto de la pantalla */
     padding: 15px;
   }
 
+  /* Ajustar textos muy grandes en el celular */
   #noteDisplay {
-    font-size: 80px;
+    font-size: 80px; 
   }
 }
 
-/* ==========================================
-   SISTEMA DE CARPETAS DE BIBLIOTECA
-========================================== */
+/* --- ESTILOS DE BIBLIOTECA (CARPETAS) --- */
 .folder-controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-  background: var(--bg-main);
-  padding: 15px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: var(--bg-main);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
 }
 
 .folder-btn {
-  padding: 10px 20px;
-  /* CORRECCIÓN VARIABLES: Mapeamos a tus nombres reales de variables globales */
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
+    padding: 10px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
 }
 
-.folder-btn:hover,
-.folder-btn.active {
-  background: var(--accent);
-  color: black;
-  border-color: var(--accent-hover);
-  transform: translateY(-2px);
+.folder-btn:hover {
+    background: var(--accent);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.library-item {
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    transition: box-shadow 0.3s ease;
 }
 
 .library-item:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
+/* Ajuste para que los botones de eliminar no destaquen tanto */
 .delete-library-btn {
-  background: #444;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: bold;
-  transition: background 0.2s ease;
+    background: #444;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
 }
 
 .delete-library-btn:hover {
-  background: #ef4444;
+    background: #ef4444;
 }
 
 #karaokeCanvas {
-  background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
-  display: block;
-  height: 420px; /* Aumentado de 300px a 420px para ocupar más de la mitad */
-  width: 100%;
-  border-radius: 8px;
-  border: 2px solid #3b82f6;
+    background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+    display: block;
+    width: 100%;
+    height: 300px;
+    border-radius: 8px;
+    border: 2px solid #3b82f6;
 }
-
 /* ==========================================
    SISTEMA DE TEMAS GLOBALES
 ========================================== */
+
 /* TEMA CLARO */
 [data-theme="claro"] {
   --bg-main: #f1f5f9;
@@ -768,14 +566,17 @@ input::placeholder {
   --danger: #ef4444;
   --border: #cbd5e1;
 }
+
 [data-theme="claro"] .sidebar button {
   color: #475569;
 }
+
 [data-theme="claro"] .sidebar button:hover,
 [data-theme="claro"] .sidebar button.active {
   background: #cbd5e1;
   color: #1e293b;
 }
+
 [data-theme="claro"] audio {
   filter: invert(0);
 }
@@ -792,13 +593,16 @@ input::placeholder {
   --danger: #f97316;
   --border: #44403c;
 }
+
 [data-theme="rock"] .sidebar h2 {
   color: #dc2626;
 }
+
 [data-theme="rock"] button {
   background: #dc2626;
   color: white;
 }
+
 [data-theme="rock"] button:hover {
   background: #b91c1c;
 }
@@ -815,21 +619,26 @@ input::placeholder {
   --danger: #f43f5e;
   --border: #f9a8d4;
 }
+
 [data-theme="pop"] .sidebar h2 {
   color: #be185d;
 }
+
 [data-theme="pop"] .sidebar button {
   color: #9d174d;
 }
+
 [data-theme="pop"] .sidebar button:hover,
 [data-theme="pop"] .sidebar button.active {
   background: #f9a8d4;
   color: #831843;
 }
+
 [data-theme="pop"] button {
   background: #ec4899;
   color: white;
 }
+
 [data-theme="pop"] button:hover {
   background: #db2777;
 }
@@ -846,19 +655,23 @@ input::placeholder {
   --danger: #f43f5e;
   --border: #3f3f46;
 }
+
 [data-theme="neon"] .sidebar h2 {
   color: #a855f7;
   text-shadow: 0 0 10px #a855f7, 0 0 20px #a855f7;
 }
+
 [data-theme="neon"] button {
   background: #a855f7;
   color: white;
   box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
 }
+
 [data-theme="neon"] button:hover {
   background: #9333ea;
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
 }
+
 [data-theme="neon"] .card {
   border: 1px solid #a855f7;
   box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
@@ -876,49 +689,47 @@ input::placeholder {
   --danger: #f97316;
   --border: #22c55e;
 }
+
 [data-theme="naturaleza"] .sidebar h2 {
   color: #84cc16;
 }
+
 [data-theme="naturaleza"] button {
   background: #84cc16;
   color: #14532d;
 }
+
 [data-theme="naturaleza"] button:hover {
   background: #65a30d;
 }
+
 [data-theme="naturaleza"] .sidebar button {
   color: #bbf7d0;
 }
+
 [data-theme="naturaleza"] .sidebar button:hover,
 [data-theme="naturaleza"] .sidebar button.active {
   background: #22c55e;
   color: #14532d;
 }
+
 /* ==========================================
-   VÚMETROS DE HARDWARE DE MICRÓFONOS
+   SELECTOR DE MICRÓFONOS
 ========================================== */
 .mic-level-bar {
-  position: relative;
   width: 100%;
   height: 12px;
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: var(--bg-main);
   border: 1px solid var(--border);
   border-radius: 6px;
+  margin-top: 10px;
   overflow: hidden;
-  margin-top: 6px;
 }
 
 .mic-level-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(
-    90deg,
-    #22c55e,
-    #84cc16,
-    #facc15,
-    #f97316,
-    #ef4444
-  );
+  background: linear-gradient(90deg, #22c55e, #84cc16, #facc15, #f97316, #ef4444);
   border-radius: 6px;
   transition: width 0.05s ease-out;
 }
@@ -928,12 +739,8 @@ input::placeholder {
 }
 
 @keyframes pulse-mic {
-  from {
-    opacity: 0.8;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0.8; }
+  to { opacity: 1; }
 }
 
 #mic2Group {
@@ -943,10 +750,9 @@ input::placeholder {
 }
 
 /* ==========================================
-   CATÁLOGO DE KARAOKE Y PLAYLISTS
+   CATÁLOGO DE KARAOKE
 ========================================== */
-.catalog-item,
-.my-karaoke-item {
+.catalog-item, .my-karaoke-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -958,44 +764,38 @@ input::placeholder {
   transition: all 0.2s ease;
 }
 
-.catalog-item:hover,
-.my-karaoke-item:hover {
+.catalog-item:hover, .my-karaoke-item:hover {
   border-color: var(--accent);
   transform: translateX(5px);
 }
 
-.catalog-item-info,
-.my-karaoke-item-info {
+.catalog-item-info, .my-karaoke-item-info {
   flex: 1;
 }
 
-.catalog-item-title,
-.my-karaoke-item-title {
+.catalog-item-title, .my-karaoke-item-title {
   font-weight: bold;
   color: var(--text-main);
   margin: 0 0 4px 0;
 }
 
-.catalog-item-artist,
-.my-karaoke-item-artist {
+.catalog-item-artist, .my-karaoke-item-artist {
   font-size: 13px;
   color: var(--text-muted);
   margin: 0;
 }
 
-.catalog-item-actions,
-.my-karaoke-item-actions {
+.catalog-item-actions, .my-karaoke-item-actions {
   display: flex;
   gap: 8px;
 }
 
-.catalog-item-actions button,
-.my-karaoke-item-actions button {
+.catalog-item-actions button, .my-karaoke-item-actions button {
   padding: 8px 15px;
   font-size: 13px;
 }
 
-/* Modales e Inputs de carga */
+/* Modal */
 #ultrastarModal .settings-group {
   margin-bottom: 15px;
 }
@@ -1005,61 +805,63 @@ input::placeholder {
 }
 
 /* ==========================================
-   BARRAS DE VOLUMEN MODO DÚO (INTEGRADO VISUAL)
+   BARRAS DE VOLUMEN MODO DÚO
 ========================================== */
-/* CORRECCIÓN: Usamos especificidad avanzada para que convivan en armonía
-   las barras fijas del Karaoke con el vúmetro multicolor del test de hardware */
+.mic-level-bar {
+  width: 100%;
+  height: 12px;                  /* Altura de la barra */
+  background: rgba(255, 255, 255, 0.1); /* Fondo gris oscuro de la barra vacía */
+  border-radius: 6px;            /* Bordes redondeados */
+  overflow: hidden;              /* Corta el relleno si se sale */
+  margin-top: 6px;
+  position: relative;
+  border: 1px solid var(--border);
+}
 
-/* Color personalizado y sombreado exclusivo mediante su ID */
+.mic-level-fill {
+  width: 0%;                     /* Empieza vacía, JS cambiará esto */
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.05s ease;  /* Movimiento ultra fluido al ritmo de la voz */
+}
+
+/* Color personalizado exclusivo mediante su ID */
 #karaokeDuoMic1Level {
-  background: #facc15 !important;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+  background: #facc15;           /* Amarillo brillante (Igual que la voz 1 en el canvas) */
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
 }
 
 #karaokeDuoMic2Level {
-  background: #06b6d4 !important;
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+  background: #06b6d4;           /* Celeste/Cian eléctrico (Igual que la voz 2 en el canvas) */
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
 }
 
 /* Color destacado para saber qué carpeta de la biblioteca está abierta */
 .folder-btn.active {
-  background-color: #3b82f6 !important;
+  background-color: #3b82f6 !important; /* Azul de tu botón de carga */
   color: #ffffff !important;
-  border: 1px solid #22c55e !important;
+  border: 1px solid #22c55e !important; /* Bordecito verde sutil */
   font-weight: bold;
   transform: scale(1.03);
 }
 
 /* ====================================================================
-   🎨 TEMA GLOBAL ORIGINAL: RETRO WAVE / CYBERPUNK (ANIMADO)
+   🎨 TEMA: RETRO WAVE / CYBERPUNK (ANIMADO)
    ==================================================================== */
-/* CORRECCIÓN INTERFAZ: Adaptamos el selector para que responda al 
-   sistema de atributos data-theme unificado de tu motor JS */
-[data-theme="retrowave"] {
-  --bg-main: #0b001a;
-  --bg-sidebar: #1e0936;
-  --bg-card: rgba(30, 9, 54, 0.6);
-  --text-main: #ffffff;
-  --text-muted: #bbf7d0;
-  --accent: #ff007f;
-  --accent-hover: #db2777;
-  --danger: #ef4444;
-  --border: #ff007f;
-}
-
-[data-theme="retrowave"] body {
-  background-color: #0b001a !important;
-  background-image: linear-gradient(rgba(255, 0, 128, 0.1) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 2px, transparent 2px) !important;
+body.tema-retrowave {
+  background-color: #0b001a !important; /* Morado ultra oscuro */
+  background-image: 
+    linear-gradient(rgba(255, 0, 128, 0.1) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 2px, transparent 2px);
   background-size: 40px 40px;
   background-position: center bottom;
-  animation: grid-scroll 4s linear infinite !important;
+  animation: grid-scroll 4s linear infinite;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* El sol brillante ochentero de fondo */
-[data-theme="retrowave"] body::before {
+body.tema-retrowave::before {
   content: "";
   position: absolute;
   bottom: 20%;
@@ -1076,93 +878,22 @@ input::placeholder {
   animation: sun-pulse 3s ease-in-out infinite alternate;
 }
 
+/* Animación para que la cuadrícula camine hacia el frente */
+@keyframes grid-scroll {
+  from { background-position: 0 0; }
+  to { background-position: 0 40px; }
+}
+
+/* Animación de pulso místico para el sol */
+@keyframes sun-pulse {
+  from { transform: translateX(-50%) scale(0.95); opacity: 0.3; }
+  to { transform: translateX(-50%) scale(1.05); opacity: 0.55; }
+}
+
 /* Estilo para las tarjetas del menú bajo este tema */
-[data-theme="retrowave"] .card {
+body.tema-retrowave .card {
   background: rgba(30, 9, 54, 0.6) !important;
   border: 1px solid #ff007f !important;
   box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
   backdrop-filter: blur(8px);
 }
-
-[data-theme="retrowave"] button {
-  background: #ff007f;
-  color: white;
-  box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
-}
-
-[data-theme="retrowave"] button:hover {
-  background: #db2777;
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.7);
-}
-
-[data-theme="retrowave"] .sidebar button:hover,
-[data-theme="retrowave"] .sidebar button.active {
-  background: rgba(255, 0, 127, 0.2);
-  color: #ffffff;
-  border: 1px solid #ff007f;
-}
-
-/* --- ANIMACIONES NATIVAS RETROWAVE --- */
-@keyframes grid-scroll {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 0 40px;
-  }
-}
-
-@keyframes sun-pulse {
-  from {
-    transform: translateX(-50%) scale(0.95);
-    opacity: 0.3;
-  }
-  to {
-    transform: translateX(-50%) scale(1.05);
-    opacity: 0.55;
-  }
-}
-
-/* ==========================================================
-   EFECTO PIE DE PÁGINA (MINIMALISTA Y ULTRA-COMPACTO)
-   ========================================================== */
-
-/* 1. Volver los títulos diminutos como notas al pie */
-.card h1,
-.card h2,
-.card h3,
-.card h4,
-.card h5,
-.card h6 {
-  font-size: 11px !important; /* Tamaño micro de nota al pie */
-  font-weight: bold !important;
-  text-transform: uppercase; /* En mayúsculas para que sea legible a pesar de ser mini */
-  margin: 2px 0 !important;
-  color: var(
-    --text-muted
-  ) !important; /* Color gris suave para que no compita con el karaoke */
-}
-
-/* 2. Textos descriptivos aún más pequeños */
-.card p,
-.card span,
-.card div,
-.card label {
-  font-size: 12px !important; /* Tamaño mínimo legible */
-  margin: 1px 0 !important;
-  color: rgba(255, 255, 255, 0.4) !important; /* Súper sutil */
-}
-
-/* 3. Volver el reproductor de audio una barrita minimalista */
-audio {
-  height: 24px !important; /* Reduce la altura a la mitad de su tamaño original */
-  margin-top: 2px !important;
-  margin-bottom: 2px !important;
-  opacity: 0.7; /* Lo hace sutil para que se mezcle con el fondo */
-  transition: opacity 0.2s;
-}
-audio:hover {
-  opacity: 1; /* Se aclara solo cuando pasas el mouse por encima */
-}
-
-/* 4. Reducir la separación interna de los bloques para aplastarlos más */
