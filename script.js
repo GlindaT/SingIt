@@ -2340,7 +2340,7 @@ async function splitAudio() {
           await saveToLibrary(blobPista, { name: `Pista - ${file.name}`, type: "pista" });
 
           statusText.textContent = "🎉 ¡Separación perfecta!";
-          detailText.textContent = "Voz pura y Pista Instrumental guardadas en Biblioteca.";
+          detailText.textContent = "Voz y Pista guardadas en Biblioteca.";
           btn.disabled = false;
           btn.textContent = "✨ Separar Otra Canción";
         } else if (statusData.status === "failed" || statusData.status === "canceled") {
@@ -2982,7 +2982,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     initSettings();
 
     function applyKaraokeTheme() {
-      const theme = localStorage.getItem("singIt_stage") || "clasico";
+      const theme = localStorage.getItem("singIt_karaoke_theme") || "clasico";
       const monitor = $("karaokeLiveLyrics");
       if (monitor) {
         monitor.className = "karaoke-lyrics theme-" + theme;
@@ -2992,7 +2992,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     applyKaraokeTheme();
 
     safeAdd("karaokeThemeSelect", "change", (e) => {
-      saveSetting("singIt_stage", e.target);
+      saveSetting("singIt_karaoke_theme", e.target);
       applyKaraokeTheme();
     });
 
@@ -3777,11 +3777,7 @@ async function loadMyKaraokeSongs() {
     // Obtener canciones tipo "karaoke" de la biblioteca
     const karaokeSongs = await getLibraryItemsByType("karaoke");
     
-    // También obtener voces que tengan transcripción
-    const voces = await getLibraryItemsByType("voz");
-    const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
-    
-    const allSongs = [...karaokeSongs, ...vocesConSync];
+    const allSongs = [...karaokeSongs];
     
     if (allSongs.length === 0) {
       container.innerHTML = `
@@ -3944,7 +3940,7 @@ async function importKaraokeFile(file) {
       return;
     }
     const audioBlob = data.audio ? dataUrlToBlob(data.audio) : null;
-    const vocalsBlob = data.vocals ? dataUrlToBlob(data.vocals) : null;
+   
     if (!audioBlob) {
       alert("⚠️ El archivo no contiene audio");
       return;
@@ -3953,7 +3949,6 @@ async function importKaraokeFile(file) {
       name: data.name || "Karaoke importado",
       type: "karaoke",
       audioBlob: audioBlob,
-      vocalsBlob: vocalsBlob,
       date: new Date().toLocaleString("es-ES"),
       transcription: data.transcription || [],
       metadata: data.metadata || {}
