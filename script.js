@@ -869,7 +869,7 @@ async function renderLibrary(filter = 'todos') {
         
         if (item && item.textoPlano) {
           // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("textArea");
+          const monitor = document.getElementById("lyricsText") || document.getElementById("lyricsText");
           
           if (monitor) {
             monitor.value = item.textoPlano;
@@ -1115,14 +1115,15 @@ async function loadSelectedVoiceFromLibrary() {
           baseTranscriptionSegments,
           6
         );
-      renderKaraokeLyrics(transcriptionSegments);
-      cargarLetrasEnMonitor();
-
       if (lyricsText) {
         lyricsText.value = transcriptionSegments
           .map(seg => seg.text || "")
           .join("\n")
           .trim();
+        
+        renderKaraokeLyrics(transcriptionSegments);
+        cargarLetrasEnMonitor();
+      
       }
 
       status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
@@ -1229,13 +1230,13 @@ async function transcribeSelectedVoice() {
 
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-
-    renderKaraokeLyrics(transcriptionSegments);
-    cargarLetrasEnMonitor();
-
+    
     if (lyricsText) {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
+    
+    renderKaraokeLyrics(transcriptionSegments);
+    cargarLetrasEnMonitor();
 
     // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT CORREGIDO ---
     try {
