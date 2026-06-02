@@ -877,10 +877,17 @@ async function renderLibrary(filter = 'todos') {
             // Si el archivo UltraStar contiene los tiempos de los taps guardados en memoria, los reactivamos
             if (item.transcription) {
               baseTranscriptionSegments = item.transcription;
-              transcriptionSegments = item.transcription;
-              
-              if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
-              if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+              transcriptionSegments =
+                splitSegmentsIntoKaraokeLines(
+                  baseTranscriptionSegments,
+                  6
+                );
+              if (typeof cargarLetrasEnMonitor === "function") {
+                cargarLetrasEnMonitor();
+              }
+              if (typeof renderKaraokeLyrics === "function") {
+                renderKaraokeLyrics(transcriptionSegments);
+              }
             }
 
             alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
@@ -1103,8 +1110,11 @@ async function loadSelectedVoiceFromLibrary() {
 
       // IMPORTANTE:
       // aquí respetamos exactamente las líneas guardadas
-      transcriptionSegments = baseTranscriptionSegments;
-
+      transcriptionSegments =
+        splitSegmentsIntoKaraokeLines(
+          baseTranscriptionSegments,
+          6
+        );
       renderKaraokeLyrics(transcriptionSegments);
       cargarLetrasEnMonitor();
 
@@ -1438,19 +1448,24 @@ function buildWordTimingFromSegment(segment) {
 
   const timedWords = rawWords.map((word, index) => {
     const wordStart = cursor;
-    const wordEnd = cursor + sliceDuration;
+    
+    let wordEnd =
+      index === rawWords.length - 1
+      ? segment.end
+      : cursor + sliceDuration;
+    
     cursor = wordEnd;
-
-    // Retornamos la estructura limpia nativa de tu app, lista para los Taps
     return {
+      ...
+        };
+  });
       word: word,
       start: wordStart,
       end: wordEnd,
       pitch: segment.pitch || 0,
       note: segment.note || "C4",
       sincronizado: false // Flag auxiliar para que el grabador de taps sepa qué palabra sigue
-    };
-  });
+});
 
   return {
     ...segment,
@@ -4056,10 +4071,8 @@ async function loadMyKaraokeSongs() {
   
   try {
     const karaokeSongs = await getLibraryItemsByType("karaoke");
-    const voces = await getLibraryItemsByType("voz");
-    const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
-    
-    const allSongs = [...karaokeSongs, ...vocesConSync];
+    const allSongs =
+      await getLibraryItemsByType("karaoke");
     
     if (allSongs.length === 0) {
       container.innerHTML = `
@@ -4152,7 +4165,14 @@ async function loadKaraokeSong(id) {
     
     if (song.transcription && song.transcription.length > 0) {
       transcriptionSegments = song.transcription;
-      baseTranscriptionSegments = song.transcription;
+      baseTranscriptionSegments =
+        song.transcription;
+      transcriptionSegments =
+        splitSegmentsIntoKaraokeLines(
+          baseTranscriptionSegments,
+          6
+        );
+      
       cargarLetrasEnMonitor();
     }
     
@@ -4251,9 +4271,8 @@ async function importKaraokeFile(file) {
     await addLibraryItem({
       name: data.name || "Karaoke importado",
       type: "karaoke",
-      audioBlob: audioBlob,
-      vocalsBlob: vocalsBlob,
-      date: new Date().toLocaleString("es-ES"),
+      audioBlob: instrumentalBlob,
+      vocalsBlob: selectedVoiceBlob,
       transcription: data.transcription || [],
       metadata: data.metadata || {}
     });
