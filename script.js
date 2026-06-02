@@ -1447,26 +1447,24 @@ function buildWordTimingFromSegment(segment) {
   let cursor = segment.start;
 
   const timedWords = rawWords.map((word, index) => {
-    const wordStart = cursor;
-    
-    let wordEnd =
-      index === rawWords.length - 1
+  const wordStart = cursor;
+
+  const wordEnd =
+    index === rawWords.length - 1
       ? segment.end
       : cursor + sliceDuration;
     
     cursor = wordEnd;
+    
     return {
-      ...
-        };
-  });
       word: word,
       start: wordStart,
       end: wordEnd,
       pitch: segment.pitch || 0,
       note: segment.note || "C4",
-      sincronizado: false // Flag auxiliar para que el grabador de taps sepa qué palabra sigue
-});
-
+      sincronizado: false
+    };
+  }); // Flag auxiliar para que el grabador de taps sepa qué palabra sigue
   return {
     ...segment,
     words: timedWords
