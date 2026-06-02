@@ -17,7 +17,6 @@
     <button id="btnAfinador" type="button">Afinador</button>
     <button id="btnEstudio" type="button">Estudio</button>
     <button id="btnBiblioteca" type="button">Biblioteca</button>
-    <button id="btnKaraokeLibrary" type="button">Karaoke Library</button>
     <button id="btnKaraoke" type="button">Karaoke</button>
     <button id="btnSplitter" type="button">Splitter</button>
     <button id="btnConfig" type="button">Configuración</button>
@@ -195,7 +194,7 @@
 </div>
 
   <!-- CORRECCIÓN ID MONITOR: Cambiado a miniMonitorTextArea para acoplarse con la carga de la biblioteca -->
-  <div id=".textContent" class="karaoke-lyrics">
+  <div id="miniMonitorTextArea" class="karaoke-lyrics">
     <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
   </div>
 </div>
@@ -253,67 +252,71 @@
     <div id="libraryList"></div>
   </div>
 </section>
-
-<!-- KARAOKE LIBRARY -->
-<section id="karaokeLibrary" class="tab">
-  <h1>🎵 Karaoke Library</h1>
-
-  <div class="card">
-    <h3>Lista de Canciones</h3>
-    <p style="color: var(--text-muted); margin-bottom: 15px;">Selecciona una canción para cargarla en el monitor de Karaoke.</p>
-
-    <div style="overflow-x: auto;">
-      <table id="karaokeLibraryTable" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-        <thead>
-          <tr style="background: var(--bg-main); border-bottom: 2px solid var(--border);">
-            <th style="padding: 12px; text-align: left; color: var(--text-muted);">#</th>
-            <th style="padding: 12px; text-align: left; color: var(--text-muted);">Título</th>
-            <th style="padding: 12px; text-align: left; color: var(--text-muted);">Artista</th>
-            <th style="padding: 12px; text-align: left; color: var(--text-muted);">Fuente</th>
-            <th style="padding: 12px; text-align: center; color: var(--text-muted);">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="karaokeLibraryTableBody">
-          <tr>
-            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Cargando canciones...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="studio-controls" style="margin-top: 15px;">
-      <button id="refreshKaraokeLibraryBtn" type="button" style="background: #6b7280;">🔄 Actualizar Lista</button>
-    </div>
-  </div>
-</section>
-
+    
 <!-- KARAOKE -->
 <section id="karaoke" class="tab">
   <h1>🎤 Karaoke</h1>
-
+  
   <!-- MONITOR DE PENTAGRAMA -->
   <div class="card" style="background: #1a1a1a; padding: 0;">
     <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
   </div>
 
-  <!-- MONITOR DE LETRAS -->
+  <!-- CATÁLOGO DE CANCIONES LISTAS -->
   <div class="card">
-    <h3>Letra Sincronizada</h3>
-    <div id="miniMonitorTextArea" class="karaoke-lyrics" style="min-height: 200px; max-height: 400px; overflow-y: auto; padding: 15px; background: var(--bg-main); border-radius: 8px; font-size: 18px; line-height: 1.8;"></div>
+    <div class="encabezado-desplegable" data-target="contenido-catalogo" data-arrow="flecha-catalogo" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+      <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
+      <span id="flecha-catalogo" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
+    </div>
+
+    <div id="contenido-catalogo" class="contenido-desplegable oculto" style="margin-top: 15px;">
+      <!-- Catálogo pre-cargado -->
+      <div id="catalogSection">
+        <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
+        <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
+          <p style="color: var(--text-muted);">Cargando catálogo...</p>
+        </div>
+      </div>
+      
+      <!-- Mis canciones importadas/creadas -->
+      <div id="myKaraokeSongs" style="margin-top: 20px;">
+        <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
+        <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
+          <p style="color: var(--text-muted);">No tienes canciones guardadas aún.</p>
+        </div>
+      </div>
+     
+      <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+        <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Paso 1: Pista -->
+  <div class="card">
+    <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
+      <h3 style="margin: 0;">1. Cargar Pista (Instrumental)</h3>
+      <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
+    </div>
+    
+    <div id="contenido-pista" class="contenido-desplegable oculto" style="margin-top: 15px;">
+      <div class="studio-controls">
+        <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
+      </div>
+      <select id="karaokeTrackSelect" style="width: 100%; margin: 10px 0;">
+        <option value="">Selecciona una pista desde tu Biblioteca</option>
+      </select>
+      <div class="studio-controls" style="margin-bottom: 15px;">
+        <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
+      </div>
+      <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
+    </div>
   </div>
 
-  <!-- INFO DE CANCIÓN CARGADA -->
-  <div class="card" id="loadedKaraokeSongInfo" style="display: none;">
-    <h3>Canción Cargada</h3>
-    <p id="loadedKaraokeSongTitle" style="font-size: 18px; font-weight: bold; color: var(--accent);"></p>
-    <p id="loadedKaraokeSongArtist" style="color: var(--text-muted);"></p>
-    <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
-  </div>
-
-  <!-- Paso 1: Grabación -->
+  <!-- Paso 2: Grabación -->
   <div class="card">
-    <h3>1. Grabación</h3>
-    <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando canción...</p>
+    <h3>2. Grabación Sincronizada</h3>
+    <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
     
     <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
       <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
@@ -332,32 +335,32 @@
         </div>
       </div>
     </div>
+        
+        <div class="studio-controls">
+          <button id="karaokeStartBtn" class="btn-danger" type="button">🎙️ Iniciar Grabación</button>
+          <button id="karaokeStopBtn" type="button">⏹️ Detener</button>
+          <button id="karaokeRestartBtn" type="button">🔄 Volver a intentar</button>
+        </div>
 
-    <div class="studio-controls">
-      <button id="karaokeStartBtn" class="btn-danger" type="button">🎙️ Iniciar Grabación</button>
-      <button id="karaokeStopBtn" type="button">⏹️ Detener</button>
-      <button id="karaokeRestartBtn" type="button">🔄 Volver a intentar</button>
-    </div>
+        <h4 style="margin-top: 20px;">Tu voz grabada:</h4>
+        <audio id="karaokeVoicePlayer" controls></audio>
+      </div>
 
-    <h4 style="margin-top: 20px;">Tu voz grabada:</h4>
-    <audio id="karaokeVoicePlayer" controls></audio>
-  </div>
+      <!-- Paso 3: Mezcla -->
+      <div class="card">
+        <h3>3. Mezcla Final</h3>
+        <p style="color: var(--text-muted); margin-bottom: 15px;">Une la pista instrumental con tu voz en un solo archivo de audio.</p>
+        
+        <div class="studio-controls">
+          <button id="karaokeMixBtn" type="button" style="background: #a855f7; color: white;">🎧 Mezclar Pista + Voz</button>
+        </div>
+        
+        <div id="karaokeMixResult" style="margin-top: 15px;"></div>
+      </div>
+    </section>
 
-  <!-- Paso 2: Mezcla -->
-  <div class="card">
-    <h3>2. Mezcla Final</h3>
-    <p style="color: var(--text-muted); margin-bottom: 15px;">Une la pista instrumental con tu voz en un solo archivo de audio.</p>
-
-    <div class="studio-controls">
-      <button id="karaokeMixBtn" type="button" style="background: #a855f7; color: white;">🎧 Mezclar Pista + Voz</button>
-    </div>
-
-    <div id="karaokeMixResult" style="margin-top: 15px;"></div>
-  </div>
-</section>
-
-<!-- SPLITTER -->
-<section id="splitter" class="tab">
+    <!-- SPLITTER -->
+    <section id="splitter" class="tab">
       <h1>✂️ Splitter IA</h1>
 
       <div class="card">
