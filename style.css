@@ -1,3 +1,5 @@
+css
+
 /* 1. Add the Cursive Font (Requires Google Fonts import at top of CSS) */
 @import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap");
 
@@ -129,6 +131,21 @@ body {
   }
 }
 
+/* 4. Current Line and Progress States */
+#tapCurrentLine,
+#tapProgress {
+  font-size: 24px;
+  transition: color 0.3s ease;
+  /* Default/Before Tap Color: Neon Cyan */
+  color: #00f3ff;
+}
+
+/* Class to trigger via JavaScript on tap */
+.tap-active {
+  animation: neon-pop 0.2s ease-out forwards;
+  /* After Tap Color: Golden Yellow */
+  color: #ffd700 !important;
+}
 
 /* 5. Light Blue Aligned Button */
 #tapBeatBtn {
@@ -541,14 +558,13 @@ input::placeholder {
    ESCENARIOS DE KARAOKE (TEMAS VISUALES - CORREGIDO)
 ========================================== */
 /* CORRECCIÓN: Apuntamos al ID real de tu monitor unificado "#karaokeLiveLyrics" o ".karaoke-lyrics" */
-/* Nota: karaokeLiveLyrics no existe en HTML, usando miniMonitorTextArea */
-#miniMonitorTextArea.theme-clasico,
+#karaokeLiveLyrics.theme-clasico,
 .karaoke-lyrics.theme-clasico {
   background: transparent;
 }
 
 /* Moderno (Neón Azul) */
-#miniMonitorTextArea.theme-moderno,
+#karaokeLiveLyrics.theme-moderno,
 .karaoke-lyrics.theme-moderno {
   background: #082f49 !important;
   border: 2px solid #06b6d4 !important;
@@ -561,7 +577,7 @@ input::placeholder {
 }
 
 /* Disco (Gradiente Vibrante) */
-#miniMonitorTextArea.theme-disco,
+#karaokeLiveLyrics.theme-disco,
 .karaoke-lyrics.theme-disco {
   background: linear-gradient(45deg, #4c1d95, #be185d) !important;
   border: 2px solid #db2777 !important;
@@ -575,7 +591,7 @@ input::placeholder {
 }
 
 /* Acústico (Madera Cálida) */
-#miniMonitorTextArea.theme-acustico,
+#karaokeLiveLyrics.theme-acustico,
 .karaoke-lyrics.theme-acustico {
   background: #451a03 !important;
   border: 2px solid #78350f !important;
@@ -588,7 +604,7 @@ input::placeholder {
 }
 
 /* Fiesta Animada (Fondo con luces locas) */
-#miniMonitorTextArea.theme-fiesta,
+#karaokeLiveLyrics.theme-fiesta,
 .karaoke-lyrics.theme-fiesta {
   border: 2px solid #ff007f !important;
   /* CORRECCIÓN: Enlazamos el ciclo de animaciones de luces neón */
@@ -601,7 +617,7 @@ input::placeholder {
 }
 
 /* NUEVA CARACTERÍSTICA: Escenario Retrowave (Synthwave Ochentero) */
-#miniMonitorTextArea.theme-retrowave,
+#karaokeLiveLyrics.theme-retrowave,
 .karaoke-lyrics.theme-retrowave {
   background: #1e0b36 !important;
   border: 2px solid #ff007f !important;
