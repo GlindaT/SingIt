@@ -869,7 +869,7 @@ async function renderLibrary(filter = 'todos') {
         
         if (item && item.textoPlano) {
           // 🎯 CORRECCIÓN: Buscamos "lyricsText" (el ID real de tu monitor del Estudio)
-          const monitor = document.getElementById("lyricsText") || document.getElementById("miniMonitorTextArea");
+          const monitor = document.getElementById("lyricsText") || document.getElementById("textArea");
           
           if (monitor) {
             monitor.value = item.textoPlano;
@@ -1307,7 +1307,7 @@ async function transcribeSelectedVoice() {
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
     // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
-    const textoMonitor = document.getElementById("miniMonitorTextArea").value; 
+    const textoMonitor = document.getElementById("lyricsText").value; 
     
     if (!textoMonitor.trim()) {
       alert("⚠️ El monitor está vacío. No hay texto para guardar.");
