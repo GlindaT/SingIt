@@ -4196,6 +4196,7 @@ async function exportKaraokeSong(id) {
       alert("⚠️ No se encontró el karaoke");
       return;
     }
+    
     const payload = {
       app: "SingIt",
       version: 1,
@@ -4204,20 +4205,25 @@ async function exportKaraokeSong(id) {
       type: item.type,
       metadata: item.metadata || {},
       transcription: item.transcription || [],
+      // 🎯 CORRECCIÓN CLAVE: Empaquetamos el texto UltraStar estructurado
+      textoPlano: item.textoPlano || "", 
       audio: item.audioBlob ? await blobToBase64Full(item.audioBlob) : null,
       vocals: item.vocalsBlob ? await blobToBase64Full(item.vocalsBlob) : null
     };
+    
     const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const safeName = (item.name || "karaoke").replace(/[^a-zA-Z0-9-_]+/g, "_");
+    
     const a = document.createElement("a");
     a.href = url;
     a.download = `${safeName}.singit`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    console.log("✅ Karaoke exportado con éxito:", safeName);
+    console.log("✅ Karaoke exportado con éxito con su texto UltraStar:", safeName);
   } catch (err) {
     console.error("❌ Error exportando:", err);
     alert("❌ Error al exportar el karaoke");
