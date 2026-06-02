@@ -1265,7 +1265,7 @@ async function transcribeSelectedVoice() {
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
     // 1. Obtén el texto limpio del mini monitor (ajusta el ID según tu HTML)
-    const textoMonitor = document.getElementById("miniMonitorTextArea").value; 
+    const textoMonitor = document.getElementById("lyricsText").value; 
     
     if (!textoMonitor.trim()) {
       alert("⚠️ El monitor está vacío. No hay texto para guardar.");
@@ -1612,6 +1612,9 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
 
 function renderKaraokeLyrics(segments) {
   const container = $("karaokeLyrics");
+  // 1. Buscamos también tu textarea
+  const textareaLyrics = document.getElementById("lyricsText"); 
+  
   if (!container) return;
 
   console.log("renderKaraokeLyrics -> segmentos:", segments);
@@ -1620,8 +1623,17 @@ function renderKaraokeLyrics(segments) {
 
   if (!Array.isArray(segments) || !segments.length) {
     container.innerHTML = `<p class="karaoke-placeholder">No hay segmentos para mostrar.</p>`;
+    // 2. Si no hay segmentos, vaciamos el textarea
+    if (textareaLyrics) textareaLyrics.value = ""; 
     return;
   }
+
+  // --- AQUÍ INTEGRAMOS EL LLENADO DEL TEXTAREA ---
+  // Usamos tu código anterior para unir los textos y meterlos al textarea
+  if (textareaLyrics) {
+    textareaLyrics.value = segments.map(line => line.text).join("\n");
+  }
+  // -----------------------------------------------
 
   segments.forEach((segment, index) => {
     const line = document.createElement("p");
@@ -1638,6 +1650,7 @@ function renderKaraokeLyrics(segments) {
         span.className = "karaoke-word";
         span.dataset.start = Number(wordObj.start || 0);
         span.dataset.end = Number(wordObj.end || 0);
+        // Mantiene los espacios entre palabras correctamente
         span.textContent = (wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
         line.appendChild(span);
       });
@@ -1648,7 +1661,6 @@ function renderKaraokeLyrics(segments) {
     container.appendChild(line);
   });
 }
-
 function updateKaraokeHighlight(currentTime) {
   const lines = document.querySelectorAll(".karaoke-line");
   if (!lines.length) return;
