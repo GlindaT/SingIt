@@ -1,7 +1,3 @@
-API:
-
-SPLIT:
-
 export const config = {
   api: {
     bodyParser: {
