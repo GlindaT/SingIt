@@ -1136,7 +1136,7 @@ async function transcribeSelectedVoice() {
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    const CHUNK_SECONDS = 40;
+    const CHUNK_SECONDS = 20;
     const sampleRate = audioBuffer.sampleRate;
     const totalSamples = audioBuffer.length;
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
