@@ -1142,64 +1142,89 @@ async function transcribeSelectedVoice() {
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
+    let startSample = 0;
+    let chunkNumber = 1;
 
-    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
-      const end = Math.min(start + samplesPerChunk, totalSamples);
-      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
-      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
-
-      if (status) {
-        status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+    while (startSample < totalSamples) {
+      // Intentamos un tamaño ideal de 25 segundos, pero estiramos hasta 35 buscando silencio
+      const idealChunkSamples = 25 * sampleRate;
+      const maxChunkSamples = 35 * sampleRate;
+      
+      let endSample = Math.min(startSample + idealChunkSamples, totalSamples);
+      // LÓGICA DE DETECCIÓN DE SILENCIO (Para no cortar palabras)
+      if (endSample < totalSamples) {
+        const searchStart = endSample;
+        const searchEnd = Math.min(startSample + maxChunkSamples, totalSamples);
+        
+        // Obtenemos los datos de audio del canal 0 (Mono) para analizar el volumen
+        const channelData = audioBuffer.getChannelData(0);
+        
+        let quietestSample = searchStart;
+        let minVolume = Float32Array.MAX_VALUE;
+        
+        // Escaneamos la ventana de tiempo buscando el punto con menor volumen (silencio)
+        // Saltamos de a 100 muestras para que el bucle sea ultra rápido
+        for (let i = searchStart; i < searchEnd; i += 100) {
+          const volume = Math.abs(channelData[i]);
+          if (volume < minVolume) {
+            minVolume = volume;
+            quietestSample = i;
+          }
+          
+          // Si encontramos un silencio casi absoluto, nos detenemos ahí
+          if (volume < 0.01) {
+            quietestSample = i;
+            break;
+          }
+        }
+        endSample = quietestSample;
       }
-
-      const wavBlob = audioBufferToWav(audioBuffer, start, end);
+      
+      // Visualización del estado actual
+      if (status) {
+        status.textContent = `Estado: Transcribiendo parte ${chunkNumber}...`;
+      }
+      
+      // Procesamiento del fragmento (Tu lógica original intacta)
+      const wavBlob = audioBufferToWav(audioBuffer, startSample, endSample);
       const base64Audio = await blobToBase64(wavBlob);
-
+      
       const response = await fetch("/api/transcribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audioBase64: base64Audio })
       });
-
+      
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Error ${response.status}: ${errorText}`);
       }
-
+      
       const result = await response.json();
-
-      const palabrasProhibidas = [
-        "Amarar",
-        "Subtítulos",
-        "subtítulos",
-        "Almorzo",
-        "Suscribete",
-        "comunidad"
-      ];
-
-      const timeOffset = start / sampleRate;
-
+      const palabrasProhibidas = ["Amarar", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
+      const timeOffset = startSample / sampleRate;
+      
       (result.segments || []).forEach((seg) => {
         const segText = (seg?.text || "").trim();
-
         if (!segText) return;
-
+        
         const esFantasma = palabrasProhibidas.some((palabra) =>
           segText.toLowerCase().includes(palabra.toLowerCase())
         );
-
         if (esFantasma) return;
-
         const segmentWithOffset = {
           start: Number(seg.start || 0) + timeOffset,
           end: Number(seg.end || 0) + timeOffset,
           text: segText
         };
-
         fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
       });
+      
+      // Avanzar al siguiente bloque desde donde cortamos
+      startSample = endSample;
+      chunkNumber++;
     }
-
+    
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
