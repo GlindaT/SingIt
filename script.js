@@ -3679,8 +3679,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
   
-  const width = ctx.canvas.width; // Mantiene el ancho dinámico final
-
   // ====================================================================
   // 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
   // ====================================================================
@@ -3809,7 +3807,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
       ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 25);
     }
   }
-
+  
   const width = ctx.canvas.width; 
 } // ✅ LLAVE DE CIERRE CORRECTA: Aquí termina de forma limpia drawKaraokeMonitor
 
