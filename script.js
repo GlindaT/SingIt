@@ -1207,7 +1207,7 @@ async function transcribeSelectedVoice() {
       const timeOffset = startSample / sampleRate;
 
       wordsOrSegments.forEach((seg) => {
-        const segText = (seg?.text || "").trim();
+        const segText = (seg?.word || seg?.text || "").trim();
         if (!segText) return;
 
         const esFantasma = palabrasProhibidas.some((palabra) =>
