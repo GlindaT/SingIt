@@ -7,7 +7,7 @@ const pitchBuffer = new Float32Array(2048);
 const state = {
   instrumentalUrl: null,
   letraLrc: "",
-  isRecording: falsek
+  isRecording: false
 };
 
 let db = null;
