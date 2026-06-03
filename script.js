@@ -3597,7 +3597,9 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         
         const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
         const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
-        const barWidth = Math.max(wordEndX - wordStartX, 30);
+        
+        // ✅ CORREGIDO: Bajamos el mínimo a 5px para que las sílabas cortas no pisen a las siguientes
+        const barWidth = Math.max(wordEndX - wordStartX, 5);
         
         const midi = word.midi || segment.midi || 60;
         const barY = midiToY(midi);
@@ -3619,7 +3621,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
           borderColor = "#6b7280";
         } else if (isActive) {
           if (isCorrect) {
-            barColor = "#22c55e"; // Verde - ¡Alguien acertó!
+            barColor = "#22c55e"; 
             textColor = "#ffffff";
             borderColor = "#4ade80";
           } else {
@@ -3628,7 +3630,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
             borderColor = "#60a5fa";
           }
         } else {
-          // 🎯 Aplicamos los colores de notas futuras según el tema visual
           barColor = colorBarraFutura;
           textColor = "#93c5fd";
           borderColor = colorBordeFuturo;
@@ -3648,8 +3649,15 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
+        // ✅ MEJORA DE RENDERIZADO: Si la caja es muy pequeña (menos de 20px), 
+        // solo pintamos la inicial o recortamos drásticamente el texto para evitar colapso visual
         let displayWord = word.word || "";
-        if (displayWord.length > 10) displayWord = displayWord.substring(0, 8) + "..";
+        if (barWidth < 25) {
+          displayWord = displayWord.substring(0, 2); // Evita amontonar texto
+        } else if (displayWord.length > 10) {
+          displayWord = displayWord.substring(0, 8) + "..";
+        }
+        
         ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
       });
     });
