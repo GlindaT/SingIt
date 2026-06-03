@@ -7,7 +7,7 @@ const pitchBuffer = new Float32Array(2048);
 const state = {
   instrumentalUrl: null,
   letraLrc: "",
-  isRecording: false
+  isRecording: falsek
 };
 
 let db = null;
@@ -956,7 +956,7 @@ async function loadTrackOptionsInStudio() {
   const select = $("studioTrackSelect");
   if (!select) return;
 
-  select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
+  select.innerHTML = `<option value="">Selecciona una pista de la Biblioteca</option>`;
 
   try {
     const tracks = await getLibraryItemsByType("pista");
@@ -1022,7 +1022,7 @@ async function loadVoiceOptionsInStudio() {
   const select = $("voiceLibrarySelect");
   if (!select) return;
 
-  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+  select.innerHTML = `<option value="">Selecciona una voz de la Biblioteca</option>`;
 
   try {
     const voces = await getLibraryItemsByType("voz");
@@ -1136,7 +1136,7 @@ async function transcribeSelectedVoice() {
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    const CHUNK_SECONDS = 25;
+    const CHUNK_SECONDS = 40;
     const sampleRate = audioBuffer.sampleRate;
     const totalSamples = audioBuffer.length;
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
@@ -1169,7 +1169,7 @@ async function transcribeSelectedVoice() {
       const result = await response.json();
 
       const palabrasProhibidas = [
-        "Amara",
+        "Amarar",
         "Subtítulos",
         "subtítulos",
         "Almorzo",
@@ -1303,6 +1303,8 @@ async function guardarTextoUltraStarEnBiblioteca() {
     alert("❌ No se pudo guardar el archivo en la biblioteca.");
   }
 }
+
+// AQUÍ SE DEBERÍA TENER LAS DEMÁS FUNCIONES RELACIONADAS CON EL ESTUDIO
 
 // ==========================================
 // FUNCIONES AUXILIARES AUDIO
@@ -1539,7 +1541,7 @@ function midiToFrequency(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-
+// ESTAS FUNCIONES DEBERÍAN ESTAR ARRIBA CON TRANSC
 
 function splitSegmentsIntoKaraokeLines(segments, maxWordsPerLine = 6) {
   const result = [];
@@ -1649,6 +1651,8 @@ function renderKaraokeLyrics(segments) {
   });
 }
 
+// CONSIDERAR CAMBIAR DE LUGAR
+
 function updateKaraokeHighlight(currentTime) {
   const lines = document.querySelectorAll(".karaoke-line");
   if (!lines.length) return;
@@ -1718,7 +1722,7 @@ function cargarPistaKaraoke(e) {
 
   const track = $("karaokeTrack");
   track.src = URL.createObjectURL(file);
-  track.volume = 0.4;
+  track.volume = 0.6;
 
   $("karaokeStatus").textContent = "Estado: Pista lista. ¡Presiona Iniciar Grabación!";
   cargarLetrasEnMonitor();
@@ -1770,7 +1774,7 @@ async function loadSelectedTrackFromLibraryKaraoke() {
 
     const track = $("karaokeTrack");
     track.src = URL.createObjectURL(item.audioBlob);
-    track.volume = 0.4;
+    track.volume = 0.6;
 
     $("karaokeStatus").textContent = `Estado: Pista cargada (${item.name}). ¡Inicia grabación!`;
     cargarLetrasEnMonitor();
@@ -1946,7 +1950,7 @@ async function startKaraokeRecording() {
     }, 300);
 
     const mic1Select = $("mic1Select");
-    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
+    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Mic 1";
     if (isDuo && mic2Id) {
       const mic2Select = $("mic2Select");
       const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
@@ -2437,7 +2441,7 @@ function initSettings() {
           const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
           if (contenedorKaraoke) {
             // Limpiamos cualquier escenario anterior
-            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
             todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
             
             // Aplicamos el nuevo escenario elegido
@@ -2461,10 +2465,37 @@ function applyAppTheme(theme) {
   // Aplicamos el tema al elemento raíz (html)
   document.documentElement.setAttribute("data-theme", theme);
   
-  // También al body por si acaso
-  document.body.setAttribute("data-theme", theme);
-  
   console.log("🎨 Tema aplicado:", theme);
+}
+
+function applyKaraokeTheme() {
+  const theme = localStorage.getItem("singIt_stage") || "theme-clasico";
+  const monitor = $("karaokeLiveLyrics");
+  if (monitor) {
+    monitor.className = "karaoke-lyrics theme-" + theme;
+  }
+}
+
+function cambiarEscenarioKaraoke() {
+  const select = document.getElementById("karaokeThemeSelect");
+  const contenedorKaraoke = document.getElementById("karaokeLyrics"); 
+  
+  if (!select || !contenedorKaraoke) return;
+  const nuevoTema = select.value ? select.value.trim() : "";
+  
+  if (!nuevoTema) {
+    return; 
+  }
+  
+  const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
+  todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
+  contenedorKaraoke.classList.add(nuevoTema);
+
+  localStorage.setItem("singIt_stage", nuevoTema);
+  
+  if (typeof showSaveNotification === "function") {
+    showSaveNotification();
+  }
 }
 
 // ==========================================
@@ -2778,7 +2809,7 @@ function startTapSync() {
   // Mostrar primera línea
   updateTapSyncDisplay();
   
-  // Reproducir la PISTA desde el inicio (la sincronización es contra el instrumental)
+  // Reproducir la PISTA desde el inicio.
   voicePlayer.currentTime = 0;
   voicePlayer.play();
   
@@ -2981,14 +3012,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     await initDB();
     initSettings();
 
-    function applyKaraokeTheme() {
-      const theme = localStorage.getItem("singIt_stage") || "clasico";
-      const monitor = $("karaokeLiveLyrics");
-      if (monitor) {
-        monitor.className = "karaoke-lyrics theme-" + theme;
-      }
-    }
-
     applyKaraokeTheme();
 
     safeAdd("karaokeThemeSelect", "change", (e) => {
@@ -3162,7 +3185,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // ========================================================
   // 🎨 CONFIGURACIÓN DE COLORES DINÁMICOS SEGÚN EL TEMA
   // ========================================================
-  const temaActual = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
+  const temaActual = localStorage.getItem("singIt_stage") || "theme-clasico";
   
   let colorFondo = "#111827";       // Fondo por defecto (Clásico)
   let colorLineas = "#333333";      // Líneas del pentagrama
@@ -3741,7 +3764,7 @@ async function loadCatalogSong(folder, title, artist) {
     const track = $("karaokeTrack");
     if (track) {
       track.src = URL.createObjectURL(audioBlob);
-      track.volume = 0.4;
+      track.volume = 0.6;
       track.play().catch(e => console.error("Error al reproducir audio:", e));
       karaokeSelectedTrackBlob = audioBlob;
       karaokeSelectedTrackName = `${title} - ${artist}`;
@@ -3777,11 +3800,9 @@ async function loadMyKaraokeSongs() {
     // Obtener canciones tipo "karaoke" de la biblioteca
     const karaokeSongs = await getLibraryItemsByType("karaoke");
     
-    // También obtener voces que tengan transcripción
-    const voces = await getLibraryItemsByType("voz");
-    const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
+    const voces = await getLibraryItemsByType("karaoke");
     
-    const allSongs = [...karaokeSongs, ...vocesConSync];
+    const allSongs = [...karaokeSongs];
     
     if (allSongs.length === 0) {
       container.innerHTML = `
@@ -3853,7 +3874,7 @@ async function loadKaraokeSong(id) {
     const track = $("karaokeTrack");
     if (track && song.audioBlob) {
       track.src = URL.createObjectURL(song.audioBlob);
-      track.volume = 0.4;
+      track.volume = 0.6;
       karaokeSelectedTrackBlob = song.audioBlob;
       karaokeSelectedTrackName = song.name;
     }
@@ -3958,7 +3979,6 @@ async function importKaraokeFile(file) {
       transcription: data.transcription || [],
       metadata: data.metadata || {}
     });
-    await loadMyKaraokeSongs();
     await renderLibrary("todos");
     alert(`✅ "${data.name}" importado en la Biblioteca y en Karaoke → Mis Canciones`);
   } catch (err) {
@@ -3967,30 +3987,6 @@ async function importKaraokeFile(file) {
   }
 }
 
-function cambiarEscenarioKaraoke() {
-  const select = document.getElementById("karaokeThemeSelect");
-  const contenedorKaraoke = document.getElementById("karaokeLyrics"); 
-  
-  if (!select || !contenedorKaraoke) return;
-
-  const nuevoTema = select.value ? select.value.trim() : "";
-
-  if (!nuevoTema) {
-    return; 
-  }
-
-  // 🔥 AGREGADO: "theme-retrowave" al final de la lista
-  const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
-  
-  todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
-  contenedorKaraoke.classList.add(nuevoTema);
-
-  localStorage.setItem("singIt_karaoke_theme", nuevoTema);
-  
-  if (typeof showSaveNotification === "function") {
-    showSaveNotification();
-  }
-}
 
 // ==========================================
 // ESCUCHAR CAMBIOS Y CARGAR AL INICIAR
@@ -4002,7 +3998,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!select) return;
 
   // Leemos la clave exclusiva del escenario
-  let temaGuardado = localStorage.getItem("singIt_karaoke_theme");
+  let temaGuardado = localStorage.getItem("singIt_stage");
   
   if (!temaGuardado || temaGuardado === "undefined") {
     temaGuardado = "theme-clasico";
