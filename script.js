@@ -1251,30 +1251,48 @@ async function transcribeSelectedVoice() {
     if (lyricsText) {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
-
+    
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
       
-      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:120\n#GAP:0\n`;
-      const cuerpoTexto = transcriptionSegments.map(line => line.text).join("\n");
-      const contenidoFinalTxt = cabeceraUltraStar + cuerpoTexto;
+      const BPM = 120;
+      let cuerpoUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${BPM}\n#GAP:0\n`;
+      
+      const secondsToBeats = (seconds) => Math.round((seconds * BPM * 4) / 60);
+
+      transcriptionSegments.forEach(line => {
+        if (Array.isArray(line.words)) {
+          line.words.forEach(w => {
+            const startBeat = secondsToBeats(w.start);
+            let duration = secondsToBeats(w.end) - startBeat;
+            if (duration <= 0) duration = 1;
+            
+            const midi = w.midi || 60;
+            const relativePitch = midi - 60;
+            
+            cuerpoUltraStar += `: ${startBeat} ${duration} ${relativePitch} ${w.word}\n`;
+          });
+        }
+        cuerpoUltraStar += "-\n";
+      });
 
       await addLibraryItem({
         name: `UltraStar - ${nombreBase}`,
         type: "ultrastar_txt", 
         audioBlob: null,       
-        textoPlano: contenidoFinalTxt, 
+        textoPlano: cuerpoUltraStar, 
         date: new Date().toLocaleString("es-ES"),
         transcription: baseTranscriptionSegments 
       });
 
-      console.log("✅ Nuevo archivo de Texto UltraStar creado en la Biblioteca");
+      console.log("✅ Archivo UltraStar TXT Musical generado de forma correcta");
       await renderLibrary("ultrastar_txt");
     } catch (err) {
-      console.error("❌ Error al generar el archivo UltraStar independiente:", err);
+      console.error("❌ Error al generar el archivo UltraStar:", err);
     }
 
+    // 2. SEGUNDO: CONSERVA ESTO (Vincula la letra a la biblioteca de voces)
     if (selectedVoiceId) {
       try {
         await updateLibraryItem(selectedVoiceId, {
@@ -1286,6 +1304,9 @@ async function transcribeSelectedVoice() {
       }
     }
 
+    if (status) {
+      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+    }
     if (status) {
       status.textContent = "Estado: Transcripción agrupada lista para corrección ✍️";
     }
@@ -3830,44 +3851,31 @@ function parseUltrastarTxt(content) {
   const metadata = {};
   const notes = [];
   
-  let currentBeat = 0;
-  
   for (const line of lines) {
     const trimmed = line.trim();
+    if (!trimmed) continue;
     
-    // Metadatos (líneas que empiezan con #)
     if (trimmed.startsWith("#")) {
       const match = trimmed.match(/^#(\w+):(.*)$/);
-      if (match) {
-        const key = match[1].toUpperCase();
-        const value = match[2].trim();
-        metadata[key] = value;
-      }
+      if (match) metadata[match[1].toUpperCase()] = match[2].trim();
       continue;
     }
     
-    // Notas (líneas que empiezan con :, *, F, o -)
-    if (trimmed.match(/^[:*F\-]/)) {
+    if (trimmed.startsWith("-")) {
+      // Guardamos explícitamente el salto de línea en el arreglo de notas
+      notes.push({ type: "-" });
+      continue;
+    }
+    
+    if (trimmed.match(/^[:*F]/)) {
       const parts = trimmed.split(/\s+/);
-      const type = parts[0]; // : = normal, * = golden, F = freestyle, - = line break
-      
-      if (type === "-") {
-        // Line break - marca fin de línea
-        continue;
-      }
-      
       if (parts.length >= 4) {
-        const startBeat = parseInt(parts[1], 10);
-        const duration = parseInt(parts[2], 10);
-        const pitch = parseInt(parts[3], 10);
-        const syllable = parts.slice(4).join(" ");
-        
         notes.push({
-          type: type,
-          startBeat: startBeat,
-          duration: duration,
-          pitch: pitch, // Nota MIDI relativa
-          syllable: syllable
+          type: parts[0],
+          startBeat: parseInt(parts[1], 10),
+          duration: parseInt(parts[2], 10),
+          pitch: parseInt(parts[3], 10),
+          syllable: parts.slice(4).join(" ")
         });
       }
     }
@@ -3877,57 +3885,43 @@ function parseUltrastarTxt(content) {
     title: metadata.TITLE || "Sin título",
     artist: metadata.ARTIST || "Desconocido",
     bpm: parseFloat(metadata.BPM) || 120,
-    gap: parseFloat(metadata.GAP) || 0, // Milisegundos antes de la primera nota
-    videoGap: parseFloat(metadata.VIDEOGAP) || 0,
-    genre: metadata.GENRE || "",
-    language: metadata.LANGUAGE || "",
-    year: metadata.YEAR || "",
+    gap: parseFloat(metadata.GAP) || 0,
     notes: notes
   };
 }
 
+
 function ultrastarToSegments(parsed) {
-  if (!parsed || !parsed.notes || !parsed.notes.length) {
-    return [];
-  }
+  if (!parsed || !parsed.notes || !parsed.notes.length) return [];
   
   const bpm = parsed.bpm;
-  const gap = parsed.gap / 1000; // Convertir a segundos
-  const beatDuration = 60 / bpm / 4; // Duración de un beat en segundos (UltraStar usa quarter beats)
+  const gap = parsed.gap / 1000; 
+  const beatDuration = 60 / bpm / 4; 
   
-  // Agrupar sílabas en líneas/palabras
   const segments = [];
-  let currentSegment = null;
   let currentWords = [];
-  let lastEndBeat = 0;
   
   for (let i = 0; i < parsed.notes.length; i++) {
     const note = parsed.notes[i];
     
-    const startTime = gap + (note.startBeat * beatDuration);
-    const endTime = startTime + (note.duration * beatDuration);
-    const midiNote = 60 + note.pitch; // UltraStar usa pitch relativo, base = C4 (60)
-    
-    // Detectar si hay un salto grande (nueva línea)
-    const gapFromLast = note.startBeat - lastEndBeat;
-    
-    if (gapFromLast > 8 && currentWords.length > 0) {
-      // Guardar segmento anterior
+    // ✅ CONTROL ABSOLUTO: Si encontramos el guión de UltraStar, cerramos la línea de forma limpia
+    if (note.type === "-") {
       if (currentWords.length > 0) {
         segments.push({
           start: currentWords[0].start,
           end: currentWords[currentWords.length - 1].end,
-          text: currentWords.map(w => w.word).join(""),
-          words: currentWords,
-          pitch: currentWords[0].pitch,
-          midi: currentWords[0].midi,
-          note: currentWords[0].note
+          text: currentWords.map(w => w.word).join(" "),
+          words: [...currentWords]
         });
+        currentWords = [];
       }
-      currentWords = [];
+      continue;
     }
     
-    // Agregar palabra/sílaba
+    const startTime = gap + (note.startBeat * beatDuration);
+    const endTime = startTime + (note.duration * beatDuration);
+    const midiNote = 60 + note.pitch; 
+    
     currentWords.push({
       word: note.syllable,
       start: startTime,
@@ -3936,25 +3930,21 @@ function ultrastarToSegments(parsed) {
       midi: midiNote,
       note: getNoteFromFrequency(midiToFrequency(midiNote))
     });
-    
-    lastEndBeat = note.startBeat + note.duration;
   }
   
-  // Agregar último segmento
+  // Agregar remanente si existiera
   if (currentWords.length > 0) {
     segments.push({
       start: currentWords[0].start,
       end: currentWords[currentWords.length - 1].end,
-      text: currentWords.map(w => w.word).join(""),
-      words: currentWords,
-      pitch: currentWords[0].pitch,
-      midi: currentWords[0].midi,
-      note: currentWords[0].note
+      text: currentWords.map(w => w.word).join(" "),
+      words: currentWords
     });
   }
   
   return segments;
 }
+
 
 // ==========================================
 // CATÁLOGO Y MIS CANCIONES
