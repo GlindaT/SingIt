@@ -1229,10 +1229,10 @@ async function transcribeSelectedVoice() {
     }
     
     let groupedSegments = [];
-    const maxWordsPerLine = 6; // Ajusta este número si quieres líneas más largas o cortas
+    const maxWordsPerLine = 7; // Ajusta este número si quieres líneas más largas o cortas
 
     for (let i = 0; i < fullSegments.length; i += maxWordsPerLine) {
-      // Extraemos un bloque de 6 palabras
+      // Extraemos un bloque de 7 palabras
       const chunk = fullSegments.slice(i, i + maxWordsPerLine);
       if (!chunk.length) continue;
 
@@ -1241,8 +1241,8 @@ async function transcribeSelectedVoice() {
 
       // Creamos el segmento estructurado que hereda los tiempos correctos
       groupedSegments.push({
-        start: chunk[0].start,                     // El inicio de la primera palabra
-        end: chunk[chunk.length - 1].end,          // El final de la última palabra
+        start: Number(chunk[0].start || 0),           // ✅ CORREGIDO: Inicio de la primera palabra
+        end: Number(chunk[chunk.length - 1].end || 0), // ✅ CORREGIDO: Final de la última palabra
         text: lineText,
         words: chunk.map(w => ({
           word: w.text,                            // Tu app espera la propiedad 'word' internamente
