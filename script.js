@@ -1738,8 +1738,7 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
       
       if (matchOriginal) {
         lineWords.push({
-          // Usamos matchOriginal.word (o .text como respaldo) para asegurar que no venga undefined
-          word: word, 
+          word: word, // Conservamos la corrección ortográfica del usuario
           start: Number(matchOriginal.start || 0), 
           end: Number(matchOriginal.end || 0),     
           pitch: matchOriginal.pitch || null,
@@ -1751,7 +1750,7 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
         // Si el usuario añadió palabras extra que Whisper no escuchó, 
         // heredamos el tiempo de la última palabra conocida para no romper el flujo
         const lastWord = lineWords[lineWords.length - 1] || allOriginalWords[allOriginalWords.length - 1];
-        const safeStart = lastWord ? lastWord.end : 0;
+        const safeStart = lastWord ? Number(lastWord.end || 0) : 0;
         lineWords.push({
           word: word,
           start: safeStart,
@@ -1765,11 +1764,10 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
 
     if (lineWords.length === 0) return null;
 
-    // El inicio de la línea es el inicio de su primera palabra
-    // El fin de la línea es el fin de su última palabra
+    // EL CAMBIO DE SEGURIDAD: Forzamos conversión numérica estricta en los extremos del bloque
     return {
-      start: lineWords[0].start,
-      end: lineWords[lineWords.length - 1].end,
+      start: Number(lineWords[0].start || 0),
+      end: Number(lineWords[lineWords.length - 1].end || 0),
       text: line,
       words: lineWords
     };
