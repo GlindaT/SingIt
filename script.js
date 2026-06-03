@@ -1246,8 +1246,8 @@ async function transcribeSelectedVoice() {
         text: lineText,
         words: chunk.map(w => ({
           word: w.text,                            // Tu app espera la propiedad 'word' internamente
-          start: w.start,
-          end: w.end
+          start: Number(w.start || 0),
+          end: Number(w.end || 0)
         }))
       });
     }
