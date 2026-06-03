@@ -1734,8 +1734,8 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
 
     // Construimos el segmento heredando el inicio y fin EXACTOS que midió la IA
     const segment = {
-      start: bestMatchSegment.start,
-      end: bestMatchSegment.end,
+      start: Number(bestMatchSegment?.start || totalStart),
+      end: Number(bestMatchSegment?.end || totalEnd),
       text: line
     };
 
