@@ -1228,27 +1228,50 @@ async function transcribeSelectedVoice() {
       chunkNumber++;
     }
     
-    baseTranscriptionSegments = fullSegments;
-    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+    let groupedSegments = [];
+    const maxWordsPerLine = 6; // Ajusta este número si quieres líneas más largas o cortas
 
+    for (let i = 0; i < fullSegments.length; i += maxWordsPerLine) {
+      // Extraemos un bloque de 6 palabras
+      const chunk = fullSegments.slice(i, i + maxWordsPerLine);
+      if (!chunk.length) continue;
+
+      // Unimos los textos individuales con un espacio para formar la frase
+      const lineText = chunk.map(w => w.text).join(" ");
+
+      // Creamos el segmento estructurado que hereda los tiempos correctos
+      groupedSegments.push({
+        start: chunk[0].start,                     // El inicio de la primera palabra
+        end: chunk[chunk.length - 1].end,          // El final de la última palabra
+        text: lineText,
+        words: chunk.map(w => ({
+          word: w.text,                            // Tu app espera la propiedad 'word' internamente
+          start: w.start,
+          end: w.end
+        }))
+      });
+    }
+
+    // Asignamos las variables globales con el formato limpio y agrupado
+    baseTranscriptionSegments = groupedSegments;
+    transcriptionSegments = groupedSegments; 
+
+    // Renderizamos la interfaz visual y el monitor de texto plano
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
 
     if (lyricsText) {
+      // El editor de texto ahora mostrará versos de 6 palabras por línea automáticamente
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
 
-    // --- NUEVO: GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT ---
+    // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT (Mantiene tu lógica) ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
       
       const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:120\n#GAP:0\n`;
-      
-      const cuerpoTexto = transcriptionSegments.map(line => {
-        return line.text; 
-      }).join("\n");
-
+      const cuerpoTexto = transcriptionSegments.map(line => line.text).join("\n");
       const contenidoFinalTxt = cabeceraUltraStar + cuerpoTexto;
 
       await addLibraryItem({
@@ -1262,12 +1285,11 @@ async function transcribeSelectedVoice() {
 
       console.log("✅ Nuevo archivo de Texto UltraStar creado en la Biblioteca");
       await renderLibrary("ultrastar_txt");
-
     } catch (err) {
       console.error("❌ Error al generar el archivo UltraStar independiente:", err);
     }
 
-    // --- ACTUALIZACIÓN ORIGINAL DE LA VOZ VINCULADA ---
+    // --- ACTUALIZACIÓN DE LA VOZ VINCULADA ---
     if (selectedVoiceId) {
       try {
         await updateLibraryItem(selectedVoiceId, {
@@ -1280,7 +1302,7 @@ async function transcribeSelectedVoice() {
     }
 
     if (status) {
-      status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+      status.textContent = "Estado: Transcripción agrupada lista para corrección ✍️";
     }
 
   } catch (error) {
@@ -1288,7 +1310,7 @@ async function transcribeSelectedVoice() {
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
-}
+} // <-- AQUÍ CIERRA LA FUNCIÓN PRINCIPAL
 
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
