@@ -1222,7 +1222,6 @@ async function transcribeSelectedVoice() {
           text: segText
         });
       });
-      fullSegments.push(segmentWithOffset);
       
       // Avanzar al siguiente bloque desde donde cortamos
       startSample = endSample;
