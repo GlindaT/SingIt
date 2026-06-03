@@ -17,10 +17,10 @@ let baseTranscriptionSegments = [];
 let autoScrollEnabled = true; // Control de auto-scroll
 
 // Variables para sincronización con Taps
-let tapSyncMode = false;
-let tapSyncLines = [];
-let tapSyncTimestamps = [];
-let tapSyncCurrentIndex = 0;
+// let tapSyncMode = false;
+// let tapSyncLines = [];
+// let tapSyncTimestamps = [];
+// let tapSyncCurrentIndex = 0;
 
 function $(id) {
   return document.getElementById(id);
@@ -3335,10 +3335,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Eventos de sincronización con Taps
     // safeAdd("startTapSyncBtn", "click", startTapSync);
-    safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
-    safeAdd("tapBeatBtn", "click", recordTap);
-    safeAdd("applyTapSyncBtn", "click", applyTapSync);
-    safeAdd("redoTapSyncBtn", "click", redoTapSync);
+    //safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
+    //safeAdd("tapBeatBtn", "click", recordTap);
+    //safeAdd("applyTapSyncBtn", "click", applyTapSync);
+    //safeAdd("redoTapSyncBtn", "click", redoTapSync);
       
 
     safeAdd("refreshKaraokeCatalogBtn", "click", async () => {
