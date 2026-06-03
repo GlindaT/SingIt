@@ -1136,42 +1136,33 @@ async function transcribeSelectedVoice() {
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    const CHUNK_SECONDS = 20;
     const sampleRate = audioBuffer.sampleRate;
     const totalSamples = audioBuffer.length;
-    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
 
     let fullSegments = [];
     let startSample = 0;
     let chunkNumber = 1;
 
     while (startSample < totalSamples) {
-      // Intentamos un tamaño ideal de 25 segundos, pero estiramos hasta 35 buscando silencio
       const idealChunkSamples = 25 * sampleRate;
       const maxChunkSamples = 35 * sampleRate;
       
       let endSample = Math.min(startSample + idealChunkSamples, totalSamples);
-      // LÓGICA DE DETECCIÓN DE SILENCIO (Para no cortar palabras)
+      
       if (endSample < totalSamples) {
         const searchStart = endSample;
         const searchEnd = Math.min(startSample + maxChunkSamples, totalSamples);
-        
-        // Obtenemos los datos de audio del canal 0 (Mono) para analizar el volumen
         const channelData = audioBuffer.getChannelData(0);
         
         let quietestSample = searchStart;
         let minVolume = Float32Array.MAX_VALUE;
         
-        // Escaneamos la ventana de tiempo buscando el punto con menor volumen (silencio)
-        // Saltamos de a 100 muestras para que el bucle sea ultra rápido
         for (let i = searchStart; i < searchEnd; i += 100) {
           const volume = Math.abs(channelData[i]);
           if (volume < minVolume) {
             minVolume = volume;
             quietestSample = i;
           }
-          
-          // Si encontramos un silencio casi absoluto, nos detenemos ahí
           if (volume < 0.01) {
             quietestSample = i;
             break;
@@ -1180,12 +1171,10 @@ async function transcribeSelectedVoice() {
         endSample = quietestSample;
       }
       
-      // Visualización del estado actual
       if (status) {
         status.textContent = `Estado: Transcribiendo parte ${chunkNumber}...`;
       }
       
-      // Procesamiento del fragmento (Tu lógica original intacta)
       const wavBlob = audioBufferToWav(audioBuffer, startSample, endSample);
       const base64Audio = await blobToBase64(wavBlob);
       
@@ -1215,57 +1204,54 @@ async function transcribeSelectedVoice() {
         );
         if (esFantasma) return;
 
-        // Sumamos el offset del bloque actual para mantener el tiempo global de la canción
+        // UNIFICACIÓN DE PROPIEDADES: Mantenemos tanto 'text' como 'word' para compatibilidad total
         fullSegments.push({
           start: Number(seg.start || 0) + timeOffset,
           end: Number(seg.end || 0) + timeOffset,
-          text: segText
+          text: segText,
+          word: segText
         });
       });
       
-      // Avanzar al siguiente bloque desde donde cortamos
       startSample = endSample;
       chunkNumber++;
     }
     
     let groupedSegments = [];
-    const maxWordsPerLine = 7; // Ajusta este número si quieres líneas más largas o cortas
+    const maxWordsPerLine = 7; 
 
     for (let i = 0; i < fullSegments.length; i += maxWordsPerLine) {
-      // Extraemos un bloque de 7 palabras
       const chunk = fullSegments.slice(i, i + maxWordsPerLine);
       if (!chunk.length) continue;
 
-      // Unimos los textos individuales con un espacio para formar la frase
       const lineText = chunk.map(w => w.text).join(" ");
 
-      // Creamos el segmento estructurado que hereda los tiempos correctos
       groupedSegments.push({
-        start: Number(chunk[0].start || 0),           // ✅ CORREGIDO: Inicio de la primera palabra
-        end: Number(chunk[chunk.length - 1].end || 0), // ✅ CORREGIDO: Final de la última palabra
+        start: Number(chunk[0].start || 0),           
+        end: Number(chunk[chunk.length - 1].end || 0), 
         text: lineText,
+        // Almacenamos el desglose de palabras conservando todas sus propiedades temporales nativas
         words: chunk.map(w => ({
-          word: w.text,                            // Tu app espera la propiedad 'word' internamente
+          word: w.text,                            
           start: Number(w.start || 0),
-          end: Number(w.end || 0)
+          end: Number(w.end || 0),
+          pitch: w.pitch || null,
+          note: w.note || null,
+          midi: w.midi || null
         }))
       });
     }
 
-    // Asignamos las variables globales con el formato limpio y agrupado
     baseTranscriptionSegments = groupedSegments;
     transcriptionSegments = groupedSegments; 
 
-    // Renderizamos la interfaz visual y el monitor de texto plano
     renderKaraokeLyrics(transcriptionSegments);
     cargarLetrasEnMonitor();
 
     if (lyricsText) {
-      // El editor de texto ahora mostrará versos de 6 palabras por línea automáticamente
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
 
-    // --- GUARDADO AUTOMÁTICO DEL ARCHIVO ULTRASTAR TXT (Mantiene tu lógica) ---
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
@@ -1289,7 +1275,6 @@ async function transcribeSelectedVoice() {
       console.error("❌ Error al generar el archivo UltraStar independiente:", err);
     }
 
-    // --- ACTUALIZACIÓN DE LA VOZ VINCULADA ---
     if (selectedVoiceId) {
       try {
         await updateLibraryItem(selectedVoiceId, {
@@ -1310,7 +1295,7 @@ async function transcribeSelectedVoice() {
     alert("❌ Error al transcribir el audio.");
     if (status) status.textContent = "Estado: Error en la transcripción";
   }
-} // <-- AQUÍ CIERRA LA FUNCIÓN PRINCIPAL
+}
 
 async function guardarTextoUltraStarEnBiblioteca() {
   try {
@@ -1415,25 +1400,26 @@ function buildWordTimingFromSegment(segment) {
   const cleanText = (segment.text || "").trim();
 
   if (!cleanText) {
-    return {
-      ...segment,
-      words: []
-    };
+    return { ...segment, words: [] };
   }
 
   const rawWords = cleanText.split(/\s+/).filter(Boolean);
   const segmentDuration = Math.max(0, (segment.end || 0) - (segment.start || 0));
 
-  // --- NUEVO: SI EL SEGMENTO YA TIENE PALABRAS CON TIEMPOS REALES, LAS RESPETAMOS ---
-  if (Array.isArray(segment.words) && segment.words.length === rawWords.length) {
-    // Solo actualizamos el texto de la palabra por si el usuario corrigió la ortografía,
-    // pero mantenemos los milisegundos reales intactos.
-    const preservedWords = segment.words.map((w, index) => ({
-      ...w,
-      word: rawWords[index], // Conserva la corrección ortográfica del usuario
-      pitch: w.pitch || segment.pitch || null,
-      note: w.note || segment.note || null
-    }));
+  // ✅ CORREGIDO: Si ya existen palabras estructuradas internamente con tiempos válidos, 
+  // las respetamos pase lo que pase, actualizando solo el texto modificado.
+  if (Array.isArray(segment.words) && segment.words.length > 0) {
+    const preservedWords = rawWords.map((word, index) => {
+      const w = segment.words[index] || segment.words[segment.words.length - 1];
+      return {
+        ...w,
+        word: word, 
+        start: Number(w.start || segment.start),
+        end: Number(w.end || segment.end),
+        pitch: w.pitch || segment.pitch || null,
+        note: w.note || segment.note || null
+      };
+    });
 
     return {
       ...segment,
@@ -1441,9 +1427,7 @@ function buildWordTimingFromSegment(segment) {
     };
   }
 
-  // --- COMPORTAMIENTO DE RESPALDO (FALLBACK) ---
-  // Si Whisper no dio marcas de tiempo individuales o el usuario cambió drásticamente 
-  // la cantidad de palabras, usamos tu cálculo matemático proporcional original:
+  // --- FALLBACK PROPORCIONAL (Solo si viene de Whisper sin desglose de palabras) ---
   if (!rawWords.length || segmentDuration <= 0) {
     return {
       ...segment,
@@ -1699,7 +1683,6 @@ function splitSegmentsIntoKaraokeLines(segments, maxWordsPerLine = 6) {
 }
 
 function buildSegmentsFromMultilineLyrics(text, baseSegments) {
-  // 1. Limpiar las líneas escritas por el usuario
   const correctedLines = text
     .split("\n")
     .map(line => line.trim())
@@ -1709,58 +1692,68 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     return [];
   }
 
-  // 2. Mapear cada línea nueva rescatando los tiempos reales de Whisper
-  return correctedLines.map((line, index) => {
-    // Normalizamos el texto de la línea para buscar coincidencias
-    const wordsInLine = line.toLowerCase().split(/\s+/).filter(Boolean);
-    
-    // Buscamos cuál es el segmento original de Whisper que mejor coincide con estas palabras
-    let bestMatchSegment = baseSegments[index] || baseSegments[baseSegments.length - 1];
-    let maxMatches = 0;
-
-    for (const baseSeg of baseSegments) {
-      const baseTextLower = (baseSeg.text || "").toLowerCase();
-      let matches = 0;
-      
-      wordsInLine.forEach(word => {
-        if (baseTextLower.includes(word)) matches++;
-      });
-
-      if (matches > maxMatches) {
-        maxMatches = matches;
-        bestMatchSegment = baseSeg;
-      }
+  // 1. Extraemos TODAS las palabras reales con tiempos milimétricos en un solo arreglo plano
+  let allOriginalWords = [];
+  baseSegments.forEach(seg => {
+    if (Array.isArray(seg.words) && seg.words.length > 0) {
+      allOriginalWords.push(...seg.words);
+    } else {
+      // Salvaguarda: si el segmento no tiene desglose, usamos la función constructora
+      const fallback = buildWordTimingFromSegment(seg);
+      allOriginalWords.push(...fallback.words);
     }
-
-    // Construimos el segmento heredando el inicio y fin EXACTOS que midió la IA
-    const segment = {
-      start: Number(bestMatchSegment?.start || totalStart),
-      end: Number(bestMatchSegment?.end || totalEnd),
-      text: line
-    };
-
-    // Reconstruimos las marcas de tiempo de las palabras internas
-    const rebuiltWithWords = buildWordTimingFromSegment(segment);
-
-    // PASO CRÍTICO: Si Whisper nos había devuelto marcas de tiempo individuales reales 
-    // en segment.words (por el timestamp por palabra), las conservamos mapeándolas al nuevo texto.
-    if (Array.isArray(bestMatchSegment.words) && bestMatchSegment.words.length > 0) {
-      const originalWords = bestMatchSegment.words;
-      rebuiltWithWords.words = rebuiltWithWords.words.map((w, wIdx) => {
-        // Heredamos el tiempo exacto de emisión de voz capturado por el hardware
-        const matchOriginal = originalWords[wIdx] || originalWords[originalWords.length - 1];
-        return {
-          ...w,
-          start: matchOriginal.start,
-          end: matchOriginal.end
-        };
-      });
-    }
-
-    return rebuiltWithWords;
   });
-}
 
+  let wordCursor = 0;
+
+  // 2. Reconstruimos los renglones editados por el usuario
+  return correctedLines.map((line) => {
+    const wordsInLine = line.split(/\s+/).filter(Boolean);
+    let lineWords = [];
+
+    // Mapeamos cada palabra del párrafo con su gemela exacta en el tiempo de Whisper
+    wordsInLine.forEach((word) => {
+      // Buscamos la palabra correspondiente usando el cursor global de lectura
+      const matchOriginal = allOriginalWords[wordCursor];
+
+      if (matchOriginal) {
+        lineWords.push({
+          word: word, // Conservamos la corrección ortográfica del usuario
+          start: Number(matchOriginal.start || 0), // Tiempo real de Whisper
+          end: Number(matchOriginal.end || 0),     // Tiempo real de Whisper
+          pitch: matchOriginal.pitch || null,
+          note: matchOriginal.note || null,
+          midi: matchOriginal.midi || null
+        });
+        wordCursor++;
+      } else {
+        // Si el usuario añadió palabras extra que Whisper no escuchó, 
+        // heredamos el tiempo de la última palabra conocida para no romper el flujo
+        const lastWord = lineWords[lineWords.length - 1] || allOriginalWords[allOriginalWords.length - 1];
+        const safeStart = lastWord ? lastWord.end : 0;
+        lineWords.push({
+          word: word,
+          start: safeStart,
+          end: safeStart + 0.3,
+          pitch: null,
+          note: null,
+          midi: null
+        });
+      }
+    });
+
+    if (lineWords.length === 0) return null;
+
+    // El inicio de la línea es el inicio de su primera palabra
+    // El fin de la línea es el fin de su última palabra
+    return {
+      start: lineWords[0].start,
+      end: lineWords[lineWords.length - 1].end,
+      text: line,
+      words: lineWords
+    };
+  }).filter(Boolean);
+}
 
 /*
 function buildSegmentsFromMultilineLyrics(text, baseSegments) {
