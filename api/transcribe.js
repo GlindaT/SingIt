@@ -1,3 +1,11 @@
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb', // Permite fragmentos de audio más largos
+    },
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
@@ -24,7 +32,9 @@ export default async function handler(req, res) {
     formData.append("model", "whisper-1");
     formData.append("language", "es");
     formData.append("response_format", "verbose_json");
-    formData.append("timestamp_granularities[]", "words");
+    
+    // CORRECCIÓN: Cambiado "words" por "word" (singular obligatorio por OpenAI)
+    formData.append("timestamp_granularities[]", "word"); 
 
     const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
