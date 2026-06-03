@@ -1419,7 +1419,6 @@ function blobToBase64(blob) {
 
 function buildWordTimingFromSegment(segment) {
   const cleanText = (segment.text || "").trim();
-
   if (!cleanText) {
     return { ...segment, words: [] };
   }
@@ -1427,8 +1426,7 @@ function buildWordTimingFromSegment(segment) {
   const rawWords = cleanText.split(/\s+/).filter(Boolean);
   const segmentDuration = Math.max(0, (segment.end || 0) - (segment.start || 0));
 
-  // ✅ CORREGIDO: Si ya existen palabras estructuradas internamente con tiempos válidos, 
-  // las respetamos pase lo que pase, actualizando solo el texto modificado.
+  // Si ya existen palabras estructuradas con marcas válidas de tono, las blindamos
   if (Array.isArray(segment.words) && segment.words.length > 0) {
     const preservedWords = rawWords.map((word, index) => {
       const w = segment.words[index] || segment.words[segment.words.length - 1];
@@ -1437,18 +1435,14 @@ function buildWordTimingFromSegment(segment) {
         word: word, 
         start: Number(w.start || segment.start),
         end: Number(w.end || segment.end),
-        pitch: w.pitch || segment.pitch || null,
-        note: w.note || segment.note || null
+        pitch: w.pitch !== undefined ? w.pitch : (segment.pitch || null),
+        note: w.note || segment.note || null,
+        midi: w.midi !== undefined ? w.midi : (segment.midi || null)
       };
     });
-
-    return {
-      ...segment,
-      words: preservedWords
-    };
+    return { ...segment, words: preservedWords };
   }
 
-  // --- FALLBACK PROPORCIONAL (Solo si viene de Whisper sin desglose de palabras) ---
   if (!rawWords.length || segmentDuration <= 0) {
     return {
       ...segment,
@@ -1457,7 +1451,8 @@ function buildWordTimingFromSegment(segment) {
         start: segment.start,
         end: segment.end,
         pitch: segment.pitch || null,
-        note: segment.note || null
+        note: segment.note || null,
+        midi: segment.midi || null
       }))
     };
   }
@@ -1482,16 +1477,13 @@ function buildWordTimingFromSegment(segment) {
       start: wordStart,
       end: wordEnd,
       pitch: segment.pitch || null,
-      note: segment.note || null
+      note: segment.note || null,
+      midi: segment.midi || null
     };
   });
 
-  return {
-    ...segment,
-    words: timedWords
-  };
+  return { ...segment, words: timedWords };
 }
-
 
 /*
 function buildWordTimingFromSegment(segment) {
@@ -1559,7 +1551,6 @@ async function analyzePitchForSegments(audioBlob, segments) {
     console.log("⚠️ No hay audio o segmentos para analizar");
     return segments;
   }
-
   try {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuffer = await audioBlob.arrayBuffer();
@@ -1569,58 +1560,67 @@ async function analyzePitchForSegments(audioBlob, segments) {
     const channelData = audioBuffer.getChannelData(0);
     
     console.log("🎵 Analizando pitch de", segments.length, "segmentos...");
-
-    const analyzedSegments = segments.map((segment, index) => {
-      // Obtener muestras para este segmento
+    
+    const analyzedSegments = segments.map((segment) => {
       const startSample = Math.floor(segment.start * sampleRate);
       const endSample = Math.floor(segment.end * sampleRate);
-      
-      // Extraer porción del audio
       const segmentSamples = channelData.slice(startSample, endSample);
       
-      // Detectar pitch promedio del segmento
       const pitch = detectPitchFromSamples(segmentSamples, sampleRate);
       const note = pitch > 0 ? getNoteFromFrequency(pitch) : null;
       const midiNote = pitch > 0 ? frequencyToMidi(pitch) : null;
       
-      // Analizar pitch por palabra si hay palabras
       let analyzedWords = [];
       if (Array.isArray(segment.words) && segment.words.length > 0) {
+        // Ejecutamos la primera pasada de análisis por palabra
         analyzedWords = segment.words.map(word => {
           const wordStartSample = Math.floor(word.start * sampleRate);
           const wordEndSample = Math.floor(word.end * sampleRate);
           const wordSamples = channelData.slice(wordStartSample, wordEndSample);
           
           const wordPitch = detectPitchFromSamples(wordSamples, sampleRate);
-          const wordNote = wordPitch > 0 ? getNoteFromFrequency(wordPitch) : note;
-          const wordMidi = wordPitch > 0 ? frequencyToMidi(wordPitch) : midiNote;
-          
           return {
             ...word,
-            pitch: wordPitch > 0 ? wordPitch : pitch,
-            note: wordNote,
-            midi: wordMidi
+            pitch: wordPitch,
+            note: wordPitch > 0 ? getNoteFromFrequency(wordPitch) : null,
+            midi: wordPitch > 0 ? frequencyToMidi(wordPitch) : null
           };
         });
+
+        // ALGORITMO DE RESPALDO: Evita el aplanamiento lineal de las sílabas cortas
+        for (let i = 0; i < analyzedWords.length; i++) {
+          if (analyzedWords[i].pitch <= 0) {
+            // Buscamos el tono real de la palabra anterior o posterior más cercana
+            const palabraVecina = analyzedWords[i - 1] || analyzedWords[i + 1] || null;
+            
+            analyzedWords[i].pitch = palabraVecina && palabraVecina.pitch > 0 ? palabraVecina.pitch : (pitch > 0 ? pitch : 60);
+            analyzedWords[i].midi = palabraVecina && palabraVecina.midi > 0 ? palabraVecina.midi : (midiNote > 0 ? midiNote : 60);
+            analyzedWords[i].note = palabraVecina && palabraVecina.note ? palabraVecina.note : (note || "C4");
+          }
+        }
       }
+
+      // Calculamos la nota promedio real basada en sus palabras para el segmento contenedor
+      const validMidis = analyzedWords.filter(w => w.midi > 0).map(w => w.midi);
+      const finalMidi = validMidis.length > 0 ? Math.round(validMidis.reduce((a,b)=>a+b,0) / validMidis.length) : (midiNote || 60);
 
       return {
         ...segment,
-        pitch: pitch,
-        note: note,
-        midi: midiNote,
+        pitch: pitch > 0 ? pitch : midiToFrequency(finalMidi),
+        note: getNoteFromFrequency(midiToFrequency(finalMidi)),
+        midi: finalMidi,
         words: analyzedWords
       };
     });
 
-    console.log("✅ Análisis de pitch completado");
+    console.log("✅ Análisis de pitch completado con éxito");
     return analyzedSegments;
-
   } catch (error) {
     console.error("❌ Error analizando pitch:", error);
     return segments;
   }
 }
+
 
 function detectPitchFromSamples(samples, sampleRate) {
   if (!samples || samples.length < 2048) return -1;
@@ -1713,13 +1713,12 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     return [];
   }
 
-  // 1. Extraemos TODAS las palabras reales con tiempos milimétricos en un solo arreglo plano
+  // Aplanamos el universo entero de palabras originales
   let allOriginalWords = [];
   baseSegments.forEach(seg => {
     if (Array.isArray(seg.words) && seg.words.length > 0) {
       allOriginalWords.push(...seg.words);
     } else {
-      // Salvaguarda: si el segmento no tiene desglose, usamos la función constructora
       const fallback = buildWordTimingFromSegment(seg);
       allOriginalWords.push(...fallback.words);
     }
@@ -1727,28 +1726,24 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
 
   let wordCursor = 0;
 
-  // 2. Reconstruimos los renglones editados por el usuario
   return correctedLines.map((line) => {
     const wordsInLine = line.split(/\s+/).filter(Boolean);
     let lineWords = [];
 
-    // Mapeamos cada palabra del párrafo con su gemela exacta en el tiempo de Whisper
     wordsInLine.forEach((word) => {
       const matchOriginal = allOriginalWords[wordCursor];
       
       if (matchOriginal) {
         lineWords.push({
-          word: word, // Conservamos la corrección ortográfica del usuario
+          word: word, 
           start: Number(matchOriginal.start || 0), 
-          end: Number(matchOriginal.end || 0),     
-          pitch: matchOriginal.pitch || null,
+          end: Number(matchOriginal.end || 0), 
+          pitch: matchOriginal.pitch !== undefined ? matchOriginal.pitch : null,
           note: matchOriginal.note || null,
-          midi: matchOriginal.midi || null
+          midi: matchOriginal.midi !== undefined ? matchOriginal.midi : null
         });
         wordCursor++;
       } else {
-        // Si el usuario añadió palabras extra que Whisper no escuchó, 
-        // heredamos el tiempo de la última palabra conocida para no romper el flujo
         const lastWord = lineWords[lineWords.length - 1] || allOriginalWords[allOriginalWords.length - 1];
         const safeStart = lastWord ? Number(lastWord.end || 0) : 0;
         lineWords.push({
@@ -1764,7 +1759,6 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
 
     if (lineWords.length === 0) return null;
 
-    // EL CAMBIO DE SEGURIDAD: Forzamos conversión numérica estricta en los extremos del bloque
     return {
       start: Number(lineWords[0].start || 0),
       end: Number(lineWords[lineWords.length - 1].end || 0),
