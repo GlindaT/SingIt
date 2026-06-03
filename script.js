@@ -1201,24 +1201,28 @@ async function transcribeSelectedVoice() {
       }
       
       const result = await response.json();
+      const wordsOrSegments = result.words || result.segments || [];
+
       const palabrasProhibidas = ["Amarar", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
       const timeOffset = startSample / sampleRate;
-      
-      (result.segments || []).forEach((seg) => {
+
+      wordsOrSegments.forEach((seg) => {
         const segText = (seg?.text || "").trim();
         if (!segText) return;
-        
+
         const esFantasma = palabrasProhibidas.some((palabra) =>
           segText.toLowerCase().includes(palabra.toLowerCase())
         );
         if (esFantasma) return;
-        const segmentWithOffset = {
+
+        // Sumamos el offset del bloque actual para mantener el tiempo global de la canción
+        fullSegments.push({
           start: Number(seg.start || 0) + timeOffset,
           end: Number(seg.end || 0) + timeOffset,
           text: segText
-        };
-        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+        });
       });
+      fullSegments.push(segmentWithOffset);
       
       // Avanzar al siguiente bloque desde donde cortamos
       startSample = endSample;
@@ -1399,6 +1403,26 @@ function buildWordTimingFromSegment(segment) {
   const rawWords = cleanText.split(/\s+/).filter(Boolean);
   const segmentDuration = Math.max(0, (segment.end || 0) - (segment.start || 0));
 
+  // --- NUEVO: SI EL SEGMENTO YA TIENE PALABRAS CON TIEMPOS REALES, LAS RESPETAMOS ---
+  if (Array.isArray(segment.words) && segment.words.length === rawWords.length) {
+    // Solo actualizamos el texto de la palabra por si el usuario corrigió la ortografía,
+    // pero mantenemos los milisegundos reales intactos.
+    const preservedWords = segment.words.map((w, index) => ({
+      ...w,
+      word: rawWords[index], // Conserva la corrección ortográfica del usuario
+      pitch: w.pitch || segment.pitch || null,
+      note: w.note || segment.note || null
+    }));
+
+    return {
+      ...segment,
+      words: preservedWords
+    };
+  }
+
+  // --- COMPORTAMIENTO DE RESPALDO (FALLBACK) ---
+  // Si Whisper no dio marcas de tiempo individuales o el usuario cambió drásticamente 
+  // la cantidad de palabras, usamos tu cálculo matemático proporcional original:
   if (!rawWords.length || segmentDuration <= 0) {
     return {
       ...segment,
@@ -1441,6 +1465,65 @@ function buildWordTimingFromSegment(segment) {
     words: timedWords
   };
 }
+
+
+/*
+function buildWordTimingFromSegment(segment) {
+  const cleanText = (segment.text || "").trim();
+
+  if (!cleanText) {
+    return {
+      ...segment,
+      words: []
+    };
+  }
+
+  const rawWords = cleanText.split(/\s+/).filter(Boolean);
+  const segmentDuration = Math.max(0, (segment.end || 0) - (segment.start || 0));
+
+  if (!rawWords.length || segmentDuration <= 0) {
+    return {
+      ...segment,
+      words: rawWords.map(word => ({
+        word,
+        start: segment.start,
+        end: segment.end,
+        pitch: segment.pitch || null,
+        note: segment.note || null
+      }))
+    };
+  }
+
+  const totalChars = rawWords.reduce((sum, word) => sum + word.length, 0) || rawWords.length;
+  let cursor = segment.start;
+
+  const timedWords = rawWords.map((word, index) => {
+    const weight = word.length / totalChars;
+    let duration = segmentDuration * weight;
+
+    if (index === rawWords.length - 1) {
+      duration = segment.end - cursor;
+    }
+
+    const wordStart = cursor;
+    const wordEnd = cursor + duration;
+    cursor = wordEnd;
+
+    return {
+      word,
+      start: wordStart,
+      end: wordEnd,
+      pitch: segment.pitch || null,
+      note: segment.note || null
+    };
+  });
+
+  return {
+    ...segment,
+    words: timedWords
+  };
+}
+*/
 
 // ==========================================
 // ANÁLISIS DE PITCH
@@ -1595,6 +1678,71 @@ function splitSegmentsIntoKaraokeLines(segments, maxWordsPerLine = 6) {
 }
 
 function buildSegmentsFromMultilineLyrics(text, baseSegments) {
+  // 1. Limpiar las líneas escritas por el usuario
+  const correctedLines = text
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (!correctedLines.length || !Array.isArray(baseSegments) || !baseSegments.length) {
+    return [];
+  }
+
+  // 2. Mapear cada línea nueva rescatando los tiempos reales de Whisper
+  return correctedLines.map((line, index) => {
+    // Normalizamos el texto de la línea para buscar coincidencias
+    const wordsInLine = line.toLowerCase().split(/\s+/).filter(Boolean);
+    
+    // Buscamos cuál es el segmento original de Whisper que mejor coincide con estas palabras
+    let bestMatchSegment = baseSegments[index] || baseSegments[baseSegments.length - 1];
+    let maxMatches = 0;
+
+    for (const baseSeg of baseSegments) {
+      const baseTextLower = (baseSeg.text || "").toLowerCase();
+      let matches = 0;
+      
+      wordsInLine.forEach(word => {
+        if (baseTextLower.includes(word)) matches++;
+      });
+
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestMatchSegment = baseSeg;
+      }
+    }
+
+    // Construimos el segmento heredando el inicio y fin EXACTOS que midió la IA
+    const segment = {
+      start: bestMatchSegment.start,
+      end: bestMatchSegment.end,
+      text: line
+    };
+
+    // Reconstruimos las marcas de tiempo de las palabras internas
+    const rebuiltWithWords = buildWordTimingFromSegment(segment);
+
+    // PASO CRÍTICO: Si Whisper nos había devuelto marcas de tiempo individuales reales 
+    // en segment.words (por el timestamp por palabra), las conservamos mapeándolas al nuevo texto.
+    if (Array.isArray(bestMatchSegment.words) && bestMatchSegment.words.length > 0) {
+      const originalWords = bestMatchSegment.words;
+      rebuiltWithWords.words = rebuiltWithWords.words.map((w, wIdx) => {
+        // Heredamos el tiempo exacto de emisión de voz capturado por el hardware
+        const matchOriginal = originalWords[wIdx] || originalWords[originalWords.length - 1];
+        return {
+          ...w,
+          start: matchOriginal.start,
+          end: matchOriginal.end
+        };
+      });
+    }
+
+    return rebuiltWithWords;
+  });
+}
+
+
+/*
+function buildSegmentsFromMultilineLyrics(text, baseSegments) {
   const lines = text
     .split("\n")
     .map(line => line.trim())
@@ -1636,6 +1784,7 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
     return buildWordTimingFromSegment(segment);
   });
 }
+*/
 
 function renderKaraokeLyrics(segments) {
   const container = $("karaokeLyrics");
@@ -2746,6 +2895,106 @@ async function applyCorrectedLyrics() {
     return;
   }
 
+  // Tu función nativa que cruza el texto nuevo con los tiempos originales de Whisper
+  const rebuiltSegments = buildSegmentsFromMultilineLyrics(
+    correctedText,
+    baseTranscriptionSegments
+  );
+
+  if (!rebuiltSegments.length) {
+    alert("⚠️ No se pudo reconstruir la letra corregida con los tiempos del audio.");
+    return;
+  }
+
+  // --- AQUÍ EMPIEZA LA AUTOMATIZACIÓN (REEMPLAZO DE APPLYTAPSYNC) ---
+  if (status) status.textContent = "Estado: Letra corregida. Analizando notas musicales automáticamente... 🎵";
+
+  // Analizar pitch automáticamente usando los segmentos reconstruidos y corregidos
+  let analyzedSegments = rebuiltSegments;
+  if (selectedVoiceBlob) {
+    try {
+      // Pasa el audio y los segmentos corregidos directamente al detector de notas
+      analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, rebuiltSegments);
+    } catch (pitchError) {
+      console.error("❌ Error en análisis de pitch automático:", pitchError);
+    }
+  }
+
+  // Guardamos como nueva base la versión corregida y analizada
+  baseTranscriptionSegments = analyzedSegments;
+  transcriptionSegments = analyzedSegments;
+
+  // Renderizar la interfaz visual del karaoke
+  renderKaraokeLyrics(transcriptionSegments);
+  cargarLetrasEnMonitor();
+
+  // Actualizar el área de texto por si acaso
+  lyricsText.value = transcriptionSegments
+    .map(seg => seg.text || "")
+    .join("\n")
+    .trim();
+
+  // --- CREACIÓN AUTOMÁTICA DEL ARCHIVO KARAOKE ---
+  if (studioSelectedTrackBlob) {
+    try {
+      await addLibraryItem({
+        name: `Karaoke - ${studioSelectedTrackName || "Sin título"}`,
+        type: "karaoke",
+        audioBlob: studioSelectedTrackBlob,
+        date: new Date().toLocaleString("es-ES"),
+        transcription: analyzedSegments,
+        metadata: {
+          title: studioSelectedTrackName || "Sin título",
+          sourceVoiceId: selectedVoiceId || null,
+          sourceTrackId: studioSelectedTrackId || null,
+          syncMode: "Whisper Auto + Corrección Manual"
+        }
+      });
+      console.log("✅ Canción karaoke creada automáticamente tras corrección.");
+    } catch (err) {
+      console.error("❌ Error creando karaoke:", err);
+    }
+  } else {
+    console.warn("⚠️ No hay pista instrumental seleccionada para crear karaoke");
+  }
+
+  // Guardar cambios en la base de datos de la voz original
+  if (selectedVoiceId) {
+    try {
+      await updateLibraryItem(selectedVoiceId, {
+        transcription: baseTranscriptionSegments
+      });
+      if (status) status.textContent = "Estado: ¡Letra corregida, tiempos y notas aplicados con éxito! ✅";
+    } catch (error) {
+      console.error(error);
+      if (status) status.textContent = "Estado: Cambios aplicados, pero no se pudo guardar en BD";
+    }
+  } else {
+    if (status) status.textContent = "Estado: ¡Letra corregida, tiempos y notas aplicados! ✅";
+  }
+
+  alert("✅ ¡Letra corregida aplicada! Tiempos y notas analizados automáticamente sin taps.");
+}
+
+/*
+async function applyCorrectedLyrics() {
+  const lyricsText = $("lyricsText");
+  const status = $("selectedVoiceStatus");
+
+  if (!lyricsText) return;
+
+  const correctedText = lyricsText.value.trim();
+
+  if (!correctedText) {
+    alert("⚠️ No hay texto corregido para aplicar.");
+    return;
+  }
+
+  if (!Array.isArray(baseTranscriptionSegments) || !baseTranscriptionSegments.length) {
+    alert("⚠️ Primero transcribe una voz antes de corregir la letra.");
+    return;
+  }
+
   const rebuiltSegments = buildSegmentsFromMultilineLyrics(
     correctedText,
     baseTranscriptionSegments
@@ -2791,11 +3040,13 @@ async function applyCorrectedLyrics() {
     }
   }
 }
+*/
 
+/*
 // ==========================================
 // SINCRONIZACIÓN MANUAL CON TAPS
 // ==========================================
-function startTapSync() {
+//function startTapSync() {
   const lyricsText = $("lyricsText");
   const voicePlayer = $("selectedVoicePlayer");
   
@@ -3010,6 +3261,7 @@ function redoTapSync() {
   $("tapSyncResult").style.display = "none";
   startTapSync();
 }
+*/
 
 // ==========================================
 // INIT
