@@ -3694,7 +3694,6 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   pitchHistoryMic1.forEach((freq, i) => {
     if (freq && freq > 0) {
       const y = midiToY(frequencyToMidi(freq));
-      // Volvemos a tu cálculo original en X pero asegurando el espaciado correcto hacia atrás
       const x = 40 - (pitchHistoryMic1.length - i) * 3; 
       
       if (x >= 0) { 
@@ -3706,7 +3705,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         }
       }
     } else {
-      started1 = false; // Rompe el trazo de forma limpia si hay silencio para evitar líneas locas
+      started1 = false; // Rompe el trazo si hay silencio
     }
   });
   ctx.stroke();
@@ -3747,7 +3746,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         }
       }
     } else {
-      started2 = false; // Rompe el trazo de forma limpia si hay silencio
+      started2 = false; 
     }
   });
   ctx.stroke();
@@ -3759,13 +3758,12 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.fillStyle = "#06b6d4"; 
     ctx.shadowBlur = 20;
     ctx.shadowColor = "#06b6d4";
-    // Desfasamos ligeramente a la derecha (X = 46) para que si cantan al unísono, ambos círculos se vean
     ctx.arc(46, userY2, 9, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0; 
   }
 
-  // --- DIBUJAR LETRA ACTUAL ABAJO ---
+  // --- DIBUJAR LETRA ACTUAL EN EL CUADRO NEGRO INFERIOR ---
   const currentIndex = transcriptionSegments.findIndex(seg => 
     currentTime >= seg.start && currentTime <= seg.end + 0.5
   );
@@ -3773,9 +3771,17 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
   ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
 
+  // Función de respaldo interno para que las frases no queden en blanco
+  const extraerTextoSeguro = (seg) => {
+    if (!seg) return "";
+    if (seg.text) return seg.text;
+    if (Array.isArray(seg.words)) return seg.words.map(w => w.word).join(" ");
+    return "";
+  };
+
   if (currentIndex !== -1) {
     const currentSegment = transcriptionSegments[currentIndex];
-    const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
+    const textoActualLimpio = extraerTextoSeguro(currentSegment);
     
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 18px Arial"; 
@@ -3785,7 +3791,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
 
     const nextSegment = transcriptionSegments[currentIndex + 1];
     if (nextSegment) {
-      const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
+      const textoProximoLimpio = extraerTextoSeguro(nextSegment);
       ctx.fillStyle = "#888888";
       ctx.font = "13px Arial";
       ctx.textAlign = "center";
@@ -3795,7 +3801,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   } else {
     const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
     if (upcomingSegment) {
-      const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
+      const textoProximoLimpio = extraerTextoSeguro(upcomingSegment);
       ctx.fillStyle = "#888888";
       ctx.font = "15px Arial";
       ctx.textAlign = "center";
@@ -3803,65 +3809,66 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
       ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 25);
     }
   }
-  // ==========================================
-  // DETECCIÓN DE PITCH PARA KARAOKE
-  // ==========================================
-  async function startKaraokePitchDetection() {
-    function loop() {
-        const track = $("karaokeTrack");
-        const currentTime = track ? track.currentTime : 0;
 
-        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 1 (AMARILLO) ---
-        let pitch1 = -1;
-        if (karaokeDuoAnalyser1) {
-            const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
-            karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
-            
-            // 1. Calculamos el volumen real (RMS) de este buffer específico antes de analizar
-            let sum1 = 0;
-            for (let i = 0; i < buffer1.length; i++) { sum1 += buffer1[i] * buffer1[i]; }
-            const rms1 = Math.sqrt(sum1 / buffer1.length);
+  const width = ctx.canvas.width; 
+} // ✅ LLAVE DE CIERRE CORRECTA: Aquí termina de forma limpia drawKaraokeMonitor
 
-            // 2. Filtro de confianza: Si el volumen es menor a 0.015, es ruido eléctrico de fondo.
-            // Ignoramos el cálculo del pitch (-1) para evitar que la esfera se caiga al piso del canvas.
-            if (rms1 > 0.015) {
-                pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
-            } else {
-                pitch1 = -1; 
-            }
-        }
 
-        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 2 (CELESTE) ---
-        let pitch2 = -1; 
-        if (karaokeDuoAnalyser2) {
-            const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
-            karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
-            
-            let sum2 = 0;
-            for (let i = 0; i < buffer2.length; i++) { sum2 += buffer2[i] * buffer2[i]; }
-            const rms2 = Math.sqrt(sum2 / buffer2.length);
+// ====================================================================
+// 🎯 FUNCIÓN INDEPENDIENTE: DETECCIÓN DE PITCH PARA KARAOKE
+// ====================================================================
+async function startKaraokePitchDetection() {
+  function loop() {
+      const track = $("karaokeTrack");
+      const currentTime = track ? track.currentTime : 0;
 
-            if (rms2 > 0.015) {
-                pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
-            } else {
-                pitch2 = -1;
-            }
-        }
+      // --- PROCESAMIENTO MICRÓFONO 1 (AMARILLO) ---
+      let pitch1 = -1;
+      if (karaokeDuoAnalyser1) {
+          const buffer1 = new Float32Array(karaokeDuoAnalyser1.fftSize);
+          karaokeDuoAnalyser1.getFloatTimeDomainData(buffer1);
+          
+          let sum1 = 0;
+          for (let i = 0; i < buffer1.length; i++) { sum1 += buffer1[i] * buffer1[i]; }
+          const rms1 = Math.sqrt(sum1 / buffer1.length);
 
-        // ENVIAR AMBOS TONOS AL MONITOR VISUAL
-        if (typeof drawKaraokeMonitor === 'function') {
-            drawKaraokeMonitor(currentTime, pitch1, pitch2);
-        }
+          if (rms1 > 0.015) {
+              pitch1 = autoCorrelate(buffer1, karaokeDuoAudioContext?.sampleRate || 48000);
+          } else {
+              pitch1 = -1; 
+          }
+      }
 
-        // Control del bucle de animación
-        if (track && track.ended) return;
+      // --- PROCESAMIENTO MICRÓFONO 2 (CELESTE) ---
+      let pitch2 = -1; 
+      if (karaokeDuoAnalyser2) {
+          const buffer2 = new Float32Array(karaokeDuoAnalyser2.fftSize);
+          karaokeDuoAnalyser2.getFloatTimeDomainData(buffer2);
+          
+          let sum2 = 0;
+          for (let i = 0; i < buffer2.length; i++) { sum2 += buffer2[i] * buffer2[i]; }
+          const rms2 = Math.sqrt(sum2 / buffer2.length);
 
-        if (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") {
-            requestAnimationFrame(loop);
-        }
-    }
+          if (rms2 > 0.015) {
+              pitch2 = autoCorrelate(buffer2, karaokeDuoAudioContext?.sampleRate || 48000);
+          } else {
+              pitch2 = -1;
+          }
+      }
 
-    loop();
+      // Enviamos de forma segura los tonos calculados al lienzo gráfico
+      if (typeof drawKaraokeMonitor === 'function') {
+          drawKaraokeMonitor(currentTime, pitch1, pitch2);
+      }
+
+      if (track && track.ended) return;
+
+      if (karaokeMediaRecorder && karaokeMediaRecorder.state === "recording") {
+          requestAnimationFrame(loop);
+      }
+  }
+
+  loop();
 }
 
 function parseUltrastarTxt(content) {
