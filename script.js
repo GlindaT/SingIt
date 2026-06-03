@@ -3522,14 +3522,13 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     colorBarraFutura = "#78350f";
     colorBordeFuturo = "#b45309";
   } else if (temaActual === "theme-fiesta") {
-    // Genera un color sutil animado basado en los milisegundos para simular luces locas
     const hue = (Date.now() / 20) % 360;
     colorFondo = `hsl(${hue}, 40%, 12%)`;
     colorLineas = "rgba(255, 255, 255, 0.15)";
     colorEtiquetas = "#ff007f";
   }
 
-  // 🎯 PINTAMOS EL FONDO DEL TEMA (En lugar de hacer clearRect transparente)
+  // PINTAMOS EL FONDO DEL TEMA
   ctx.fillStyle = colorFondo;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -3544,7 +3543,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   const midiRange = midiMax - midiMin;
 
   // --- DIBUJAR LÍNEAS DEL PENTAGRAMA ---
-  ctx.strokeStyle = colorLineas; // 🎯 Aplicamos color del tema
+  ctx.strokeStyle = colorLineas; 
   ctx.lineWidth = 2;
   const numLines = 10;
   for (let i = 0; i <= numLines; i++) {
@@ -3556,7 +3555,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   }
 
   // --- DIBUJAR INDICADORES DE NOTAS A LA IZQUIERDA ---
-  ctx.fillStyle = colorEtiquetas; // 🎯 Aplicamos color del tema
+  ctx.fillStyle = colorEtiquetas; 
   ctx.font = "12px Arial";
   ctx.textAlign = "right";
   const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
@@ -3580,7 +3579,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     const pixelsPerSecond = (canvas.width - 40) / 6;
     const lineX = 40;
 
-    // Dibujar línea de tiempo actual
+    // Dibujar línea de tiempo actual (línea roja de reproducción)
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -3596,7 +3595,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         const wordStartX = lineX + (word.start - currentTime) * pixelsPerSecond;
         const wordEndX = lineX + (word.end - currentTime) * pixelsPerSecond;
         
-        // ✅ CORREGIDO: Bajamos el mínimo a 5px para que las sílabas cortas no pisen a las siguientes
+        // ✅ ANCHO SEGURO: Bajamos el mínimo a 5px para que refleje el tiempo real exacto de Whisper
         const barWidth = Math.max(wordEndX - wordStartX, 5);
         
         const midi = word.midi || segment.midi || 60;
@@ -3619,7 +3618,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
           borderColor = "#6b7280";
         } else if (isActive) {
           if (isCorrect) {
-            barColor = "#22c55e"; 
+            barColor = "#22c55e"; // Verde si se acierta la nota
             textColor = "#ffffff";
             borderColor = "#4ade80";
           } else {
@@ -3633,6 +3632,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
           borderColor = colorBordeFuturo;
         }
         
+        // Dibujar la caja contenedora de la nota
         ctx.fillStyle = barColor;
         ctx.beginPath();
         ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 8);
@@ -3642,21 +3642,34 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
         ctx.lineWidth = isActive ? 2 : 1;
         ctx.stroke();
         
-        ctx.fillStyle = textColor;
-        ctx.font = isActive ? "bold 14px Arial" : "12px Arial";
+        // --- 🎨 CONFIGURACIÓN DE RENDERIZADO INTELIGENTE DE TEXTO ---
+        let displayWord = word.word || "";
+        if (displayWord.length > 10) displayWord = displayWord.substring(0, 8) + "..";
+        
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         
-        // ✅ MEJORA DE RENDERIZADO: Si la caja es muy pequeña (menos de 20px), 
-        // solo pintamos la inicial o recortamos drásticamente el texto para evitar colapso visual
-        let displayWord = word.word || "";
-        if (barWidth < 25) {
-          displayWord = displayWord.substring(0, 2); // Evita amontonar texto
-        } else if (displayWord.length > 10) {
-          displayWord = displayWord.substring(0, 8) + "..";
+        // Definimos el tamaño de letra base según el estado de la nota
+        let baseFontSize = isActive ? 14 : 12;
+        ctx.font = isActive ? "bold 14px Arial" : "12px Arial";
+        
+        // Medimos el ancho que ocuparía el texto de forma natural
+        let textWidth = ctx.measureText(displayWord).width;
+        
+        // Si el texto es más ancho que la caja naranja, reducimos el tamaño de fuente dinámicamente
+        if (textWidth > (barWidth - 4) && barWidth > 10) {
+          const scaleFactor = (barWidth - 4) / textWidth;
+          let safeFontSize = Math.floor(baseFontSize * scaleFactor);
+          
+          // Establecemos un límite mínimo de legibilidad de 8px
+          if (safeFontSize < 8) safeFontSize = 8; 
+          
+          ctx.font = isActive ? `bold ${safeFontSize}px Arial` : `${safeFontSize}px Arial`;
         }
         
-        ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
+        // Pintamos el texto de la sílaba perfectamente adaptado a su caja
+        ctx.fillStyle = textColor;
+        ctx.fillText(displayWord, wordStartX + barWidth / 2, barY);
       });
     });
   } else {
@@ -3665,7 +3678,8 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
     ctx.textAlign = "center";
     ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", canvas.width / 2, canvas.height / 2);
   }
-const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
+  
+  const width = ctx.canvas.width; // Mantiene el ancho dinámico final
 
   // ====================================================================
   // 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) ---
@@ -3789,12 +3803,10 @@ const width = ctx.canvas.width; // Tomamos el ancho dinámico del canvas
       ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 25);
     }
   }
-}
-
-// ==========================================
-// DETECCIÓN DE PITCH PARA KARAOKE
-// ==========================================
-async function startKaraokePitchDetection() {
+  // ==========================================
+  // DETECCIÓN DE PITCH PARA KARAOKE
+  // ==========================================
+  async function startKaraokePitchDetection() {
     function loop() {
         const track = $("karaokeTrack");
         const currentTime = track ? track.currentTime : 0;
