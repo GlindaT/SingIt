@@ -3334,7 +3334,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Eventos de sincronización con Taps
-    safeAdd("startTapSyncBtn", "click", startTapSync);
+    // safeAdd("startTapSyncBtn", "click", startTapSync);
     safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
     safeAdd("tapBeatBtn", "click", recordTap);
     safeAdd("applyTapSyncBtn", "click", applyTapSync);
