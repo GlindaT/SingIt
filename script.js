@@ -1713,14 +1713,14 @@ function buildSegmentsFromMultilineLyrics(text, baseSegments) {
 
     // Mapeamos cada palabra del párrafo con su gemela exacta en el tiempo de Whisper
     wordsInLine.forEach((word) => {
-      // Buscamos la palabra correspondiente usando el cursor global de lectura
       const matchOriginal = allOriginalWords[wordCursor];
-
+      
       if (matchOriginal) {
         lineWords.push({
-          word: word, // Conservamos la corrección ortográfica del usuario
-          start: Number(matchOriginal.start || 0), // Tiempo real de Whisper
-          end: Number(matchOriginal.end || 0),     // Tiempo real de Whisper
+          // Usamos matchOriginal.word (o .text como respaldo) para asegurar que no venga undefined
+          word: word, 
+          start: Number(matchOriginal.start || 0), 
+          end: Number(matchOriginal.end || 0),     
           pitch: matchOriginal.pitch || null,
           note: matchOriginal.note || null,
           midi: matchOriginal.midi || null
