@@ -407,3 +407,88 @@ export async function saveStudioRecording() {
     alert("❌ Hubo un error al intentar guardar en la base de datos.");
   }
 }
+import { $ } from '../script.js';
+import { getLibraryItemsByType, getLibraryItemById } from './biblioteca.js'; // Conexión modular segura
+
+// Variables de estado locales del reproductor (asegúrate de que estén arriba en tu archivo)
+let studioTrackFileName = null;
+let studioTrackBlob = null;
+let studioTrackId = null;
+let studioSelectedTrackName = null;
+let studioSelectedTrackBlob = null;
+let studioSelectedTrackId = null;
+
+/**
+ * Lee la base de datos y llena el selector con las pistas disponibles
+ */
+export async function loadTrackOptionsInStudio() {
+  const select = $("studioTrackSelect");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
+
+  try {
+    // LLAMADA MODULAR: Consume datos desde el motor de la biblioteca de forma limpia
+    const tracks = await getLibraryItemsByType("pista");
+
+    if (!tracks.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No hay pistas guardadas";
+      select.appendChild(option);
+      return;
+    }
+
+    tracks.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Error al cargar opciones de pistas en Estudio:", error);
+  }
+}
+
+/**
+ * Carga la pista seleccionada en el reproductor multimedia multimedia principal
+ */
+export async function loadSelectedTrackFromLibraryStudio() {
+  const select = $("studioTrackSelect");
+  const player = $("player");
+  const status = $("studioStatus");
+
+  if (!select || !player || !status) return;
+
+  const selectedId = Number(select.value);
+
+  if (!selectedId) {
+    alert("⚠️ Selecciona una pista");
+    return;
+  }
+
+  try {
+    // LLAMADA MODULAR: Busca el archivo binario en la base de datos
+    const item = await getLibraryItemById(selectedId);
+
+    if (!item) {
+      alert("⚠️ No se encontró la pista");
+      return;
+    }
+
+    // Sincronización exacta de variables locales
+    studioTrackFileName = item.name;
+    studioTrackBlob = item.audioBlob;
+    studioTrackId = item.id;
+
+    studioSelectedTrackName = item.name;
+    studioSelectedTrackBlob = item.audioBlob;
+    studioSelectedTrackId = item.id;
+    
+    player.src = URL.createObjectURL(item.audioBlob);
+    status.textContent = `Estado: pista cargada desde Biblioteca (${item.name})`;
+  } catch (error) {
+    console.error("Error al cargar pista seleccionada en el reproductor:", error);
+    alert("❌ No se pudo cargar la pista seleccionada");
+  }
+}
