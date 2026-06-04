@@ -1190,3 +1190,70 @@ function aproximarTiemposPorDefecto(lines, baseSegments) {
     return buildWordTimingFromSegment(seg);
   });
 }
+import { $ } from '../script.js';
+import { updateLibraryItem } from './biblioteca.js'; // Conexión modular con la BD
+import { buildSegmentsFromMultilineLyrics } from './estudio.js'; // Referencia local interna
+
+// Asegúrate de enlazar con las variables del Estudio declaradas arriba en tu archivo:
+let baseTranscriptionSegments = [];
+let transcriptionSegments = [];
+let selectedVoiceId = null;
+
+/**
+ * Captura las correcciones manuales del editor, recompone las sílabas temporales
+ * y refresca los monitores del Karaoke de forma unificada sin corromper la memoria.
+ */
+export async function applyCorrectedLyrics() {
+  const lyricsText = $("lyricsText");
+  const status = $("selectedVoiceStatus");
+
+  if (!lyricsText) return;
+
+  const correctedText = lyricsText.value.trim();
+
+  if (!correctedText) {
+    alert("⚠️ No hay texto corregido para aplicar.");
+    return;
+  }
+
+  if (!Array.isArray(baseTranscriptionSegments) || !baseTranscriptionSegments.length) {
+    alert("⚠️ Primero transcribe una voz antes de corregir la letra.");
+    return;
+  }
+
+  // LLAMADA LOCAL: Procesa las líneas preservando la rejilla de Whisper
+  const rebuiltSegments = buildSegmentsFromMultilineLyrics(correctedText, baseTranscriptionSegments);
+
+  if (!rebuiltSegments.length) {
+    alert("⚠️ No se pudo reconstruir la letra corregida.");
+    return;
+  }
+
+  baseTranscriptionSegments = rebuiltSegments;
+  transcriptionSegments = rebuiltSegments;
+
+  // Actualización cruzada segura en los monitores visuales activos de la pantalla
+  if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+  if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+
+  lyricsText.value = transcriptionSegments
+    .map(seg => seg.text || "")
+    .join("\n")
+    .trim();
+
+  if (selectedVoiceId) {
+    try {
+      // Sincronización asíncrona persistente dentro de la base de datos de tu Biblioteca
+      await updateLibraryItem(selectedVoiceId, {
+        transcription: baseTranscriptionSegments
+      });
+
+      if (status) status.textContent = "Estado: letra corregida aplicada y guardada ✅";
+    } catch (error) {
+      console.error("Error guardando corrección de letra en IndexedDB:", error);
+      if (status) status.textContent = "Estado: letra corregida aplicada, pero no se pudo guardar en BD";
+    }
+  } else {
+    if (status) status.textContent = "Estado: letra corregida aplicada ✅";
+  }
+}
