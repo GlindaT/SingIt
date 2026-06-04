@@ -415,3 +415,45 @@ function drawKaraokeMonitor(currentTime, currentFreq) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = KaraokeCanvasRenderer;
 }
+import { $ } from '../script.js';
+
+/**
+ * Genera dinámicamente las etiquetas HTML en el DOM del karaoke con marcas de tiempo asíncronas
+ */
+export function renderKaraokeLyrics(segments) {
+  const container = $("karaokeLyrics");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (!Array.isArray(segments) || !segments.length) {
+    container.innerHTML = `<p class="karaoke-placeholder">No hay segmentos para mostrar.</p>`;
+    return;
+  }
+
+  segments.forEach((segment, index) => {
+    const line = document.createElement("p");
+    line.className = "karaoke-line upcoming"; 
+    line.id = `k-line-${index}`; 
+    line.dataset.index = index;
+    line.dataset.start = Number(segment.start || 0);
+    line.dataset.end = Number(segment.end || 0);
+
+    const words = Array.isArray(segment.words) ? segment.words : [];
+
+    if (words.length) {
+      words.forEach((wordObj, wordIndex) => {
+        const span = document.createElement("span");
+        span.className = "karaoke-word";
+        span.dataset.start = Number(wordObj.start || 0);
+        span.dataset.end = Number(wordObj.end || 0);
+        span.textContent = (wordObj.word || "") + (wordIndex < words.length - 1 ? " " : "");
+        line.appendChild(span);
+      });
+    } else {
+      line.textContent = (segment.text || "").trim();
+    }
+
+    container.appendChild(line);
+  });
+}
