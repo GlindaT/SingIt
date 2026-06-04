@@ -115,35 +115,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
-    // CORRECCIÓN PROTECTORA: Importamos de forma explícita al arrancar la app
-    const { initDB, renderLibrary, saveManualFileToLibrary } = await import("./modules/biblioteca.js");
-    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria, saveSetting } = await import("./modules/config.js");
+    // 1. IMPORTACIÓN DINÁMICA DE ARRANQUE SEGURO
+    const { initDB, renderLibrary } = await import("./modules/biblioteca.js");
+    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria, applyAppTheme } = await import("./modules/config.js");
     
-    // Encendemos la persistencia de datos local de IndexedDB
+    // 2. ENCENDEMOS LA PERSISTENCIA DE DATOS LOCAL
     await initDB();
+    
+    // 3. INICIALIZAMOS CONFIGURACIONES (Mapea los eventos automáticos del formulario)
     initSettings();
+    
+    // 4. CORRECCIÓN CRÍTICA DE APORTACIÓN CROMÁTICA: 
+    // Leemos el LocalStorage y forzamos la inyección directa en el <html> y <body> al arrancar
+    const temaGuardado = localStorage.getItem("singIt_theme") || "oscuro";
+    applyAppTheme(temaGuardado);
+    
+    // 5. RESTAURAMOS EL ESCENARIO DEL KARAOKE SIEMPRE CON VALIDACIÓN DE RENDER
     inicializarEscenarioDesdeMemoria(); 
 
-    // Lógica interna para sincronizar el formato de clases CSS del escenario
-    function applyKaraokeThemeLocal() {
-      // Corregido: apuntamos a la misma clave reglamentaria "singIt_stage"
-      const themeGuardado = localStorage.getItem("singIt_stage") || "theme-clasico";
-      const monitor = $("karaokeLiveLyrics");
-      if (monitor) {
-        const nombreLimpioTema = themeGuardado.startsWith("theme-") ? themeGuardado : "theme-" + themeGuardado;
-        const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
-        todosLosTemas.forEach(t => monitor.classList.remove(t));
-        monitor.classList.add(nombreLimpioTema);
-      }
-    }
-    applyKaraokeThemeLocal();
-
-    safeAdd("karaokeThemeSelect", "change", (e) => {
-      saveSetting("singIt_stage", e.target);
-      applyKaraokeThemeLocal();
+    // Ajuste dinámico manual para el selector de temas de la App (Previene hilos huérfanos)
+    safeAdd("appTheme", "change", async (e) => {
+      const { applyAppTheme } = await import("./modules/config.js");
+      applyAppTheme(e.target.value);
     });
 
-    // Enlace de clics de la barra de navegación lateral
+    // Enlace de clics de la barra de navegación lateral principal
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
