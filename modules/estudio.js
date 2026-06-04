@@ -492,3 +492,136 @@ export async function loadSelectedTrackFromLibraryStudio() {
     alert("❌ No se pudo cargar la pista seleccionada");
   }
 }
+import { $ } from '../script.js';
+import { getLibraryItemsByType, getLibraryItemById } from './biblioteca.js';
+
+// Variables de estado específicas para el control de la voz seleccionada
+let selectedVoiceBlob = null;
+let selectedVoiceId = null;
+
+// Variables de segmentos de letras encapsuladas localmente en el Estudio
+let transcriptionSegments = [];
+let baseTranscriptionSegments = [];
+
+/**
+ * Función exportable para que la Biblioteca pueda inyectar datos asíncronos cuando cargue un UltraStar
+ */
+export function setTranscriptionSegments(data) {
+  baseTranscriptionSegments = data;
+  transcriptionSegments = data;
+}
+
+/**
+ * Función de seguridad para evitar errores si la función original viene más adelante en el script viejo
+ */
+function buildWordTimingFromSegment(seg) {
+  if (typeof window.buildWordTimingFromSegment === 'function') {
+    return window.buildWordTimingFromSegment(seg);
+  }
+  // Retorno seguro por defecto en caso de que no exista aún
+  return { ...seg, words: seg.words || [] };
+}
+
+/**
+ * Carga en el selector desplegable las voces y grabaciones guardadas en IndexedDB
+ */
+export async function loadVoiceOptionsInStudio() {
+  const select = $("voiceLibrarySelect");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+
+  try {
+    // LLAMADAS MODULARES: Consume datos desde el core de la biblioteca offline
+    const voces = await getLibraryItemsByType("voz");
+    const grabaciones = await getLibraryItemsByType("grabación");
+
+    const merged = [...voces, ...grabaciones];
+
+    if (!merged.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No hay voces guardadas";
+      select.appendChild(option);
+      return;
+    }
+
+    merged.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Error al cargar opciones de voces en Estudio:", error);
+  }
+}
+
+/**
+ * Descarga la voz seleccionada de la BD e inyecta su letra y tiempos en el Monitor
+ */
+export async function loadSelectedVoiceFromLibrary() {
+  const select = $("voiceLibrarySelect");
+  const player = $("selectedVoicePlayer");
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  if (!select || !player || !status) return;
+
+  const selectedId = Number(select.value);
+
+  if (!selectedId) {
+    alert("⚠️ Selecciona una voz");
+    return;
+  }
+
+  try {
+    const item = await getLibraryItemById(selectedId);
+
+    if (!item) {
+      alert("⚠️ No se encontró el archivo");
+      return;
+    }
+
+    selectedVoiceBlob = item.audioBlob;
+    selectedVoiceId = item.id;
+
+    const audioURL = URL.createObjectURL(item.audioBlob);
+    player.src = audioURL;
+    status.textContent = `Estado: voz seleccionada -> ${item.name}`;
+
+    // Si el archivo de audio ya contiene letras sincronizadas por Taps de fondo, las restaura instantáneamente
+    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+      baseTranscriptionSegments = item.transcription.map(seg =>
+        buildWordTimingFromSegment(seg)
+      );
+
+      transcriptionSegments = baseTranscriptionSegments;
+
+      // Validadores de seguridad para las funciones periféricas de pintado de pantalla
+      if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+      if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+
+      if (lyricsText) {
+        lyricsText.value = transcriptionSegments
+          .map(seg => seg.text || "")
+          .join("\n")
+          .trim();
+      }
+
+      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+    } else {
+      baseTranscriptionSegments = [];
+      transcriptionSegments = [];
+
+      if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics([]);
+      if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+
+      if (lyricsText) lyricsText.value = "";
+      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+    }
+  } catch (error) {
+    console.error("Error al procesar la voz seleccionada de la biblioteca:", error);
+    alert("❌ No se pudo cargar la voz seleccionada");
+  }
+}
