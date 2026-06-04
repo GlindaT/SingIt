@@ -126,6 +126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Lógica interna para sincronizar el formato de clases CSS del escenario
     function applyKaraokeThemeLocal() {
+      // Corregido: apuntamos a la misma clave reglamentaria "singIt_stage"
       const themeGuardado = localStorage.getItem("singIt_stage") || "theme-clasico";
       const monitor = $("karaokeLiveLyrics");
       if (monitor) {
