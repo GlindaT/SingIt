@@ -1,376 +1,569 @@
-// ==========================================
-// OPTIMIZED KARAOKE CANVAS RENDERER
-// ==========================================
-// This module provides high-performance canvas rendering for the karaoke monitor
-// Features:
-// - Dirty rectangle invalidation (only redraw changed areas)
-// - Throttled updates (configurable frame rate)
-// - Cached computations
-// - Memory-efficient buffer reuse
+import { $ } from '../script.js';
 
-class KaraokeCanvasRenderer {
+/**
+ * Función auxiliar interna para limpiar guiones y unir palabras de forma fluida
+ */
+export function reconstruirFraseDesdeWords(segmento) {
+  if (!segmento) return "";
+  const listaPalabras = Array.isArray(segmento.words) ? segmento.words : [];
+  if (listaPalabras.length === 0 && segmento.text) return segmento.text.trim(); 
+
+  return listaPalabras
+    .map(w => {
+      let textoPalabra = "";
+      if (typeof w === "string") textoPalabra = w;
+      else if (w) textoPalabra = w.text || w.word || "";
+      return textoPalabra.replace(/-/g, "");
+    }) 
+    .join(" ")            
+    .replace(/\s+/g, " ") 
+    .trim();
+}
+
+/**
+ * MOTOR DE ALTO RENDIMIENTO UNIFICADO PARA RENDERIZADO DE NOTAS Y PENTAGRAMA
+ */
+export class KaraokeCanvasRenderer {
   constructor(canvasId, options = {}) {
     this.canvas = document.getElementById(canvasId);
     if (!this.canvas) throw new Error(`Canvas with ID ${canvasId} not found`);
-    
     this.ctx = this.canvas.getContext('2d');
     
-    // Configuration
     this.options = {
-      maxFrameRate: options.maxFrameRate || 30, // Cap at 30 FPS instead of 60
-      enableDirtyRects: options.enableDirtyRects !== false,
+      maxFrameRate: options.maxFrameRate || 30,
       cacheSize: options.cacheSize || 100,
       ...options
     };
     
-    // Frame throttling
     this.lastFrameTime = 0;
     this.frameInterval = 1000 / this.options.maxFrameRate;
-    
-    // Cache for computed values
-    this.cache = new Map();
     this.noteYCache = new Map();
-    this.segmentBoundsCache = new Map();
     
-    // Dirty rectangle tracking
-    this.dirtyRects = [];
-    this.lastState = null;
-    
-    // Shared buffer for audio data
-    this.audioBuffer = new Float32Array(2048);
-    
-    // Config (computed once)
+    // Configuración de la rejilla matemática musical
     this.pentagramTop = 30;
-    this.pentagramBottom = this.canvas.height - 60;
-    this.pentagramHeight = this.pentagramBottom - this.pentagramTop;
-    this.midiMin = 48;
-    this.midiMax = 84;
+    this.midiMin = 48; // C3
+    this.midiMax = 84; // C6
     this.midiRange = this.midiMax - this.midiMin;
-    this.timeWindowStart = 0;
-    this.timeWindowEnd = 0;
-    this.pixelsPerSecond = (this.canvas.width - 40) / 6;
-    this.lineX = 40;
-    
-    // Note labels (static)
-    this.noteLabels = ["C6", "A5", "F5", "D5", "B4", "G4", "E4", "C4", "A3", "F3", "D3", "C3"];
-    this.numLines = 12;
+    this.lineX = 50;
   }
 
-  /**
-   * Throttle frame updates to reduce unnecessary redraws
-   */
   shouldRender() {
     const now = performance.now();
-    if (now - this.lastFrameTime < this.frameInterval) {
-      return false;
-    }
+    if (now - this.lastFrameTime < this.frameInterval) return false;
     this.lastFrameTime = now;
     return true;
   }
 
-  /**
-   * Convert MIDI note to Y pixel position (cached)
-   */
   midiToY(midi) {
-    // Check cache first
-    if (this.noteYCache.has(midi)) {
-      return this.noteYCache.get(midi);
-    }
+    let m = midi || 60;
+    if (this.noteYCache.has(m)) return this.noteYCache.get(m);
 
-    if (!midi || midi < this.midiMin) midi = this.midiMin;
-    if (midi > this.midiMax) midi = this.midiMax;
+    if (m < this.midiMin) m = this.midiMin;
+    if (m > this.midiMax) m = this.midiMax;
 
-    const normalized = (this.midiMax - midi) / this.midiRange;
-    const y = this.pentagramTop + normalized * this.pentagramHeight;
+    const pentagramHeight = this.canvas.height - 90;
+    const normalized = (this.midiMax - m) / this.midiRange;
+    const y = this.pentagramTop + normalized * pentagramHeight;
 
-    // Cache for future use (limit cache size)
     if (this.noteYCache.size > this.options.cacheSize) {
-      const firstKey = this.noteYCache.keys().next().value;
-      this.noteYCache.delete(firstKey);
+      this.noteYCache.delete(this.noteYCache.keys().next().value);
     }
-    this.noteYCache.set(midi, y);
-
+    this.noteYCache.set(m, y);
     return y;
   }
 
   /**
-   * Draw staff lines (only once or when resized)
+   * Captura y calcula la paleta cromática exacta basándose en el LocalStorage
    */
-  drawStaff() {
-    this.ctx.strokeStyle = "#333";
-    this.ctx.lineWidth = 1;
+  obtenerPaletaTema() {
+    const temaActual = localStorage.getItem("singIt_stage") || "theme-clasico";
+    let config = {
+      fondo: "#111827", lineas: "#333333", etiquetas: "#666666", barraFutura: "#1e40af", bordeFuturo: "#3b82f6"
+    };
 
-    for (let i = 0; i <= this.numLines; i++) {
-      const y = this.pentagramTop + (this.pentagramHeight / this.numLines) * i;
+    if (temaActual === "theme-moderno") {
+      config = { fondo: "#082f49", lineas: "rgba(6, 182, 212, 0.2)", etiquetas: "#06b6d4", barraFutura: "#1e3a8a", bordeFuturo: "#06b6d4" };
+    } else if (temaActual === "theme-disco") {
+      config = { fondo: "#2e1065", lineas: "rgba(219, 39, 119, 0.25)", etiquetas: "#facc15", barraFutura: "#701a75", bordeFuturo: "#db2777" };
+    } else if (temaActual === "theme-acustico") {
+      config = { fondo: "#451a03", lineas: "rgba(120, 53, 15, 0.4)", etiquetas: "#fcd34d", barraFutura: "#78350f", bordeFuturo: "#b45309" };
+    } else if (temaActual === "theme-fiesta") {
+      const hue = (Date.now() / 20) % 360;
+      config = {
+        fondo: `hsl(${hue}, 40%, 12%)`, lineas: "rgba(255, 255, 255, 0.15)", etiquetas: "#ff007f",
+        barraFutura: `hsl(${(hue + 180) % 360}, 50%, 25%)`, bordeFuturo: `hsl(${(hue + 180) % 360}, 70%, 50%)`
+      };
+    }
+    return config;
+  }
+
+  /**
+   * Renderizado unificado de alto rendimiento optimizado con soporte DÚO y Temas visuales
+   */
+  render(currentTime, currentFreq, currentFreq2, transcriptionSegments) {
+    if (!this.shouldRender()) return;
+
+    const paleta = this.obtenerPaletaTema();
+    const pentagramBottom = this.canvas.height - 60;
+    const pentagramHeight = pentagramBottom - this.pentagramTop;
+
+    // Guardar historiales en el entorno global para rastro de voz de forma segura
+    window.pitchHistoryMic1?.push(currentFreq > 0 ? currentFreq : null);
+    if (window.pitchHistoryMic1?.length > 60) window.pitchHistoryMic1.shift();
+
+    window.pitchHistoryMic2?.push(currentFreq2 > 0 ? currentFreq2 : null);
+    if (window.pitchHistoryMic2?.length > 60) window.pitchHistoryMic2.shift();
+
+    // Limpieza de fotograma
+    this.ctx.fillStyle = paleta.fondo;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Dibujar líneas de rejilla
+    this.ctx.strokeStyle = paleta.lineas; 
+    this.ctx.lineWidth = 1;
+    const numLines = 10;
+    for (let i = 0; i <= numLines; i++) {
+      const y = this.pentagramTop + (pentagramHeight / numLines) * i;
       this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
+      this.ctx.moveTo(35, y); 
       this.ctx.lineTo(this.canvas.width, y);
       this.ctx.stroke();
     }
 
-    // Draw note labels
-    this.ctx.fillStyle = "#666";
-    this.ctx.font = "10px Arial";
+    // Dibujar etiquetas de notas estáticas
+    this.ctx.fillStyle = paleta.etiquetas; 
+    this.ctx.font = "11px sans-serif";
     this.ctx.textAlign = "right";
-
-    this.noteLabels.forEach((label, i) => {
-      const y = this.pentagramTop + (this.pentagramHeight / this.numLines) * i + 4;
-      this.ctx.fillText(label, 25, y);
+    const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
+    noteLabels.forEach((label, i) => {
+      const y = this.pentagramTop + (pentagramHeight / numLines) * i + 4;
+      this.ctx.fillText(label, 28, y);
     });
-  }
 
-  /**
-   * Draw note bars with optimizations
-   */
-  drawNotes(transcriptionSegments, currentTime, currentFreq) {
-    if (!Array.isArray(transcriptionSegments) || transcriptionSegments.length === 0) {
-      return;
-    }
+    if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
+      const timeWindowStart = currentTime - 1;
+      const timeWindowEnd = currentTime + 5;
+      const pixelsPerSecond = (this.canvas.width - 50) / 6;
 
-    // Update time window
-    this.timeWindowStart = currentTime - 1;
-    this.timeWindowEnd = currentTime + 5;
+      // Dibujar aguja de tiempo actual (Línea roja)
+      this.ctx.strokeStyle = "#ef4444";
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(this.lineX, this.pentagramTop);
+      this.ctx.lineTo(this.lineX, pentagramBottom);
+      this.ctx.stroke();
 
-    // Draw current time line
-    this.ctx.strokeStyle = "#ef4444";
-    this.ctx.lineWidth = 2;
-    this.ctx.beginPath();
-    this.ctx.moveTo(this.lineX, this.pentagramTop);
-    this.ctx.lineTo(this.lineX, this.pentagramBottom);
-    this.ctx.stroke();
-
-    // Process segments
-    transcriptionSegments.forEach((segment) => {
-      const words = Array.isArray(segment.words) ? segment.words : [];
-
-      words.forEach((word) => {
-        // Skip words outside visible window
-        if (word.end < this.timeWindowStart || word.start > this.timeWindowEnd) {
-          return;
-        }
-
-        // Calculate bar position and size
-        const wordStartX = this.lineX + (word.start - currentTime) * this.pixelsPerSecond;
-        const wordEndX = this.lineX + (word.end - currentTime) * this.pixelsPerSecond;
-        const barWidth = Math.max(wordEndX - wordStartX, 20);
-
-        // Get MIDI and position
-        const midi = word.midi || segment.midi || 60;
-        const barY = this.midiToY(midi);
-        const barHeight = 22;
-
-        // Determine state
-        const isActive = currentTime >= word.start && currentTime <= word.end;
-        const isPast = currentTime > word.end;
-
-        // Check if pitch is correct
-        let isCorrect = false;
-        if (isActive && currentFreq > 0) {
-          const userMidi = this.frequencyToMidi(currentFreq);
-          isCorrect = Math.abs(userMidi - midi) <= 2;
-        }
-
-        // Determine colors
-        const { barColor, textColor, borderColor } = this.getBarColors(isPast, isActive, isCorrect);
-
-        // Draw bar with rounded corners
-        this.ctx.fillStyle = barColor;
-        this.ctx.beginPath();
-        this.ctx.roundRect(wordStartX, barY - barHeight / 2, barWidth, barHeight, 8);
-        this.ctx.fill();
-
-        // Draw border
-        this.ctx.strokeStyle = borderColor;
-        this.ctx.lineWidth = isActive ? 2 : 1;
-        this.ctx.stroke();
-
-        // Draw text
-        this.ctx.fillStyle = textColor;
-        this.ctx.font = isActive ? "bold 12px Arial" : "11px Arial";
-        this.ctx.textAlign = "center";
-        this.ctx.textBaseline = "middle";
-
-        let displayWord = (word.word || "").substring(0, 10);
-        if (displayWord.length > 10) {
-          displayWord = displayWord.substring(0, 8) + "..";
-        }
-        this.ctx.fillText(displayWord, wordStartX + barWidth / 2, barY);
+      transcriptionSegments.forEach((segment) => {
+        const words = Array.isArray(segment.words) ? segment.words : [];
+        words.forEach((word) => {
+          if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
+          
+          const wordStartX = this.lineX + (word.start - currentTime) * pixelsPerSecond;
+          const wordEndX = this.lineX + (word.end - currentTime) * pixelsPerSecond;
+          const barWidth = Math.max(wordEndX - wordStartX, 35);
+          
+          const midi = word.midi || segment.midi || 60;
+          const barY = this.midiToY(midi);
+          const barHeight = 20;
+          
+          const isActive = currentTime >= word.start && currentTime <= word.end;
+          const isPast = currentTime > word.end;
+          
+          // COMPROBACIÓN PROTECTORA DÚO: Evaluación cruzada de frecuencias
+          let isCorrect = false;
+          if (isActive) {
+            if (currentFreq && currentFreq > 0) {
+              const userMidi1 = Math.round(12 * Math.log2(currentFreq / 440) + 69);
+              if (Math.abs(userMidi1 - midi) <= 1) isCorrect = true; 
+            }
+            if (currentFreq2 && currentFreq2 > 0) {
+              const userMidi2 = Math.round(12 * Math.log2(currentFreq2 / 440) + 69);
+              if (Math.abs(userMidi2 - midi) <= 1) isCorrect = true;
+            }
+          }
+          
+          let barColor, textColor, borderColor;
+          if (isPast) {
+            barColor = "#4b5563"; textColor = "#9ca3af"; borderColor = "#6b7280";
+          } else if (isActive) {
+            if (isCorrect) {
+              barColor = "#22c55e"; textColor = "#ffffff"; borderColor = "#4ade80";
+            } else {
+              barColor = "#3b82f6"; textColor = "#ffffff"; borderColor = "#60a5fa";
+            }
+          } else {
+            barColor = paleta.barraFutura; textColor = "rgba(255, 255, 255, 0.7)"; borderColor = paleta.bordeFuturo;
+          }
+          
+          this.ctx.fillStyle = barColor;
+          this.ctx.beginPath();
+          this.ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 6);
+          this.ctx.fill();
+          
+          this.ctx.strokeStyle = borderColor;
+          this.ctx.lineWidth = isActive ? 2 : 1;
+          this.ctx.stroke();
+          
+          this.ctx.fillStyle = textColor;
+          this.ctx.textAlign = "center";
+          this.ctx.textBaseline = "middle";
+          
+          let displayWord = word.word || word.text || "";
+          // TEXTO FLUIDO DINÁMICO REFINADO
+          if (displayWord.length > 8) {
+            this.ctx.font = isActive ? "bold 11px sans-serif" : "10px sans-serif";
+          } else {
+            this.ctx.font = isActive ? "bold 13px sans-serif" : "12px sans-serif";
+          }
+          
+          this.ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
+        });
       });
-    });
-  }
- getBarColors(isPast, isActive, isCorrect) {
-    if (isPast) {
-      return {
-        barColor: "#4b5563",
-        textColor: "#9ca3af",
-        borderColor: "#6b7280"
-      };
-    } else if (isActive) {
-      if (isCorrect) {
-        return {
-          barColor: "#22c55e",
-          textColor: "#ffffff",
-          borderColor: "#4ade80"
-        };
-      } else {
-        return {
-          barColor: "#3b82f6",
-          textColor: "#ffffff",
-          borderColor: "#60a5fa"
-        };
-      }
     } else {
-      return {
-        barColor: "#1e40af",
-        textColor: "#93c5fd",
-        borderColor: "#3b82f6"
-      };
-    }
-  }
-
-  /**
-   * Draw user's voice trace (optimized with limited history)
-   */
-  drawVoiceTrace(pitchHistory, currentFreq) {
-    if (currentFreq <= 0 || pitchHistory.length === 0) return;
-
-    const userMidi = this.frequencyToMidi(currentFreq);
-    const userY = this.midiToY(userMidi);
-
-    // Draw current point with glow effect
-    this.ctx.beginPath();
-    this.ctx.fillStyle = "#facc15";
-    this.ctx.shadowBlur = 15;
-    this.ctx.shadowColor = "#facc15";
-    this.ctx.arc(this.lineX, userY, 8, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.shadowBlur = 0;
-
-    // Draw trace (only last 30 points for performance)
-    const maxTraceLength = Math.min(30, pitchHistory.length);
-    const startIndex = pitchHistory.length - maxTraceLength;
-
-    this.ctx.beginPath();
-    this.ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
-    this.ctx.lineWidth = 3;
-
-    let started = false;
-    for (let i = startIndex; i < pitchHistory.length; i++) {
-      const freq = pitchHistory[i];
-      if (!freq) continue;
-
-      const midi = this.frequencyToMidi(freq);
-      const y = this.midiToY(midi);
-      const x = this.lineX - (pitchHistory.length - i) * 2;
-
-      if (!started) {
-        this.ctx.moveTo(x, y);
-        started = true;
-      } else {
-        this.ctx.lineTo(x, y);
-      }
-    }
-    this.ctx.stroke();
-  }
-
-  /**
-   * Draw current and next lyrics
-   */
-  drawLyrics(transcriptionSegments, currentTime) {
-    const currentSegment = transcriptionSegments.find(seg =>
-      currentTime >= seg.start && currentTime <= seg.end + 0.5
-    );
-
-    if (currentSegment) {
-      // Background
-      this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-      this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
-
-      // Text
-      this.ctx.fillStyle = "#ffffff";
-      this.ctx.font = "bold 20px Arial";
+      this.ctx.fillStyle = paleta.etiquetas;
+      this.ctx.font = "15px sans-serif";
       this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-      this.ctx.fillText(currentSegment.text || "", this.canvas.width / 2, this.canvas.height - 25);
-    } else {
-      // Show next segment if no current
-      const nextSegment = transcriptionSegments.find(seg => seg.start > currentTime);
-      if (nextSegment) {
-        this.ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
-
-        this.ctx.fillStyle = "#94a3b8";
-        this.ctx.font = "16px Arial";
-        this.ctx.textAlign = "center";
-        this.ctx.fillText("Próximo: " + (nextSegment.text || ""), this.canvas.width / 2, this.canvas.height - 25);
-      }
+      this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
   }
-
-  /**
-   * Frequency to MIDI conversion
-   */
-  frequencyToMidi(freq) {
-    if (freq <= 0) return 0;
-    return Math.round(12 * Math.log2(freq / 440) + 69);
-  }
-
-  /**
-   * Main render function with throttling and optimization
-   */
-  render(currentTime, currentFreq, transcriptionSegments, pitchHistory) {
-    // Throttle frame rate
-    if (!this.shouldRender()) {
-      return;
-    }
-
-    // Clear canvas
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw static elements (staff and labels)
-    this.drawStaff();
-
-    // Draw notes
-    if (transcriptionSegments && transcriptionSegments.length > 0) {
-      this.drawNotes(transcriptionSegments, currentTime, currentFreq);
-    } else {
-      // Placeholder message
-      this.ctx.fillStyle = "#666";
-      this.ctx.font = "16px Arial";
-      this.ctx.textAlign = "center";
-      this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", this.canvas.width / 2, this.canvas.height / 2);
-    }
-
-    // Draw voice trace
-    if (pitchHistory && pitchHistory.length > 0) {
-      this.drawVoiceTrace(pitchHistory, currentFreq);
-    }
-
-    // Draw lyrics
-    if (transcriptionSegments && transcriptionSegments.length > 0) {
-      this.drawLyrics(transcriptionSegments, currentTime);
-    }
-  }
-
-  /**
-   * Clear all caches (call on memory pressure or tab change)
-   */
-  clearCaches() {
-    this.noteYCache.clear();
-    this.segmentBoundsCache.clear();
-    this.cache.clear();
-  }
-
-  /**
-   * Handle window resize
-   */
   handleResize() {
-    this.pentagramBottom = this.canvas.height - 60;
-    this.pentagramHeight = this.pentagramBottom - this.pentagramTop;
-    this.pixelsPerSecond = (this.canvas.width - 40) / 6;
-    this.clearCaches();
+    this.noteYCache.clear();
+  }
+  // ====================================================================
+// 🎤 --- DIBUJAR LA VOZ DEL MICRÓFONO 1 (AMARILLO) (CORREGIDO) ---
+// ====================================================================
+  
+  // Dibujar rastro histórico Mic 1 (Hacia la izquierda desde la posición de canto)
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+  ctx.lineWidth = 4; 
+  let started1 = false;
+  
+  pitchHistoryMic1.forEach((freq, i) => {
+    if (freq && freq > 0) {
+      const y = midiToY(frequencyToMidi(freq));
+      // CORRECCIÓN: Garantizamos el margen de desfase estático de impacto en base a píxeles seguros
+      const x = 50 - (pitchHistoryMic1.length - i) * 2.5; 
+      
+      if (x >= 0) { 
+        if (!started1) { 
+          ctx.moveTo(x, y); 
+          started1 = true; 
+        } else { 
+          ctx.lineTo(x, y); 
+        }
+      }
+    } else {
+      started1 = false; // Rompe el trazo de forma limpia si hay silencio para evitar líneas locas
+    }
+  });
+  ctx.stroke();
+
+  // Dibujar indicador actual Mic 1 (Fijo en la zona de impacto X = 50)
+  if (currentFreq && currentFreq > 0) {
+    const userY1 = midiToY(frequencyToMidi(currentFreq));
+    ctx.beginPath();
+    ctx.fillStyle = "#facc15"; 
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#facc15";
+    ctx.arc(50, userY1, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0; 
+  }
+
+  // ====================================================================
+  // 🐬 --- DIBUJAR LA VOZ DEL MICRÓFONO 2 (CELESTE / CIAN) (CORREGIDO) ---
+  // ====================================================================
+  
+  // Dibujar rastro histórico Mic 2
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(6, 182, 212, 0.6)";
+  ctx.lineWidth = 4;
+  let started2 = false;
+  
+  pitchHistoryMic2.forEach((freq, i) => {
+    if (freq && freq > 0) {
+      const y = midiToY(frequencyToMidi(freq));
+      const x = 50 - (pitchHistoryMic2.length - i) * 2.5; 
+      
+      if (x >= 0) {
+        if (!started2) { 
+          ctx.moveTo(x, y); 
+          started2 = true; 
+        } else { 
+          ctx.lineTo(x, y); 
+        }
+      }
+    } else {
+      started2 = false; // Rompe el trazo de forma limpia si hay silencio
+    }
+  });
+  ctx.stroke();
+
+  // Dibujar indicador actual Mic 2 (Desfase en X = 56 para evitar colisiones)
+  if (currentFreq2 && currentFreq2 > 0) {
+    const userY2 = midiToY(frequencyToMidi(currentFreq2));
+    ctx.beginPath();
+    ctx.fillStyle = "#06b6d4"; 
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#06b6d4";
+    ctx.arc(56, userY2, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0; 
+  }
+
+  // --- DIBUJAR LETRA ACTUAL ABAJO ---
+  const currentIndex = transcriptionSegments.findIndex(seg => 
+    currentTime >= seg.start && currentTime <= seg.end + 0.5
+  );
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+  ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+  if (currentIndex !== -1) {
+    const currentSegment = transcriptionSegments[currentIndex];
+    const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
+    
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 16px sans-serif"; 
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top"; 
+    ctx.fillText(textoActualLimpio, canvas.width / 2, canvas.height - 42);
+
+    const nextSegment = transcriptionSegments[currentIndex + 1];
+    if (nextSegment) {
+      const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.font = "12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom"; 
+      ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 6);
+    }
+  } else {
+    const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
+    if (upcomingSegment) {
+      const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle"; 
+      ctx.fillText("Próximo: " + textoProximoLimpio, canvas.width / 2, canvas.height - 25);
+    }
   }
 }
+
+
+// CORRECCIÓN REUTILIZACIÓN DE MEMORIA: Declaramos los buffers fuera del loop
+const staticBufferMic1 = new Float32Array(2048);
+const staticBufferMic2 = new Float32Array(2048);
+
+// ==========================================
+// DETECCIÓN DE PITCH PARA KARAOKE (CORREGIDA)
+// ==========================================
+async function startKaraokePitchDetection() {
+    function loop() {
+        const track = $("karaokeTrack");
+        
+        // CORRECCIÓN CONTROL FLUJO: Si la pista se detiene, pausó o finalizó, matamos el proceso inmediato de CPU
+        if (!track || track.paused || track.ended || !isPitchDetectionRunning) {
+            isPitchDetectionRunning = false;
+            return;
+        }
+
+        const currentTime = track.currentTime;
+        const sampleRateSistema = karaokeDuoAudioContext?.sampleRate || 48000;
+
+        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 1 (AMARILLO) ---
+        let pitch1 = -1;
+        if (karaokeDuoAnalyser1) {
+            // Reutilizamos el buffer estático sin crear instancias nuevas
+            karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
+            
+            let sum1 = 0;
+            for (let i = 0; i < staticBufferMic1.length; i++) { sum1 += staticBufferMic1[i] * staticBufferMic1[i]; }
+            const rms1 = Math.sqrt(sum1 / staticBufferMic1.length);
+
+            if (rms1 > 0.015) {
+                pitch1 = autoCorrelate(staticBufferMic1, sampleRateSistema);
+            }
+        }
+
+        // --- PROCESAMIENTO CON FILTRO DE CONFIANZA MICRÓFONO 2 (CELESTE) ---
+        let pitch2 = -1; 
+        if (karaokeDuoAnalyser2) {
+            karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
+            
+            let sum2 = 0;
+            for (let i = 0; i < staticBufferMic2.length; i++) { sum2 += staticBufferMic2[i] * staticBufferMic2[i]; }
+            const rms2 = Math.sqrt(sum2 / staticBufferMic2.length);
+
+            if (rms2 > 0.015) {
+                pitch2 = autoCorrelate(staticBufferMic2, sampleRateSistema);
+            }
+        }
+
+        // ENVIAR AMBOS TONOS AL MONITOR VISUAL UNIFICADO
+        if (typeof drawKaraokeMonitor === 'function') {
+            drawKaraokeMonitor(currentTime, pitch1, pitch2);
+        }
+
+        // Ejecutamos el siguiente fotograma únicamente si la bandera sigue activa
+        if (isPitchDetectionRunning) {
+            requestAnimationFrame(loop);
+        }
+    }
+
+    // Activamos la bandera y encendemos el motor de dibujo
+    isPitchDetectionRunning = true;
+    loop();
+}
+// ==========================================
+// PARSER ULTRASTAR TXT PROFESIONAL (CORREGIDO)
+// ==========================================
+function parseUltrastarTxt(content) {
+  const lines = content.split("\n");
+  const metadata = {};
+  const notes = [];
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // 1. Procesamiento de Metadatos de Cabecera
+    if (trimmed.startsWith("#")) {
+      const match = trimmed.match(/^#(\w+):(.*)$/);
+      if (match) {
+        const key = match[1].toUpperCase();
+        const value = match[2].trim();
+        metadata[key] = value;
+      }
+      continue;
+    }
+    
+    // 2. Procesamiento de Notas y Saltos de Línea Reglamentarios
+    if (trimmed.match(/^[:*F\-]/)) {
+      const parts = trimmed.split(/\s+/);
+      const type = parts[0]; // : = normal, * = golden, F = freestyle, - = salto de línea
+      
+      // CORRECCIÓN: Guardamos el salto de línea explicitamente con su Beat para segmentar con precisión
+      if (type === "-") {
+        notes.push({
+          type: "-",
+          startBeat: parseInt(parts[1], 10) || 0,
+          duration: 0,
+          pitch: 0,
+          syllable: ""
+        });
+        continue;
+      }
+      
+      if (parts.length >= 4) {
+        const startBeat = parseInt(parts[1], 10);
+        const duration = parseInt(parts[2], 10);
+        const pitch = parseInt(parts[3], 10);
+        
+        // Unimos el texto remanente preservando espacios intermedios necesarios
+        const syllable = parts.slice(4).join(" ");
+        
+        notes.push({
+          type: type,
+          startBeat: startBeat,
+          duration: duration,
+          pitch: pitch, 
+          syllable: syllable
+        });
+      }
+    }
+  }
+  
+  return {
+    title: metadata.TITLE || "Sin título",
+    artist: metadata.ARTIST || "Desconocido",
+    bpm: parseFloat(metadata.BPM.replace(",", ".")) || 120, // Protegido contra decimales europeos con coma
+    gap: parseFloat(metadata.GAP.replace(",", ".")) || 0,   
+    videoGap: parseFloat(metadata.VIDEOGAP) || 0,
+    genre: metadata.GENRE || "",
+    language: metadata.LANGUAGE || "",
+    year: metadata.YEAR || "",
+    notes: notes
+  };
+}
+
+function ultrastarToSegments(parsed) {
+  if (!parsed || !parsed.notes || !parsed.notes.length) {
+    return [];
+  }
+  
+  const bpm = parsed.bpm;
+  const gap = parsed.gap / 1000; 
+  
+  // CORRECCIÓN: La resolución base por defecto en UltraStar Deluxe es multiplicar por 4
+  const beatDuration = 60 / (bpm * 4); 
+  
+  const segments = [];
+  let currentWords = [];
+  
+  for (let i = 0; i < parsed.notes.length; i++) {
+    const note = parsed.notes[i];
+    
+    // CORRECCIÓN: Si detectamos la marca física de corte (-), cerramos el renglón de inmediato
+    if (note.type === "-") {
+      if (currentWords.length > 0) {
+        segments.push({
+          start: currentWords[0].start,
+          end: currentWords[currentWords.length - 1].end,
+          text: currentWords.map(w => w.word).join(""),
+          words: [...currentWords],
+          pitch: currentWords[0].pitch,
+          midi: currentWords[0].midi,
+          note: currentWords[0].note
+        });
+        currentWords = []; // Vaciamos el buffer de sílabas para iniciar la siguiente línea
+      }
+      continue;
+    }
+    
+    const startTime = gap + (note.startBeat * beatDuration);
+    const endTime = startTime + (note.duration * beatDuration);
+    
+    // Conversión MIDI nativa protegida (Base estándar MIDI 60 = Do Central)
+    let midiNote = 60 + note.pitch;
+    
+    // Corrección de límites por si el archivo viene transpuesto en octavas extremas
+    if (midiNote < 12) midiNote += 12;
+    if (midiNote > 127) midiNote = 127;
+    
+    const frecuenciaCalculada = midiToFrequency(midiNote);
+
+    // Limpieza de guiones tipográficos estéticos del archivo UltraStar original
+    let textoSilaba = note.syllable;
+    
+    currentWords.push({
+      word: textoSilaba,
+      start: startTime,
+      end: endTime,
+      pitch: frecuenciaCalculada,
+      midi: midiNote,
+      note: getNoteFromFrequency(frecuenciaCalculada)
+    });
+  }
+  
+  // Almacenar el remanente de sílabas si el archivo no incluyó la marca "-" al final
+  if (currentWords.length > 0) {
+    segments.push({
+      start: currentWords[0].start,
+      end: currentWords[currentWords.length - 1].end,
+      text: currentWords.map(w => w.word).join(""),
+      words: currentWords,
+      pitch: currentWords[0].pitch,
+      midi: currentWords[0].midi,
+      note: currentWords[0].note
+    });
+  }
+  
+  return segments;
+}
+
+
 
 // ==========================================
 // USAGE IN MAIN SCRIPT
