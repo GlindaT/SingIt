@@ -526,56 +526,69 @@ export async function loadSelectedVoiceFromLibrary() {
  */
 export async function transcribeSelectedVoice() {
   // ====================================================================
-  // SUBRUTINA LOCAL: Codificador Base64 Seguro
+  // SUBRUTINAS LOCALES INTERNAS (PROTECCIÓN DE ALCANCE Y HERENCIA)
   // ====================================================================
   function blobToBase64(blob) {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result.split(",")[1];
-        resolve(base64String);
+        if (typeof reader.result === 'string') {
+          const base64String = reader.result.split(",")[1];
+          resolve(base64String);
+        } else {
+          resolve("");
+        }
       };
       reader.readAsDataURL(blob);
     });
   }
 
-  // ====================================================================
-  // SUBRUTINA LOCAL: Conversor WAV optimizado a 16kHz MONO (Reduce peso un 75%)
-  // ====================================================================
+  function buildWordTimingFromSegment(seg) {
+    if (!seg.words || seg.words.length === 0) {
+      const wordsArr = (seg.text || "").split(" ").filter(Boolean);
+      const duration = (seg.end || 0) - (seg.start || 0);
+      const wordDuration = duration / Math.max(1, wordsArr.length);
+      seg.words = wordsArr.map((word, i) => ({
+        word: word,
+        start: seg.start + i * wordDuration,
+        end: seg.start + (i + 1) * wordDuration,
+        pitch: 0,
+        note: "C4"
+      }));
+    }
+    return seg;
+  }
+
   function audioBufferToWav(buffer, startSample, endSample) {
     const originalSampleRate = buffer.sampleRate;
-    const targetSampleRate = 16000; // Estándar nativo ultra-ligero para Whisper IA
+    const targetSampleRate = 16000; 
     
-    // Extraer y promediar canales para forzar un archivo Mono puro libre de peso estéreo
     const numChannels = buffer.numberOfChannels;
     const chanData0 = buffer.getChannelData(0);
     const chanData1 = numChannels > 1 ? buffer.getChannelData(1) : null;
     
-    // Calcular sub-muestreo temporal lineal en base a ratios matemáticos
     const originalChunkLength = endSample - startSample;
     const duration = originalChunkLength / originalSampleRate;
     const targetLength = Math.floor(duration * targetSampleRate);
     
-    const bufferLength = targetLength * 2 + 44; // Cabecera estándar de 44 bytes
+    const bufferLength = targetLength * 2 + 44; 
     const arrayBuffer = new ArrayBuffer(bufferLength);
     const view = new DataView(arrayBuffer);
     
-    // Inyección de Cabecera RIFF/WAVE reglamentaria
-    view.setUint32(0, 0x46464952, true); // "RIFF"
+    view.setUint32(0, 0x46464952, true); 
     view.setUint32(4, bufferLength - 8, true);
-    view.setUint32(8, 0x45564157, true); // "WAVE"
-    view.setUint32(12, 0x20746d66, true); // "fmt "
+    view.setUint32(8, 0x45564157, true); 
+    view.setUint32(12, 0x20746d66, true); 
     view.setUint32(16, 16, true); 
-    view.setUint16(20, 1, true);        // Formato PCM sin compresión
-    view.setUint16(22, 1, true);        // 1 Canal (MONO COMPACTO)
+    view.setUint16(20, 1, true);        
+    view.setUint16(22, 1, true);        
     view.setUint32(24, targetSampleRate, true);
-    view.setUint32(28, targetSampleRate * 2, true); // Byte Rate
-    view.setUint16(32, 2, true);        // Block Align
-    view.setUint16(34, 16, true);       // 16 bits por muestra
-    view.setUint32(36, 0x61746164, true); // "data"
+    view.setUint32(28, targetSampleRate * 2, true); 
+    view.setUint16(32, 2, true);        
+    view.setUint16(34, 16, true);       
+    view.setUint32(36, 0x61746164, true); 
     view.setUint32(40, targetLength * 2, true);
 
-    // Renderizar e interpolar muestras binarias promediadas
     let offset = 44;
     for (let i = 0; i < targetLength; i++) {
       const originalTime = i / targetSampleRate;
@@ -585,10 +598,10 @@ export async function transcribeSelectedVoice() {
       
       let sample = chanData0[originalSampleIndex];
       if (chanData1) {
-        sample = (sample + chanData1[originalSampleIndex]) / 2; // Mezcla monofónica balanceada
+        sample = (sample + chanData1[originalSampleIndex]) / 2; 
       }
       
-      sample = Math.max(-1, Math.min(1, sample)); // Clamping de seguridad
+      sample = Math.max(-1, Math.min(1, sample)); 
       view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
       offset += 2;
     }
@@ -613,7 +626,7 @@ export async function transcribeSelectedVoice() {
     const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-    const CHUNK_SECONDS = 20; // Reducido ligeramente el tamaño del bloque para máxima seguridad en la red
+    const CHUNK_SECONDS = 20; 
     const sampleRate = audioBuffer.sampleRate;
     const totalSamples = audioBuffer.length;
     const samplesPerChunk = CHUNK_SECONDS * sampleRate;
@@ -627,7 +640,6 @@ export async function transcribeSelectedVoice() {
 
       if (status) status.textContent = `Estado: Transcribiendo con Whisper IA (Parte ${chunkNumber} de ${totalChunks})... 🚀`;
 
-      // Generar fragmento super-comprimido y transmitirlo
       const wavBlob = audioBufferToWav(audioBuffer, start, end);
       const base64Audio = await blobToBase64(wavBlob);
 
@@ -660,6 +672,7 @@ export async function transcribeSelectedVoice() {
           words: seg.words ? seg.words.map(w => ({...w, start: w.start + timeOffset, end: w.end + timeOffset})) : null
         };
 
+        // AHORA SÍ: Se llama de forma local infalible sin errores de definición
         fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
       });
     }
