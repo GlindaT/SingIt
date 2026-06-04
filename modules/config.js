@@ -55,3 +55,19 @@ export function initSettings() {
     }
   });
 }
+
+export function $(id) {
+  return document.getElementById(id);
+}
+
+export function safeAdd(id, event, handler) {
+  const el = $(id);
+  if (el) el.addEventListener(event, handler);
+}
+
+// Configuración Global de la Aplicación
+export const state = {
+  instrumentalUrl: null,
+  letraLrc: "",
+  isRecording: false
+};
