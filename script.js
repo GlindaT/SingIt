@@ -46,6 +46,14 @@ export async function showTab(tabId) {
 
   // DISPARADORES DE DESCARGA BAJO DEMANDA
   try {
+    const { initDB } = await import("./modules/biblioteca.js");
+    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria } = await import("./modules/config.js");
+    await initDB();
+    initSettings();
+    
+    // Encendemos la restauración de tema unificada desde el arranque
+    
+    inicializarEscenarioDesdeMemoria(); 
     if (tabId === "config") {
       const { initSettings, loadAvailableMics } = await import("./modules/config.js");
       initSettings();
