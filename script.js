@@ -132,6 +132,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // 5. RESTAURAMOS EL ESCENARIO DEL KARAOKE SIEMPRE CON VALIDACIÓN DE RENDER
     inicializarEscenarioDesdeMemoria(); 
+    
+    // Escuchador manual para el botón de aplicar Escenario Karaoke
+    safeAdd("applyKaraokeStageBtn", "click", async () => {
+      const select = document.getElementById("karaokeThemeSelect");
+      if (select) {
+        // Forzamos el almacenamiento manual persistente en disco
+        localStorage.setItem("singIt_stage", select.value);
+        
+        // Importamos dinámicamente el módulo para pintar la clase visual al instante
+        const { inicializarEscenarioDesdeMemoria, showSaveNotification } = await import("./modules/config.js");
+        inicializarEscenarioDesdeMemoria();
+        showSaveNotification();
+      }
+    });
 
     // Ajuste dinámico manual para el selector de temas de la App (Previene hilos huérfanos)
     safeAdd("appTheme", "change", async (e) => {
