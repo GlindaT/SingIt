@@ -963,3 +963,161 @@ export function buildWordTimingFromSegment(segment) {
     words: timedWords
   };
 }
+// Importamos las utilidades de conversión de notas desde el Afinador para no duplicar código global
+import { getNoteFromFrequency } from './afinador.js';
+
+/**
+ * Función puente local para obtener el número MIDI (Equivale a la que usa el Karaoke de forma nativa)
+ */
+function frequencyToMidi(freq) {
+  if (freq <= 0) return 0;
+  return Math.round(12 * Math.log2(freq / 440) + 69);
+}
+
+/**
+ * Analiza porciones de audio en diferido para adjuntar notas musicales reales a las letras transcritas
+ */
+export async function analyzePitchForSegments(audioBlob, segments) {
+  if (!audioBlob || !segments || !segments.length) {
+    console.log("⚠️ No hay audio o segmentos para analizar");
+    return segments;
+  }
+
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    
+    const sampleRate = audioBuffer.sampleRate;
+    const channelData = audioBuffer.numberOfChannels > 0 ? audioBuffer.getChannelData(0) : new Float32Array(0);
+    
+    console.log("🎵 Analizando pitch de", segments.length, "segmentos...");
+
+    const analyzedSegments = segments.map((segment) => {
+      const startSample = Math.floor(segment.start * sampleRate);
+      const endSample = Math.floor(segment.end * sampleRate);
+      
+      const safeStart = Math.max(0, Math.min(startSample, channelData.length));
+      const safeEnd = Math.max(safeStart, Math.min(endSample, channelData.length));
+      const segmentSamples = channelData.slice(safeStart, safeEnd);
+      
+      const pitch = detectPitchFromSamples(segmentSamples, sampleRate);
+      const note = pitch > 0 ? getNoteFromFrequency(pitch) : null;
+      const midiNote = pitch > 0 ? frequencyToMidi(pitch) : null;
+      
+      let analyzedWords = [];
+      if (Array.isArray(segment.words) && segment.words.length > 0) {
+        analyzedWords = segment.words.map(word => {
+          const wordSampleStart = Math.floor(word.start * sampleRate);
+          const wordSampleEnd = Math.floor(word.end * sampleRate);
+          
+          const safeWordStart = Math.max(0, Math.min(wordSampleStart, channelData.length));
+          const safeWordEnd = Math.max(safeWordStart, Math.min(wordSampleEnd, channelData.length));
+          const wordSamples = channelData.slice(safeWordStart, safeWordEnd);
+          
+          const wordPitch = detectPitchFromSamples(wordSamples, sampleRate);
+          const wordNote = wordPitch > 0 ? getNoteFromFrequency(wordPitch) : note;
+          const wordMidi = wordPitch > 0 ? frequencyToMidi(wordPitch) : midiNote;
+          
+          return {
+            ...word,
+            pitch: wordPitch > 0 ? wordPitch : (pitch > 0 ? pitch : 0),
+            note: wordNote || "C4",
+            midi: wordMidi || 60
+          };
+        });
+      }
+
+      return {
+        ...segment,
+        pitch: pitch > 0 ? pitch : 0,
+        note: note || "C4",
+        midi: midiNote || 60,
+        words: analyzedWords
+      };
+    });
+
+    console.log("✅ Análisis de pitch completado");
+    return analyzedSegments;
+
+  } catch (error) {
+    console.error("❌ Error analizando pitch:", error);
+    return segments;
+  }
+}
+
+/**
+ * Algoritmo matemático avanzado de Autocorrelación con Interpolación Parabólica (Offline)
+ */
+function detectPitchFromSamples(samples, sampleRate) {
+  if (!samples || samples.length < 64) return -1; 
+  
+  let buffer = new Float32Array(2048);
+  if (samples.length < 2048) {
+    buffer.set(samples, 0); 
+  } else {
+    buffer = samples.slice(0, 2048);
+  }
+
+  const bufferSize = buffer.length;
+  
+  let rms = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    rms += buffer[i] * buffer[i];
+  }
+  rms = Math.sqrt(rms / bufferSize);
+  if (rms < 0.01) return -1; 
+
+  let maxVal = -1;
+  let minVal = 1;
+  for (let i = 0; i < bufferSize; i++) {
+    if (buffer[i] > maxVal) maxVal = buffer[i];
+    if (buffer[i] < minVal) minVal = buffer[i];
+  }
+  const maxCenterClip = Math.max(Math.abs(maxVal), Math.abs(minVal)) * 0.25;
+  
+  const clippedBuffer = new Float32Array(bufferSize);
+  for (let i = 0; i < bufferSize; i++) {
+    if (Math.abs(buffer[i]) > maxCenterClip) {
+      clippedBuffer[i] = buffer[i] > 0 ? buffer[i] - maxCenterClip : buffer[i] + maxCenterClip;
+    }
+  }
+
+  const maxPeriod = Math.floor(sampleRate / 65);
+  const minPeriod = Math.floor(sampleRate / 1000);
+  
+  let bestOffset = -1;
+  let bestCorrelation = 0;
+  let r = new Float32Array(maxPeriod + 1);
+
+  for (let offset = minPeriod; offset <= maxPeriod; offset++) {
+    let correlation = 0;
+    for (let i = 0; i < bufferSize - offset; i++) {
+      correlation += clippedBuffer[i] * clippedBuffer[i + offset];
+    }
+    r[offset] = correlation;
+
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestOffset = offset;
+    }
+  }
+
+  if (bestCorrelation < 0.1 || bestOffset === -1) return -1;
+
+  let refinedOffset = bestOffset;
+  if (bestOffset > minPeriod && bestOffset < maxPeriod) {
+    const alpha = r[bestOffset - 1];
+    const beta = r[bestOffset];
+    const gamma = r[bestOffset + 1];
+    const denominator = 2 * (alpha - 2 * beta + gamma);
+    if (denominator !== 0) {
+      refinedOffset = bestOffset - (gamma - alpha) / denominator;
+    }
+  }
+
+  const frequency = sampleRate / refinedOffset;
+  if (frequency < 60 || frequency > 1100) return -1;
+
+  return frequency;
+}
