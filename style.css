@@ -417,27 +417,32 @@ input[type="text"] {
 }
 
 /* ==========================================
-   ESCENARIOS DE KARAOKE (TEMAS VISUALES)
+   ESCENARIOS DE KARAOKE (TEMAS)
 ========================================== */
-/* Clásico */
-#karaokeLyrics.theme-clasico { background: transparent; }
+/* Clásico (El que ya teníamos) */
+.theme-clasico { background: transparent; }
 
 /* Moderno (Neón Azul) */
-#karaokeLyrics.theme-moderno { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
-#karaokeLyrics.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
+.theme-moderno { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
+.theme-moderno .karaoke-live-line.active { color: #06b6d4; text-shadow: 0 0 15px #06b6d4; }
 
-/* Disco */
-#karaokeLyrics.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
-#karaokeLyrics.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
+/* Disco (Fondo vibrante rosa/morado) */
+.theme-disco { background: linear-gradient(45deg, #4c1d95, #be185d) !important; }
+.theme-disco .karaoke-live-line.active { color: #facc15; text-shadow: 0 0 10px #facc15; font-size: 38px; }
 
-/* Acústico */
-#karaokeLyrics.theme-acustico { background: #451a03 !important; border: 2px solid #78350f !important; }
-#karaokeLyrics.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
+/* Acústico (Madera/Café relajante) */
+.theme-acustico { background: #451a03 !important; border: 2px solid #78350f !important; }
+.theme-acustico .karaoke-live-line.active { color: #fcd34d; text-shadow: none; font-style: italic; }
 
-/* Fiesta */
-#karaokeLyrics.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
-#karaokeLyrics.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
+/* Fiesta (Animación loca de luces) */
+.theme-fiesta { animation: luces-fiesta 3s infinite alternate !important; }
+.theme-fiesta .karaoke-live-line.active { color: #ff007f; text-shadow: 0 0 20px #ff007f; }
 
+@keyframes luces-fiesta {
+  0% { box-shadow: inset 0 0 40px #ff007f; }
+  50% { box-shadow: inset 0 0 40px #00f0ff; }
+  100% { box-shadow: inset 0 0 40px #b700ff; }
+}
 
 /* ==========================================
    MODO CELULAR (RESPONSIVE DESIGN)
@@ -802,98 +807,4 @@ input[type="text"] {
 
 #ultrastarModal input[type="file"] {
   margin-top: 8px;
-}
-
-/* ==========================================
-   BARRAS DE VOLUMEN MODO DÚO
-========================================== */
-.mic-level-bar {
-  width: 100%;
-  height: 12px;                  /* Altura de la barra */
-  background: rgba(255, 255, 255, 0.1); /* Fondo gris oscuro de la barra vacía */
-  border-radius: 6px;            /* Bordes redondeados */
-  overflow: hidden;              /* Corta el relleno si se sale */
-  margin-top: 6px;
-  position: relative;
-  border: 1px solid var(--border);
-}
-
-.mic-level-fill {
-  width: 0%;                     /* Empieza vacía, JS cambiará esto */
-  height: 100%;
-  border-radius: 6px;
-  transition: width 0.05s ease;  /* Movimiento ultra fluido al ritmo de la voz */
-}
-
-/* Color personalizado exclusivo mediante su ID */
-#karaokeDuoMic1Level {
-  background: #facc15;           /* Amarillo brillante (Igual que la voz 1 en el canvas) */
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
-}
-
-#karaokeDuoMic2Level {
-  background: #06b6d4;           /* Celeste/Cian eléctrico (Igual que la voz 2 en el canvas) */
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
-}
-
-/* Color destacado para saber qué carpeta de la biblioteca está abierta */
-.folder-btn.active {
-  background-color: #3b82f6 !important; /* Azul de tu botón de carga */
-  color: #ffffff !important;
-  border: 1px solid #22c55e !important; /* Bordecito verde sutil */
-  font-weight: bold;
-  transform: scale(1.03);
-}
-
-/* ====================================================================
-   🎨 TEMA: RETRO WAVE / CYBERPUNK (ANIMADO)
-   ==================================================================== */
-body.tema-retrowave {
-  background-color: #0b001a !important; /* Morado ultra oscuro */
-  background-image: 
-    linear-gradient(rgba(255, 0, 128, 0.1) 2px, transparent 2px),
-    linear-gradient(90deg, rgba(255, 0, 128, 0.1) 2px, transparent 2px);
-  background-size: 40px 40px;
-  background-position: center bottom;
-  animation: grid-scroll 4s linear infinite;
-  position: relative;
-  overflow: hidden;
-}
-
-/* El sol brillante ochentero de fondo */
-body.tema-retrowave::before {
-  content: "";
-  position: absolute;
-  bottom: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  height: 300px;
-  background: linear-gradient(#ff007f, #facc15);
-  border-radius: 50%;
-  filter: blur(2px);
-  box-shadow: 0 0 60px rgba(255, 0, 127, 0.6);
-  opacity: 0.4;
-  z-index: -1;
-  animation: sun-pulse 3s ease-in-out infinite alternate;
-}
-
-/* Animación para que la cuadrícula camine hacia el frente */
-@keyframes grid-scroll {
-  from { background-position: 0 0; }
-  to { background-position: 0 40px; }
-}
-
-/* Animación de pulso místico para el sol */
-@keyframes sun-pulse {
-  from { transform: translateX(-50%) scale(0.95); opacity: 0.3; }
-  to { transform: translateX(-50%) scale(1.05); opacity: 0.55; }
-}
-
-/* Estilo para las tarjetas del menú bajo este tema */
-body.tema-retrowave .card {
-  background: rgba(30, 9, 54, 0.6) !important;
-  border: 1px solid #ff007f !important;
-  box-shadow: 0 0 15px rgba(255, 0, 127, 0.2);
-  backdrop-filter: blur(8px);
 }
