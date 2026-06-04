@@ -217,11 +217,10 @@
   </div>
 </div>
 
-<!--
+
   <div id="karaokeLyrics" class="karaoke-lyrics">
     <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
   </div>
-   -->
 </div>
 
 </section>
@@ -237,38 +236,6 @@
     <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
     <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
     <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
-  </div>
-
-  <!-- SUBIR ARCHIVOS DESDE PC (ahorra API) -->
-  <div class="card">
-    <h3>📤 Subir archivo desde PC</h3>
-    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
-      Sube pistas instrumentales o voces sin gastar API. Los archivos se guardan en tu navegador.
-    </p>
-
-    <div class="settings-group">
-      <label for="libraryFileInput">Archivo de audio (mp3, wav, ogg...)</label>
-      <input type="file" id="libraryFileInput" accept="audio/*">
-    </div>
-
-    <div class="settings-group">
-      <label for="libraryFileType">Tipo</label>
-      <select id="libraryFileType">
-        <option value="pista">🎵 Pista instrumental</option>
-        <option value="voz">🎙️ Voz</option>
-        <option value="grabacion">💾 Grabación / Mezcla</option>
-      </select>
-    </div>
-
-    <div class="settings-group">
-      <label for="libraryFileName">Nombre personalizado (opcional)</label>
-      <input type="text" id="libraryFileName" placeholder="Ej. Bohemian Rhapsody - Pista"
-        style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-main);">
-    </div>
-
-    <div class="studio-controls">
-      <button id="saveLibraryFileBtn" type="button" style="background: #3b82f6; color: white;">💾 Guardar en Biblioteca</button>
-    </div>
   </div>
 
   <div class="card">
@@ -313,11 +280,9 @@
          
           <!-- Botones de acción -->
           <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
-            <button id="importSingitBtn" type="button" style="background: #06b6d4;">📥 Importar .singit</button>
             <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar UltraStar</button>
             <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
           </div>
-          <input type="file" id="importSingitFile" accept=".singit,application/json" style="display:none;">
         </div>
       </div>
       
@@ -447,7 +412,7 @@
       <h1>✂️ Splitter IA</h1>
 
       <div class="card">
-        <h3>Separar Voz y Pista</h3>
+        <h3>Separar Voz e Instrumental</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">
           Sube una canción. La Inteligencia Artificial la separará y la guardará en tu Biblioteca.
         </p>
@@ -472,6 +437,16 @@
       <div class="card">
         <h3>Preferencias de la App</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">Los cambios se guardan automáticamente.</p>
+        
+        <div class="settings-group">
+          <label for="userVoiceType">👤 Tipo de voz</label>
+          <select id="userVoiceType">
+            <option value="grave">Grave</option>
+            <option value="media">Media</option>
+            <option value="aguda">Aguda</option>
+            <option value="todas">Todas</option>
+          </select>
+        </div>
         
         <div class="settings-group">
           <label for="micCount">🔊 Cantidad de micrófonos</label>
@@ -514,8 +489,8 @@
         </div>
         
         <div class="settings-group">
-          <label for="pentagramDifficulty">📊 Dificultad para el Pentagrama</label>
-          <select id="pentagramDifficulty">
+          <label for="difficultyLevel">📊 Dificultad para el Pentagrama</label>
+          <select id="difficultyLevel">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
@@ -541,6 +516,5 @@
 </div>
   
 <script src="script.js"></script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"7f7b0fd8732c4326aae4b9d58d5c514a","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
