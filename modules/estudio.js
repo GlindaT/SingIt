@@ -1121,3 +1121,72 @@ function detectPitchFromSamples(samples, sampleRate) {
 
   return frequency;
 }
+import { buildWordTimingFromSegment } from './estudio.js'; // Conexión local interna
+
+/**
+ * Mapea el texto editado a mano por el usuario preservando los tiempos originales de Whisper/Taps
+ */
+export function buildSegmentsFromMultilineLyrics(text, baseSegments) {
+  const lines = text
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length || !Array.isArray(baseSegments) || !baseSegments.length) {
+    return [];
+  }
+
+  let palabraIndexGlobal = 0;
+  const todasLasPalabrasBase = [];
+  
+  baseSegments.forEach(seg => {
+    if (seg.words) todasLasPalabrasBase.push(...seg.words);
+  });
+
+  if (todasLasPalabrasBase.length === 0) {
+    return aproximarTiemposPorDefecto(lines, baseSegments);
+  }
+
+  return lines.map((line) => {
+    const rawWords = line.split(/\s+/).filter(Boolean);
+    const timedWords = [];
+
+    rawWords.forEach((word) => {
+      const baseWord = todasLasPalabrasBase[palabraIndexGlobal] || todasLasPalabrasBase[todasLasPalabrasBase.length - 1];
+      
+      timedWords.push({
+        word: word,
+        start: baseWord ? baseWord.start : 0,
+        end: baseWord ? baseWord.end : 1,
+        pitch: baseWord ? baseWord.pitch : 0,
+        note: baseWord ? baseWord.note : "C4"
+      });
+      
+      palabraIndexGlobal++;
+    });
+
+    return {
+      start: timedWords.length ? timedWords[0].start : 0,
+      end: timedWords.length ? timedWords[timedWords.length - 1].end : 0,
+      text: line,
+      words: timedWords
+    };
+  });
+}
+
+/**
+ * Distribuye homogéneamente el tiempo total disponible si no existe un buffer de marcas previo
+ */
+function aproximarTiemposPorDefecto(lines, baseSegments) {
+  const totalStart = baseSegments[0].start;
+  const totalEnd = baseSegments[baseSegments.length - 1].end;
+  const totalDuration = Math.max(1, totalEnd - totalStart);
+  const slice = totalDuration / lines.length;
+  let cursor = totalStart;
+
+  return lines.map((line) => {
+    const seg = { start: cursor, end: cursor + slice, text: line };
+    cursor += slice;
+    return buildWordTimingFromSegment(seg);
+  });
+}
