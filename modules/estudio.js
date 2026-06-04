@@ -417,3 +417,40 @@ export function redoTapSync() {
   if (resultBox) resultBox.style.display = "none";
   startTapSync();
 }
+export async function loadVoiceOptionsInStudio() {
+  const select = $("voiceLibrarySelect");
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+
+  try {
+    // 1. Descargamos TODOS los elementos guardados para evitar que los filtros case-sensitive de IndexedDB oculten archivos
+    const todosLosItems = await getAllLibraryItems();
+
+    // 2. Filtramos mediante Javascript convirtiendo el tipo a minúsculas de forma segura
+    const merged = todosLosItems.filter(item => {
+      if (!item.type) return false;
+      const tipoLimpio = item.type.toLowerCase().trim();
+      return tipoLimpio === "voz" || tipoLimpio === "grabación" || tipoLimpio === "grabacion";
+    });
+
+    if (!merged.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No hay voces guardadas";
+      select.appendChild(option);
+      return;
+    }
+
+    merged.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = `${item.name} (${item.date || "sin fecha"})`;
+      select.appendChild(option);
+    });
+    
+    console.log("🎙️ Selector de voces del Estudio actualizado de forma segura.");
+  } catch (error) {
+    console.error("Error al cargar opciones de voces en Estudio:", error);
+  }
+}
