@@ -1,3 +1,10 @@
+import { $ } from '../script.js';
+import { saveToLibrary } from './biblioteca.js'; // Conexión modular segura para guardar voz y pista
+import { exportStereoWav } from './karaoke.js';    // Reutilización matemática del exportador para no duplicar código
+
+/**
+ * Muestra el resultado de la API directamente en el contenedor del Splitter
+ */
 export function showResult(url) {
   let container = document.getElementById("splitResult");
 
@@ -23,9 +30,6 @@ export function showResult(url) {
     `;
   }
 }
-import { $ } from '../script.js';
-import { saveToLibrary } from './biblioteca.js'; // Conexión modular segura para guardar voz y pista
-import { exportStereoWav } from './karaoke.js';    // Reutilización matemática del exportador para no duplicar código
 
 /**
  * Gestiona el casillero temporal de subida, despierta al modelo MDX23 en Replicate 
