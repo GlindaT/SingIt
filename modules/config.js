@@ -44,9 +44,10 @@ export function initSettings() {
         }
         
         if (id === "karaokeThemeSelect") {
-          const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
+          const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics");
           if (contenedorKaraoke) {
-            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+            // CORRECCIÓN REFORZADA: Incluye los 6 temas del catálogo visual actualizado
+            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
             todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
             contenedorKaraoke.classList.add(e.target.value);
           }
@@ -388,4 +389,18 @@ export async function testMicrophone(micNumber) {
     console.error("Error al probar hardware de micrófono:", error);
     alert("❌ No se pudo acceder al micrófono seleccionado. Verifica los permisos.");
   }
+}
+export function inicializarEscenarioDesdeMemoria() {
+  const select = document.getElementById("karaokeThemeSelect");
+  const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics");
+  if (!select || !contenedorKaraoke) return;
+
+  let temaGuardado = localStorage.getItem("singIt_stage") || "theme-clasico";
+  if (temaGuardado === "undefined") temaGuardado = "theme-clasico";
+
+  select.value = temaGuardado; 
+
+  const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
+  todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
+  contenedorKaraoke.classList.add(temaGuardado);
 }
