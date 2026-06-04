@@ -1,8 +1,8 @@
 export default async function handler(req, res) {
   // 💡 1. Configurar cabeceras CORS obligatorias al inicio
-  res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // Permitir solicitudes dinámicas para evitar lag de dominio en Vercel
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
 
   // 💡 2. Responder de inmediato con éxito a la verificación previa (Preflight)
   if (req.method === 'OPTIONS') {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Falta configurar OPENAI_API_KEY en el servidor" });
     }
 
-    // Convertir base64 a binario
+    // Convertir base64 a binario de alto rendimiento
     const audioBuffer = Buffer.from(audioBase64, "base64");
 
     // Crear archivo compatible para enviar a OpenAI
@@ -66,3 +66,14 @@ export default async function handler(req, res) {
     });
   }
 }
+
+// ====================================================================
+// 🔥 INYECCIÓN DE INFRAESTRUCTURA: AMPLIACIÓN DE LÍMITES DE RED EN VERCEL
+// ====================================================================
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '15mb', // Amplía de forma masiva el búfer a 15 Megabytes para que pasen las canciones [1]
+    },
+  },
+};
