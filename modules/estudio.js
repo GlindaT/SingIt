@@ -109,3 +109,301 @@ export function stopTrack() {
     updateKaraokeHighlight(0);
   }
 }
+import { $ } from '../script.js';
+import { aplicarCadenaDeAudioKaraoke } from './estudio.js'; // Conexión local interna
+
+// Variables de estado específicas de la grabación encapsuladas en el módulo
+let studioChunks = [];
+let studioRecordedBlob = null;
+let studioMediaRecorder = null;
+let studioStream = null;
+let studioStream2 = null;
+let duoAudioContext = null;
+let duoAnalyser1 = null;
+let duoAnalyser2 = null;
+let duoAnimationId = null;
+let currentVolNode1 = null;
+let currentVolNode2 = null;
+
+// Función auxiliar temporal en caso de que getSelectedMicId esté en la pestaña config
+function getSelectedMicId(micNumber) {
+  const select = document.getElementById(`mic${micNumber}Select`);
+  return select ? select.value : null;
+}
+
+export async function startStudioRecording() {
+  try {
+    const player = $("player");
+    const micCount = $("micCount");
+    const isDuo = micCount && micCount.value === "2";
+
+    studioChunks = [];
+    studioRecordedBlob = null;
+    
+    const voicePlayer = $("voicePlayer");
+    if (voicePlayer) voicePlayer.src = "";
+    
+    const status = $("studioStatus");
+    if (status) status.textContent = "Estado: preparando grabación...";
+
+    duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const destination = duoAudioContext.createMediaStreamDestination();
+
+    const mic1Id = getSelectedMicId(1);
+    const mic2Id = getSelectedMicId(2);
+
+    const audioConstraints1 = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
+      sampleRate: 48000
+    };
+
+    if (mic1Id) {
+      audioConstraints1.deviceId = { exact: mic1Id };
+    }
+
+    studioStream = await navigator.mediaDevices.getUserMedia({audio: audioConstraints1});
+
+    const source1 = duoAudioContext.createMediaStreamSource(studioStream);
+    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(duoAudioContext, source1);
+
+    const volNode1 = duoAudioContext.createGain();
+    volNode1.gain.value = 0.75;
+    mic1Filtrado.connect(volNode1);
+    currentVolNode1 = volNode1; 
+
+    duoAnalyser1 = duoAudioContext.createAnalyser();
+    duoAnalyser1.fftSize = 2048;
+    volNode1.connect(duoAnalyser1);
+
+    const merger = duoAudioContext.createChannelMerger(2);
+    duoAnalyser1.connect(merger, 0, 0);
+
+    if (!isDuo) {
+      duoAnalyser1.connect(merger, 0, 1);
+    }
+
+    if (isDuo && mic2Id) {
+      const audioConstraints2 = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+        sampleRate: 48000
+      };
+      if (mic2Id) audioConstraints2.deviceId = { exact: mic2Id };
+       
+      studioStream2 = await navigator.mediaDevices.getUserMedia({audio: audioConstraints2});
+
+      const source2 = duoAudioContext.createMediaStreamSource(studioStream2);
+      const mic2Filtrado = aplicarCadenaDeAudioKaraoke(duoAudioContext, source2);
+
+      const volNode2 = duoAudioContext.createGain();
+      volNode2.gain.value = 0.75;
+      mic2Filtrado.connect(volNode2);
+      currentVolNode2 = volNode2; 
+
+      duoAnalyser2 = duoAudioContext.createAnalyser();
+      duoAnalyser2.fftSize = 2048;
+      volNode2.connect(duoAnalyser2);
+
+      duoAnalyser2.connect(merger, 0, 1);
+
+      const duoIndicator = $("duoIndicator");
+      if (duoIndicator) duoIndicator.style.display = "block";
+    }
+
+    merger.connect(destination);
+    let finalStream = destination.stream;
+
+    startDuoLevelMonitor();
+
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
+    studioMediaRecorder = new MediaRecorder(finalStream, options);
+
+    studioMediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) studioChunks.push(event.data);
+    };
+
+    studioMediaRecorder.onstop = () => {
+      studioRecordedBlob = new Blob(studioChunks, { type: "audio/webm" });
+      const vp = $("voicePlayer");
+      if (vp) vp.src = URL.createObjectURL(studioRecordedBlob);
+      if (status) status.textContent = "Estado: grabación lista";
+      stopDuoLevelMonitor();
+    };
+
+    studioMediaRecorder.start();
+    
+    const mic1Select = $("mic1Select");
+    const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
+    
+    if (status) {
+      if (isDuo && mic2Id) {
+        const mic2Select = $("mic2Select");
+        const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
+        status.textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
+      } else {
+        status.textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
+      }
+    }
+
+    if (player && player.src) {
+      player.currentTime = 0;
+      player.play();
+    }
+  } catch (error) {
+    console.error(error);
+    const status = $("studioStatus");
+    if (status) status.textContent = "Estado: error al acceder al micrófono";
+    alert("❌ No se pudo acceder al micrófono. Verifica en Configuración.");
+  }
+}
+
+/**
+ * Monitor visual de niveles de audio en tiempo real para dúos
+ */
+import { $ } from '../script.js';
+import { addLibraryItem } from './biblioteca.js'; // Conexión modular con el motor CRUD de la base de datos
+
+// Variables compartidas con el grabador (asegúrate de que estén arriba en tu archivo)
+let studioChunks = [];
+let studioRecordedBlob = null;
+let studioMediaRecorder = null;
+let studioStream = null;
+let studioStream2 = null;
+let duoAudioContext = null;
+let duoAnalyser1 = null;
+let duoAnalyser2 = null;
+let duoAnimationId = null;
+let studioTrackFileName = null;
+
+/**
+ * Monitor visual de niveles de audio para los micrófonos (Unificado y Corregido)
+ */
+export function startDuoLevelMonitor() {
+  const level1 = $("duoMic1Level");
+  const level2 = $("duoMic2Level");
+
+  function updateLevels() {
+    if (duoAnalyser1 && level1) {
+      const data1 = new Uint8Array(duoAnalyser1.frequencyBinCount);
+      duoAnalyser1.getByteFrequencyData(data1);
+      const avg1 = data1.reduce((a, b) => a + b, 0) / data1.length;
+      level1.style.width = Math.min(100, (avg1 / 128) * 100) + "%";
+    }
+
+    if (duoAnalyser2 && level2) {
+      const data2 = new Uint8Array(duoAnalyser2.frequencyBinCount);
+      duoAnalyser2.getByteFrequencyData(data2);
+      const avg2 = data2.reduce((a, b) => a + b, 0) / data2.length;
+      level2.style.width = Math.min(100, (avg2 / 128) * 100) + "%";
+    }
+
+    if (studioMediaRecorder && studioMediaRecorder.state === "recording") {
+      duoAnimationId = requestAnimationFrame(updateLevels);
+    }
+  }
+
+  updateLevels();
+}
+
+/**
+ * Detiene de manera segura el bucle de fotogramas del monitor de volumen
+ */
+export function stopDuoLevelMonitor() {
+  if (duoAnimationId) {
+    cancelAnimationFrame(duoAnimationId);
+    duoAnimationId = null;
+  }
+
+  const level1 = $("duoMic1Level");
+  const level2 = $("duoMic2Level");
+  if (level1) level1.style.width = "0%";
+  if (level2) level2.style.width = "0%";
+}
+
+/**
+ * Detiene la grabación multimedia y apaga el hardware de los micrófonos
+ */
+export function stopStudioRecording() {
+  if (studioMediaRecorder && studioMediaRecorder.state !== "inactive") {
+    studioMediaRecorder.stop();
+  }
+
+  if (studioStream) {
+    studioStream.getTracks().forEach(track => track.stop());
+  }
+
+  if (studioStream2) {
+    studioStream2.getTracks().forEach(track => track.stop());
+    studioStream2 = null;
+  }
+
+  if (duoAudioContext) {
+    duoAudioContext.close();
+    duoAudioContext = null;
+  }
+
+  duoAnalyser1 = null;
+  duoAnalyser2 = null;
+
+  stopDuoLevelMonitor();
+
+  const duoIndicator = $("duoIndicator");
+  if (duoIndicator) {
+    duoIndicator.style.display = "none";
+  }
+
+  const player = $("player");
+  if (player) {
+    player.pause();
+  }
+}
+
+/**
+ * Resetea los búferes locales para descartar la toma actual
+ */
+export function redoStudioRecording() {
+  studioChunks = [];
+  studioRecordedBlob = null;
+  
+  const vp = $("voicePlayer");
+  if (vp) vp.src = "";
+  
+  const status = $("studioStatus");
+  if (status) status.textContent = "Estado: grabación eliminada. Lista para volver a grabar.";
+}
+
+/**
+ * Exporta el audio grabado directamente hacia la base de datos de la Biblioteca
+ */
+export async function saveStudioRecording() {
+  if (!studioRecordedBlob) {
+    alert("⚠️ No hay grabación para guardar");
+    return;
+  }
+
+  const baseName = studioTrackFileName
+    ? `Voz - ${studioTrackFileName}`
+    : "Grabación de voz";
+
+  try {
+    // LLAMADA MODULAR: Guardado directo en IndexedDB usando la función del módulo biblioteca.js
+    await addLibraryItem({
+      name: baseName,
+      type: "voz",
+      date: new Date().toISOString(),
+      audioData: studioRecordedBlob // Almacena el archivo blob de audio de forma local offline
+    });
+
+    const status = $("studioStatus");
+    if (status) status.textContent = "Estado: grabación guardada en Biblioteca";
+    alert("🚀 ¡Grabación guardada con éxito en tu Biblioteca local!");
+  } catch (error) {
+    console.error("Error al guardar la grabación en IndexedDB:", error);
+    alert("❌ Hubo un error al intentar guardar en la base de datos.");
+  }
+}
