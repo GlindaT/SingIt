@@ -521,7 +521,61 @@ export async function loadSelectedVoiceFromLibrary() {
     alert("❌ No se pudo cargar la voz seleccionada.");
   }
 }
+/**
+ * Corta el archivo de voz en porciones y lo envía a procesar a la API de Whisper de forma asíncrona
+ */
 export async function transcribeSelectedVoice() {
+  // ==========================================
+  // SUBRUTINAS LOCALES DE FUERZA BRUTA (INYECTADAS ADENTRO)
+  // ==========================================
+  function blobToBase64(blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(",")[1];
+        resolve(base64String);
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function audioBufferToWav(buffer, startSample, endSample) {
+    const numOfChan = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const subBufferLength = endSample - startSample;
+    const bufferLength = subBufferLength * numOfChan * 2 + 44;
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(arrayBuffer);
+    
+    view.setUint32(0, 0x46464952, true); // "RIFF"
+    view.setUint32(4, bufferLength - 8, true);
+    view.setUint32(8, 0x45564157, true); // "WAVE"
+    view.setUint32(12, 0x20746d66, true); // "fmt "
+    view.setUint32(16, 16, true); 
+    view.setUint16(20, 1, true); 
+    view.setUint16(22, numOfChan, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numOfChan * 2, true); 
+    view.setUint16(32, numOfChan * 2, true); 
+    view.setUint16(34, 16, true); 
+    view.setUint32(36, 0x61746164, true); // "data"
+    view.setUint32(40, subBufferLength * numOfChan * 2, true);
+
+    let offset = 44;
+    for (let i = startSample; i < endSample; i++) {
+      for (let channel = 0; channel < numOfChan; channel++) {
+        let sample = buffer.getChannelData(channel)[i];
+        sample = Math.max(-1, Math.min(1, sample)); 
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+    return new Blob([arrayBuffer], { type: "audio/wav" });
+  }
+
+  // ==========================================
+  // LOGICA PRINCIPAL DE WHISPER IA
+  // ==========================================
   if (!selectedVoiceBlob) {
     alert("⚠️ Primero selecciona y carga una voz presionando el botón 'Cargar voz seleccionada'.");
     return;
@@ -590,7 +644,6 @@ export async function transcribeSelectedVoice() {
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
-    // LLAMADA MODULAR ASÍNCRONA: Transferencia cruzada segura de las sílabas hacia el monitor del Karaoke
     const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
     if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
     if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
@@ -599,7 +652,6 @@ export async function transcribeSelectedVoice() {
       lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
     }
 
-    // GENERADOR AUTOMÁTICO DE ARCHIVO DE TEXTO ULTRASTAR COMPATIBLE (.txt offline)
     try {
       const vozOriginal = await getLibraryItemById(selectedVoiceId); 
       const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
