@@ -1257,3 +1257,283 @@ export async function applyCorrectedLyrics() {
     if (status) status.textContent = "Estado: letra corregida aplicada ✅";
   }
 }
+import { $ } from '../script.js';
+import { buildWordTimingFromSegment, analyzePitchForSegments } from './estudio.js'; // Conexiones locales internas
+import { addLibraryItem, updateLibraryItem } from './biblioteca.js'; // Conexión modular segura con la BD
+
+// Asegúrate de enlazar con las variables de estado del Estudio declaradas arriba en tu archivo:
+let tapSyncMode = false;
+let tapSyncLines = [];
+let tapSyncTimestamps = [];
+let tapSyncCurrentIndex = 0;
+let baseTranscriptionSegments = [];
+let transcriptionSegments = [];
+let selectedVoiceBlob = null;
+let selectedVoiceId = null;
+let studioSelectedTrackBlob = null;
+let studioSelectedTrackName = "Sin título";
+let studioSelectedTrackId = null;
+
+/**
+ * Inicia el sistema de captura de toques reiniciando el reproductor de voz y asegurando oyentes únicos
+ */
+export function startTapSync() {
+  const lyricsText = $("lyricsText");
+  const voicePlayer = $("selectedVoicePlayer");
+  
+  if (!lyricsText || !lyricsText.value.trim()) {
+    alert("⚠️ Primero escribe o corrige la letra en el área de texto.");
+    return;
+  }
+  
+  if (!voicePlayer || !voicePlayer.src) {
+    alert("⚠️ Primero carga una voz desde la Biblioteca.");
+    return;
+  }
+  
+  tapSyncLines = lyricsText.value
+    .split("\n")
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+  
+  if (tapSyncLines.length === 0) {
+    alert("⚠️ No hay líneas de texto para sincronizar.");
+    return;
+  }
+  
+  tapSyncTimestamps = [];
+  tapSyncCurrentIndex = 0;
+  tapSyncMode = true;
+  
+  const startBtn = $("startTapSyncBtn");
+  const cancelBtn = $("cancelTapSyncBtn");
+  const activeBox = $("tapSyncActive");
+  const resultBox = $("tapSyncResult");
+
+  if (startBtn) startBtn.style.display = "none";
+  if (cancelBtn) cancelBtn.style.display = "inline-block";
+  if (activeBox) activeBox.style.display = "block";
+  if (resultBox) resultBox.style.display = "none";
+  
+  updateTapSyncDisplay();
+  
+  voicePlayer.currentTime = 0;
+  voicePlayer.play();
+  
+  // Limpieza preventiva para evitar la acumulación caótica de listeners duplicados
+  document.removeEventListener("keydown", handleTapSyncKeypress);
+  document.addEventListener("keydown", handleTapSyncKeypress);
+  
+  console.log("🎯 Sincronización iniciada de forma limpia. Líneas:", tapSyncLines.length);
+}
+
+/**
+ * Escuchador de teclado físico para capturar la barra espaciadora como pulso musical
+ */
+function handleTapSyncKeypress(e) {
+  if (!tapSyncMode) return;
+  
+  if (e.code === "Space" || e.key === " ") {
+    e.preventDefault();
+    recordTap();
+  }
+  
+  if (e.code === "Escape") {
+    cancelTapSync();
+  }
+}
+
+/**
+ * Registra la marca de tiempo exacta del reproductor y gatilla la animación visual en la pantalla
+ */
+export function recordTap() {
+  if (!tapSyncMode) return;
+  
+  const voicePlayer = $("selectedVoicePlayer");
+  if (!voicePlayer) return;
+  
+  const currentTime = voicePlayer.currentTime;
+  
+  tapSyncTimestamps.push(currentTime);
+  tapSyncCurrentIndex++;
+  
+  const tapBtn = $("tapBeatBtn");
+  if (tapBtn) {
+    tapBtn.style.transform = "scale(0.95)";
+    tapBtn.style.background = "linear-gradient(135deg, #16a34a, #14532d)";
+    setTimeout(() => {
+      tapBtn.style.transform = "scale(1)";
+      tapBtn.style.background = "linear-gradient(135deg, #22c55e, #16a34a)";
+    }, 100);
+  }
+  
+  if (tapSyncCurrentIndex >= tapSyncLines.length) {
+    finishTapSync();
+  } else {
+    updateTapSyncDisplay();
+  }
+}
+
+/**
+ * Refresca las etiquetas de texto de la interfaz con el renglón actual por cantar
+ */
+export function updateTapSyncDisplay() {
+  const currentLineEl = $("tapCurrentLine");
+  const progressEl = $("tapProgress");
+  
+  if (currentLineEl && tapSyncCurrentIndex < tapSyncLines.length) {
+    currentLineEl.textContent = tapSyncLines[tapSyncCurrentIndex];
+  }
+  
+  if (progressEl) {
+    progressEl.textContent = `${tapSyncCurrentIndex} / ${tapSyncLines.length} líneas`;
+  }
+}
+
+/**
+ * Detiene los escuchadores y congela la grabación de pulsos temporalmente al terminar el texto
+ */
+export function finishTapSync() {
+  tapSyncMode = false;
+  
+  const voicePlayer = $("selectedVoicePlayer");
+  if (voicePlayer) voicePlayer.pause();
+  
+  document.removeEventListener("keydown", handleTapSyncKeypress);
+  
+  const activeBox = $("tapSyncActive");
+  const resultBox = $("tapSyncResult");
+  const cancelBtn = $("cancelTapSyncBtn");
+
+  if (activeBox) activeBox.style.display = "none";
+  if (resultBox) resultBox.style.display = "block";
+  if (cancelBtn) cancelBtn.style.display = "none";
+  
+  console.log("✅ Sincronización completada. Timestamps:", tapSyncTimestamps);
+}
+
+/**
+ * Apaga el flujo de toques y vacía los arreglos temporales de memoria de forma limpia
+ */
+export function cancelTapSync() {
+  tapSyncMode = false;
+  
+  const voicePlayer = $("selectedVoicePlayer");
+  if (voicePlayer) voicePlayer.pause();
+  
+  document.removeEventListener("keydown", handleTapSyncKeypress);
+  
+  const startBtn = $("startTapSyncBtn");
+  const cancelBtn = $("cancelTapSyncBtn");
+  const activeBox = $("tapSyncActive");
+  const resultBox = $("tapSyncResult");
+
+  if (startBtn) startBtn.style.display = "inline-block";
+  if (cancelBtn) cancelBtn.style.display = "none";
+  if (activeBox) activeBox.style.display = "none";
+  if (resultBox) resultBox.style.display = "none";
+  
+  tapSyncLines = [];
+  tapSyncTimestamps = [];
+  tapSyncCurrentIndex = 0;
+}
+
+/**
+ * Procesa las estrofas capturadas, recorta silencios instrumentales dilatados, 
+ * analiza las frecuencias armónicas mediante el analizador offline y genera el archivo Karaoke final.
+ */
+export async function applyTapSync() {
+  if (tapSyncTimestamps.length === 0 || tapSyncLines.length === 0) {
+    alert("⚠️ No hay datos de sincronización.");
+    return;
+  }
+  
+  const voicePlayer = $("selectedVoicePlayer");
+  const totalDuration = voicePlayer ? voicePlayer.duration : 0;
+  const status = $("selectedVoiceStatus");
+  
+  if (status) status.textContent = "Estado: Aplicando tiempos y analizando notas...";
+  
+  const newSegments = [];
+  
+  for (let i = 0; i < tapSyncLines.length; i++) {
+    const start = tapSyncTimestamps[i] || 0;
+    let end = (i < tapSyncTimestamps.length - 1) ? tapSyncTimestamps[i + 1] : (totalDuration || start + 3);
+    
+    // CORRECCIÓN PROTECTORA DE PAUSAS EN SILENCIOS INSTRUMENTALES
+    const distanciaEntreTaps = end - start;
+    if (distanciaEntreTaps > 1.2) {
+      const conteoPalabras = tapSyncLines[i].split(/\s+/).length;
+      end = start + Math.min(distanciaEntreTaps, Math.max(1.0, conteoPalabras * 0.45));
+    }
+
+    newSegments.push(buildWordTimingFromSegment({
+      start: start,
+      end: end,
+      text: tapSyncLines[i]
+    }));
+  }
+  
+  let analyzedSegments = newSegments;
+  if (selectedVoiceBlob) {
+      if (status) status.textContent = "Estado: Analizando notas musicales... 🎵";
+      analyzedSegments = await analyzePitchForSegments(selectedVoiceBlob, newSegments);
+  }
+  
+  baseTranscriptionSegments = analyzedSegments;
+  transcriptionSegments = analyzedSegments;
+  
+  // Guardado de la canción estructurada final tipo "karaoke" offline en la base de datos
+  if (studioSelectedTrackBlob) {
+      try {
+          await addLibraryItem({
+              name: `Karaoke - ${studioSelectedTrackName || "Sin título"}`,
+              type: "karaoke",
+              audioBlob: studioSelectedTrackBlob,
+              date: new Date().toLocaleString("es-ES"),
+              transcription: analyzedSegments,
+              metadata: {
+                  title: studioSelectedTrackName || "Sin título",
+                  sourceVoiceId: selectedVoiceId || null,
+                  sourceTrackId: studioSelectedTrackId || null
+              }
+          });
+          console.log("✅ Canción karaoke creada e inyectada con éxito en la base de datos.");
+      } catch (err) {
+          console.error("❌ Error creando karaoke en la base de datos:", err);
+      }
+  } else {
+      console.warn("⚠️ No hay pista instrumental seleccionada para crear karaoke");
+  }
+  
+  // Actualización cruzada en los monitores de texto visuales activos en la pantalla
+  if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+  if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+  
+  if (selectedVoiceId) {
+      updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments })
+          .then(() => console.log("✅ Historial de letra sincronizada acoplada a la voz original"))
+          .catch(err => console.error("Error sincronizando voz en biblioteca:", err));
+  }
+  
+  const startBtn = $("startTapSyncBtn");
+  const resultBox = $("tapSyncResult");
+  if (startBtn) startBtn.style.display = "inline-block";
+  if (resultBox) resultBox.style.display = "none";
+  
+  tapSyncLines = [];
+  tapSyncTimestamps = [];
+  tapSyncCurrentIndex = 0;
+  
+  if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
+  alert("✅ ¡Tiempos y notas aplicados de forma estable! Reproduce para verificar.");
+}
+
+/**
+ * Limpia el panel de resultados y reinicia el ciclo de escucha desde cero
+ */
+export function redoTapSync() {
+  const resultBox = $("tapSyncResult");
+  if (resultBox) resultBox.style.display = "none";
+  startTapSync();
+}
