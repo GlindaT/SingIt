@@ -642,28 +642,38 @@
           </select>
         </div>
 
+        <!-- CONFIGURACIÓN DE ESCENARIOS (KARAOKE) -->
         <div class="settings-group">
           <label for="karaokeThemeSelect">🎨 Escenario de Canto (Fondo)</label>
-          <select id="karaokeThemeSelect">
-            <option value="theme-clasico">Default Clásico</option>
-            <option value="theme-moderno">Cian Moderno</option>
-            <option value="theme-disco">Disco Fucsia</option>
-            <option value="theme-acustico">Madera Acústico</option>
-            <option value="theme-fiesta">Arcoíris Fiesta</option>
-            <option value="theme-retrowave">Retro Synthwave Neon 💜</option>
-          </select>
+          <div style="display: flex; gap: 10px; margin-top: 8px;">
+            <select id="karaokeThemeSelect" style="margin-top: 0; flex: 1;">
+              <option value="theme-clasico">Default Clásico</option>
+              <option value="theme-moderno">Cian Moderno</option>
+              <option value="theme-disco">Disco Fucsia</option>
+              <option value="theme-acustico">Madera Acústico</option>
+              <option value="theme-fiesta">Arcoíris Fiesta</option>
+              <option value="theme-retrowave">Retro Synthwave Neon 💜</option>
+            </select>
+            <!-- BOTÓN AÑADIDO PARA FORZAR LA DETECCIÓN VISUAL -->
+            <button type="button" id="applyKaraokeStageBtn" style="background: #3b82f6; color: white; white-space: nowrap;">🎬 Aplicar Escenario</button>
+          </div>
         </div>
 
+        <!-- CONFIGURACIÓN DE TEMAS GLOBALES -->
         <div class="settings-group">
           <label for="appTheme">🎨 Tema de la App</label>
-          <select id="appTheme">
-            <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
-            <option value="claro">☀️ Claro</option>
-            <option value="rock">🎸 Rock</option>
-            <option value="pop">🎤 Pop</option>
-            <option value="neon">💜 Neón</option>
-            <option value="naturaleza">🌿 Naturaleza</option>
-          </select>
+          <div style="display: flex; gap: 10px; margin-top: 8px;">
+            <select id="appTheme" style="margin-top: 0; flex: 1;">
+              <option value="oscuro">🌙 Oscuro (Predeterminado)</option>
+              <option value="claro">☀️ Claro</option>
+              <option value="rock">🎸 Rock</option>
+              <option value="pop">🎤 Pop</option>
+              <option value="neon">💜 Neón</option>
+              <option value="naturaleza">🌿 Naturaleza</option>
+            </select>
+            <!-- BOTÓN AÑADIDO PARA FORZAR LA DETECCIÓN VISUAL -->
+            <button type="button" id="applyGlobalThemeBtn" style="background: var(--accent); color: black; white-space: nowrap;">✨ Aplicar Tema</button>
+          </div>
         </div>
         <p id="saveNotification" class="save-notification" style="opacity:0; transition: opacity 0.5s;">✅ Configuración guardada</p>
       </div>
