@@ -2130,7 +2130,7 @@ async function mixKaraoke() {
     );
 
     const trackGain = offlineCtx.createGain();
-    trackGain.gain.value = 0.4;
+    trackGain.gain.value = 0.6;
 
     const trackSource = offlineCtx.createBufferSource();
     trackSource.buffer = trackBuffer;
@@ -2138,7 +2138,7 @@ async function mixKaraoke() {
     trackGain.connect(offlineCtx.destination);
 
     const voiceGain = offlineCtx.createGain();
-    voiceGain.gain.value = 2.5;
+    voiceGain.gain.value = 2.0;
 
     const voiceSource = offlineCtx.createBufferSource();
     voiceSource.buffer = voiceBuffer;
@@ -3162,7 +3162,7 @@ function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2) {
   // ========================================================
   // 🎨 CONFIGURACIÓN DE COLORES DINÁMICOS SEGÚN EL TEMA
   // ========================================================
-  const temaActual = localStorage.getItem("singIt_karaoke_theme") || "theme-clasico";
+  const temaActual = localStorage.getItem("singIt_stage") || "theme-clasico";
   
   let colorFondo = "#111827";       // Fondo por defecto (Clásico)
   let colorLineas = "#333333";      // Líneas del pentagrama
@@ -3777,11 +3777,7 @@ async function loadMyKaraokeSongs() {
     // Obtener canciones tipo "karaoke" de la biblioteca
     const karaokeSongs = await getLibraryItemsByType("karaoke");
     
-    // También obtener voces que tengan transcripción
-    const voces = await getLibraryItemsByType("voz");
-    const vocesConSync = voces.filter(v => v.transcription && v.transcription.length > 0);
-    
-    const allSongs = [...karaokeSongs, ...vocesConSync];
+    const allSongs = [...karaokeSongs];
     
     if (allSongs.length === 0) {
       container.innerHTML = `
@@ -3853,7 +3849,7 @@ async function loadKaraokeSong(id) {
     const track = $("karaokeTrack");
     if (track && song.audioBlob) {
       track.src = URL.createObjectURL(song.audioBlob);
-      track.volume = 0.4;
+      track.volume = 0.5;
       karaokeSelectedTrackBlob = song.audioBlob;
       karaokeSelectedTrackName = song.name;
     }
