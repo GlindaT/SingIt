@@ -20,6 +20,9 @@ window.state = {
 };
 window.transcriptionSegments = [];
 window.pitchHistory = [];
+window.pitchHistoryMic1 = [];
+window.pitchHistoryMic2 = [];
+window.isPitchDetectionRunning = false;
 window.autoScrollEnabled = true;
 
 // --- 3. NAVEGACIÓN PRINCIPAL ASÍNCRONA (LAZY LOADING) ---
@@ -46,14 +49,6 @@ export async function showTab(tabId) {
 
   // DISPARADORES DE DESCARGA BAJO DEMANDA
   try {
-    const { initDB } = await import("./modules/biblioteca.js");
-    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria } = await import("./modules/config.js");
-    await initDB();
-    initSettings();
-    
-    // Encendemos la restauración de tema unificada desde el arranque
-    
-    inicializarEscenarioDesdeMemoria(); 
     if (tabId === "config") {
       const { initSettings, loadAvailableMics } = await import("./modules/config.js");
       initSettings();
@@ -70,14 +65,17 @@ export async function showTab(tabId) {
       // Módulo Afinador listo para interactuar
     }
     else if (tabId === "estudio") {
-      const { loadTrackOptionsInStudio } = await import("./modules/estudio.js");
+      const { loadTrackOptionsInStudio, loadVoiceOptionsInStudio } = await import("./modules/estudio.js");
       await loadTrackOptionsInStudio();
+      await loadVoiceOptionsInStudio();
     }
     else if (tabId === "karaoke") {
-      const { applyKaraokeTheme, loadTrackOptionsInKaraoke, cargarLetrasEnMonitor } = await import("./modules/karaoke.js");
+      const { applyKaraokeTheme, loadTrackOptionsInKaraoke, cargarLetrasEnMonitor, loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
       applyKaraokeTheme();
       cargarLetrasEnMonitor();
       await loadTrackOptionsInKaraoke();
+      await loadMyKaraokeSongs().catch(() => {});
+      await loadKaraokeCatalog().catch(() => {});
     }
   } catch (error) {
     console.error(`Error crítico haciendo Lazy Import de la pestaña [${tabId}]:`, error);
@@ -86,7 +84,7 @@ export async function showTab(tabId) {
 
 // --- 4. CONTROLADOR COMPARTIDO DEL MONITOR DE KARAOKE GRAPHICS ---
 let karaokeRenderer = null;
-export async function drawKaraokeMonitor(currentTime, currentFreq) {
+export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 = 0) {
   if (!karaokeRenderer) {
     const { KaraokeCanvasRenderer } = await import('./modules/karaoke.js');
     karaokeRenderer = new KaraokeCanvasRenderer('karaokeCanvas', {
@@ -96,23 +94,19 @@ export async function drawKaraokeMonitor(currentTime, currentFreq) {
     });
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
-  karaokeRenderer.render(currentTime, currentFreq, window.transcriptionSegments, window.pitchHistory);
+  karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
 
 // ==========================================
-// INIT - ENTRADA PRINCIPAL DE LA APP (CORREGIDO)
+// INIT - ENTRADA PRINCIPAL DE LA APP 
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
   const encabezados = document.querySelectorAll('.encabezado-desplegable');
   
   encabezados.forEach(encabezado => {
     encabezado.addEventListener('click', () => {
-      const targetId = encabezado.getAttribute('data-target');
-      const arrowId = encabezado.getAttribute('data-arrow');
-      
-      const content = document.getElementById(targetId);
-      const arrow = document.getElementById(arrowId);
-      
+      const content = document.getElementById(encabezado.getAttribute('data-target'));
+      const arrow = document.getElementById(encabezado.getAttribute('data-arrow'));
       if (content && arrow) {
         content.classList.toggle('oculto'); 
         arrow.classList.toggle('rotada');
@@ -121,30 +115,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
+    // CORRECCIÓN PROTECTORA: Importamos de forma explícita al arrancar la app
+    const { initDB, renderLibrary, saveManualFileToLibrary } = await import("./modules/biblioteca.js");
+    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria, saveSetting } = await import("./modules/config.js");
+    
+    // Encendemos la persistencia de datos local de IndexedDB
     await initDB();
     initSettings();
+    inicializarEscenarioDesdeMemoria(); 
 
-    // CORRECCIÓN PROTECTORA DE CLASES: Evita duplicidades como "theme-theme-clasico"
-    function applyKaraokeTheme() {
+    // Lógica interna para sincronizar el formato de clases CSS del escenario
+    function applyKaraokeThemeLocal() {
       const themeGuardado = localStorage.getItem("singIt_stage") || "theme-clasico";
       const monitor = $("karaokeLiveLyrics");
       if (monitor) {
-        // Nos aseguramos de limpiar e inyectar el formato limpio reglamentario
         const nombreLimpioTema = themeGuardado.startsWith("theme-") ? themeGuardado : "theme-" + themeGuardado;
-        
-        // Mantenemos la consistencia estructural con tus hojas de estilos CSS
-        monitor.className = "karaoke-lyrics " + nombreLimpioTema;
+        const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
+        todosLosTemas.forEach(t => monitor.classList.remove(t));
+        monitor.classList.add(nombreLimpioTema);
       }
     }
-
-    applyKaraokeTheme();
+    applyKaraokeThemeLocal();
 
     safeAdd("karaokeThemeSelect", "change", (e) => {
       saveSetting("singIt_stage", e.target);
-      applyKaraokeTheme();
+      applyKaraokeThemeLocal();
     });
 
-    // Navegación principal
+    // Enlace de clics de la barra de navegación lateral
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
@@ -152,51 +150,91 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("btnSplitter", "click", () => showTab("splitter"));
     safeAdd("btnConfig", "click", () => showTab("config"));
 
-    // Módulo Afinador
-    safeAdd("recordBtn", "click", toggleRecording);
+    // Eventos Lazy del Módulo: Afinador
+    safeAdd("recordBtn", "click", async () => {
+      const { toggleAfinadorRecording } = await import("./modules/afinador.js");
+      await toggleAfinadorRecording();
+    });
 
-    // Módulo Estudio de Grabación y Edición
-    safeAdd("audioFile", "change", cargarAudioEstudio);
-    safeAdd("refreshStudioTrackListBtn", "click", loadTrackOptionsInStudio);
-    safeAdd("loadStudioTrackBtn", "click", loadSelectedTrackFromLibraryStudio);
-    safeAdd("playTrackBtn", "click", playTrack);
-    safeAdd("pauseTrackBtn", "click", pauseTrack);
-    safeAdd("stopTrackBtn", "click", stopTrack);
-    safeAdd("startStudioRecBtn", "click", startStudioRecording);
-    safeAdd("stopStudioRecBtn", "click", stopStudioRecording);
-    safeAdd("redoStudioRecBtn", "click", redoStudioRecording);
-    safeAdd("saveStudioRecBtn", "click", saveStudioRecording);
-    safeAdd("refreshVoiceListBtn", "click", loadVoiceOptionsInStudio);
-    safeAdd("loadSelectedVoiceBtn", "click", loadSelectedVoiceFromLibrary);
-    safeAdd("transcribeVoiceBtn", "click", transcribeSelectedVoice);
-    safeAdd("applyCorrectedLyricsBtn", "click", applyCorrectedLyrics);
+    // Eventos Lazy del Módulo: Estudio de Grabación y Edición
+    safeAdd("audioFile", "change", async (e) => { const { cargarAudioEstudio } = await import("./modules/estudio.js"); cargarAudioEstudio(e); });
+    safeAdd("refreshStudioTrackListBtn", "click", async () => { const { loadTrackOptionsInStudio } = await import("./modules/estudio.js"); await loadTrackOptionsInStudio(); });
+    safeAdd("loadStudioTrackBtn", "click", async () => { const { loadSelectedTrackFromLibraryStudio } = await import("./modules/estudio.js"); await loadSelectedTrackFromLibraryStudio(); });
+    safeAdd("playTrackBtn", "click", async () => { const { playTrack } = await import("./modules/estudio.js"); playTrack(); });
+    safeAdd("pauseTrackBtn", "click", async () => { const { pauseTrack } = await import("./modules/estudio.js"); pauseTrack(); });
+    safeAdd("stopTrackBtn", "click", async () => { const { stopTrack } = await import("./modules/estudio.js"); stopTrack(); });
+    safeAdd("startStudioRecBtn", "click", async () => { const { startStudioRecording } = await import("./modules/estudio.js"); await startStudioRecording(); });
+    safeAdd("stopStudioRecBtn", "click", async () => { const { stopStudioRecording } = await import("./modules/estudio.js"); stopStudioRecording(); });
+    safeAdd("redoStudioRecBtn", "click", async () => { const { redoStudioRecording } = await import("./modules/estudio.js"); redoStudioRecording(); });
+    safeAdd("saveStudioRecBtn", "click", async () => { const { saveStudioRecording } = await import("./modules/estudio.js"); await saveStudioRecording(); });
+    safeAdd("refreshVoiceListBtn", "click", async () => { const { loadVoiceOptionsInStudio } = await import("./modules/estudio.js"); await loadVoiceOptionsInStudio(); });
+    safeAdd("loadSelectedVoiceBtn", "click", async () => { const { loadSelectedVoiceFromLibrary } = await import("./modules/estudio.js"); await loadSelectedVoiceFromLibrary(); });
+    safeAdd("transcribeVoiceBtn", "click", async () => { const { transcribeSelectedVoice } = await import("./modules/estudio.js"); await transcribeSelectedVoice(); });
+    safeAdd("applyCorrectedLyricsBtn", "click", async () => { const { applyCorrectedLyrics } = await import("./modules/estudio.js"); await applyCorrectedLyrics(); });
 
     // Conmutador del Auto-scroll
     safeAdd("toggleAutoScrollBtn", "click", () => {
-      autoScrollEnabled = !autoScrollEnabled;
+      window.autoScrollEnabled = !window.autoScrollEnabled;
       const btn = $("toggleAutoScrollBtn");
       if (btn) {
-        btn.textContent = autoScrollEnabled ? "🔒 Auto-scroll: ON" : "🔓 Auto-scroll: OFF";
-        btn.style.background = autoScrollEnabled ? "#f59e0b" : "#6b7280";
+        btn.textContent = window.autoScrollEnabled ? "🔒 Auto-scroll: ON" : "🔓 Auto-scroll: OFF";
+        btn.style.background = window.autoScrollEnabled ? "#f59e0b" : "#6b7280";
       }
     });
 
-    // Eventos interactivos de sincronización con Taps manuales
-    safeAdd("startTapSyncBtn", "click", startTapSync);
-    safeAdd("cancelTapSyncBtn", "click", cancelTapSync);
-    safeAdd("tapBeatBtn", "click", recordTap);
-    safeAdd("applyTapSyncBtn", "click", applyTapSync);
-    safeAdd("redoTapSyncBtn", "click", redoTapSync);
+    // Eventos de Sincronización Manual por Taps (Estudio)
+    safeAdd("startTapSyncBtn", "click", async () => { const { startTapSync } = await import("./modules/estudio.js"); startTapSync(); });
+    safeAdd("cancelTapSyncBtn", "click", async () => { const { cancelTapSync } = await import("./modules/estudio.js"); cancelTapSync(); });
+    safeAdd("tapBeatBtn", "click", async () => { const { recordTap } = await import("./modules/estudio.js"); recordTap(); });
+    safeAdd("applyTapSyncBtn", "click", async () => { const { applyTapSync } = await import("./modules/estudio.js"); await applyTapSync(); });
+    safeAdd("redoTapSyncBtn", "click", async () => { const { redoTapSync } = await import("./modules/estudio.js"); redoTapSync(); });
 
-    // Catálogos externos de Karaoke
+    // Eventos Lazy del Módulo: Karaoke
+    safeAdd("karaokeTrackFile", "change", async (e) => { const { cargarPistaKaraoke } = await import("./modules/karaoke.js"); cargarPistaKaraoke(e); });
+    safeAdd("karaokeStartBtn", "click", async () => { const { startKaraokeRecording } = await import("./modules/karaoke.js"); await startKaraokeRecording(); });
+    safeAdd("karaokeStopBtn", "click", async () => { const { stopKaraokeRecording } = await import("./modules/karaoke.js"); stopKaraokeRecording(); });
+    safeAdd("karaokeRestartBtn", "click", async () => { const { restartKaraokeRecording } = await import("./modules/karaoke.js"); restartKaraokeRecording(); });
+    safeAdd("karaokeMixBtn", "click", async () => { const { mixKaraoke } = await import("./modules/karaoke.js"); await mixKaraoke(); });
+    safeAdd("refreshKaraokeTrackBtn", "click", async () => { const { loadTrackOptionsInKaraoke } = await import("./modules/karaoke.js"); await loadTrackOptionsInKaraoke(); });
+    safeAdd("loadKaraokeTrackBtn", "click", async () => { const { loadSelectedTrackFromLibraryKaraoke } = await import("./modules/karaoke.js"); await loadSelectedTrackFromLibraryKaraoke(); });
+
+    // Escuchadores de actualización de tiempo de reproducción (Karaoke y Estudio)
+    const kTrack = $("karaokeTrack");
+    if (kTrack) {
+      kTrack.addEventListener("timeupdate", async () => {
+        const { syncKaraokeMonitor } = await import("./modules/karaoke.js");
+        syncKaraokeMonitor(kTrack.currentTime);
+      });
+      kTrack.addEventListener("ended", async () => {
+        const { syncKaraokeMonitor } = await import("./modules/karaoke.js");
+        syncKaraokeMonitor(0);
+      });
+    }
+
+    const player = $("player");
+    if (player) {
+      player.addEventListener("timeupdate", async () => {
+        const { updateKaraokeHighlight } = await import("./modules/karaoke.js");
+        updateKaraokeHighlight(player.currentTime);
+      });
+      player.addEventListener("ended", async () => {
+        const { updateKaraokeHighlight } = await import("./modules/karaoke.js");
+        updateKaraokeHighlight(0);
+      });
+    }
+
+    // Catálogos e Importadores del Karaoke
     safeAdd("refreshKaraokeCatalogBtn", "click", async () => {
-      const { loadMyKaraokeSongs } = await import("./modules/karaoke.js");
-      if (typeof loadKaraokeCatalog === "function") await loadKaraokeCatalog(); // Si tienes el catálogo de servidor en otro lado
-      await loadMyKaraokeSongs();
+      const { loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
+      await loadKaraokeCatalog().catch(() => {});
+      await loadMyKaraokeSongs().catch(() => {});
     });
-    
+
     // Carga manual de archivos hacia la Biblioteca
-    safeAdd("saveLibraryFileBtn", "click", saveManualFileToLibrary);
+    safeAdd("saveLibraryFileBtn", "click", async () => {
+      const { saveManualFileToLibrary } = await import("./modules/biblioteca.js");
+      await saveManualFileToLibrary();
+    });
     safeAdd("libraryFileInput", "change", (e) => {
       const file = e.target.files[0];
       const nameInput = $("libraryFileName");
@@ -205,65 +243,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Módulo de Entrenamiento Karaoke
-    safeAdd("karaokeTrackFile", "change", cargarPistaKaraoke);
-    safeAdd("karaokeStartBtn", "click", startKaraokeRecording);
-    safeAdd("karaokeStopBtn", "click", stopKaraokeRecording);
-    safeAdd("karaokeRestartBtn", "click", restartKaraokeRecording);
-    safeAdd("karaokeMixBtn", "click", mixKaraoke);
-    safeAdd("refreshKaraokeTrackBtn", "click", loadTrackOptionsInKaraoke);
-    safeAdd("loadKaraokeTrackBtn", "click", loadSelectedTrackFromLibraryKaraoke);
+    // Eventos Lazy del Módulo: Splitter IA
+    safeAdd("splitBtn", "click", async () => {
+      const { splitAudio } = await import("./modules/splitter.js");
+      await splitAudio();
+    });
 
-    const kTrack = $("karaokeTrack");
-    if (kTrack) {
-      kTrack.addEventListener("timeupdate", () => {
-        syncKaraokeMonitor(kTrack.currentTime);
-      });
+    // Eventos de Hardware de Configuración Avanzada de Micrófonos
+    safeAdd("refreshMicsBtn", "click", async () => { const { loadAvailableMics } = await import("./modules/config.js"); await loadAvailableMics(); });
+    safeAdd("testMic1Btn", "click", async () => { const { testMicrophone } = await import("./modules/config.js"); await testMicrophone(1); });
+    safeAdd("testMic2Btn", "click", async () => { const { testMicrophone } = await import("./modules/config.js"); await testMicrophone(2); });
+    safeAdd("mic1Select", "change", async () => { const { saveMicSelection } = await import("./modules/config.js"); saveMicSelection(1); });
+    safeAdd("mic2Select", "change", async () => { const { saveMicSelection } = await import("./modules/config.js"); saveMicSelection(2); });
+    safeAdd("micCount", "change", async () => { const { toggleMic2Visibility } = await import("./modules/config.js"); toggleMic2Visibility(); });
 
-      // CORRECCIÓN: Reseteamos la caché de renderizado al finalizar la canción
-      kTrack.addEventListener("ended", () => {
-        lineaLiveActivaIndexCache = -1; 
-        syncKaraokeMonitor(0);
-      });
-    }
-
-    // Módulo de Splitter IA
-    safeAdd("splitBtn", "click", splitAudio);
-
-    // Configuración avanzada de Micrófonos
-    safeAdd("refreshMicsBtn", "click", loadAvailableMics);
-    safeAdd("testMic1Btn", "click", () => testMicrophone(1));
-    safeAdd("testMic2Btn", "click", () => testMicrophone(2));
-    safeAdd("mic1Select", "change", () => saveMicSelection(1));
-    safeAdd("mic2Select", "change", () => saveMicSelection(2));
-    safeAdd("micCount", "change", toggleMic2Visibility);
-    
-    // Inicialización del hardware al arrancar
-     await loadAvailableMics();
+    // Inicializaciones de hardware básicas de arranque rápido
+    await loadAvailableMics();
     toggleMic2Visibility();
 
-    // Precarga asíncrona de datos en las pestañas (Lazy Imports de arranque)
-    const { renderLibrary } = await import("./modules/biblioteca.js");
-    const { loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
-    
+    // Precarga inicial del catálogo visual de archivos guardados
     await renderLibrary('todos');
-    await loadMyKaraokeSongs().catch(() => {});
-    await loadKaraokeCatalog().catch(() => {}); // Carga del archivo json del servidor al arrancar
-
-    console.log("🚀 ¡SingIt inicializada de forma impecable y estable al 100%!");
-
-    const player = $("player");
-    if (player) {
-      player.addEventListener("timeupdate", () => {
-        updateKaraokeHighlight(player.currentTime);
-      });
-
-      // CORRECCIÓN: Reseteamos la caché del monitor del Estudio al terminar la pista
-      player.addEventListener("ended", () => {
-        lineaActivaIndexCache = -1; 
-        updateKaraokeHighlight(0);
-      });
-    }
 
     console.log("🚀 ¡SingIt inicializada de forma impecable y estable al 100%!");
   } catch (error) {
