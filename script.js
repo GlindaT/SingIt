@@ -147,6 +147,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
+    // Escuchador manual para el botón de aplicar Tema Global de la App
+    safeAdd("applyGlobalThemeBtn", "click", async () => {
+      const select = document.getElementById("appTheme");
+      if (select) {
+        localStorage.setItem("singIt_theme", select.value);
+        
+        const { applyAppTheme, showSaveNotification } = await import("./modules/config.js");
+        applyAppTheme(select.value);
+        showSaveNotification();
+      }
+    });
+
     // Ajuste dinámico manual para el selector de temas de la App (Previene hilos huérfanos)
     safeAdd("appTheme", "change", async (e) => {
       const { applyAppTheme } = await import("./modules/config.js");
