@@ -526,14 +526,14 @@ export async function loadSelectedVoiceFromLibrary() {
  */
 export async function transcribeSelectedVoice() {
   // ====================================================================
-  // SUBRUTINAS LOCALES INTERNAS (PROTECCIÓN DE ALCANCE Y HERENCIA)
+  // SUBRUTINAS LOCALES INTERNAS (PROTECCIÓN DE ALCANCE Y HERENCIA TOTAL)
   // ====================================================================
   function blobToBase64(blob) {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
-          const base64String = reader.result.split(",")[1];
+          const base64String = reader.result.split(",")[1]; // Aislamos el string base64 puro
           resolve(base64String);
         } else {
           resolve("");
@@ -557,6 +557,29 @@ export async function transcribeSelectedVoice() {
       }));
     }
     return seg;
+  }
+
+  // CORRECCIÓN DE ALCANCE: Inyectado el rebanador de sílabas lineales de forma local
+  function splitSegmentsIntoKaraokeLines(segments, maxWordsPerLine = 6) {
+    let output = [];
+    segments.forEach(seg => {
+      const words = seg.words || [];
+      if (words.length <= maxWordsPerLine) {
+        output.push(seg);
+        return;
+      }
+      for (let i = 0; i < words.length; i += maxWordsPerLine) {
+        const chunkWords = words.slice(i, i + maxWordsPerLine);
+        const textLine = chunkWords.map(w => w.word).join(" ");
+        output.push({
+          start: chunkWords[0].start,
+          end: chunkWords[chunkWords.length - 1].end,
+          text: textLine,
+          words: chunkWords
+        });
+      }
+    });
+    return output;
   }
 
   function audioBufferToWav(buffer, startSample, endSample) {
@@ -672,12 +695,12 @@ export async function transcribeSelectedVoice() {
           words: seg.words ? seg.words.map(w => ({...w, start: w.start + timeOffset, end: w.end + timeOffset})) : null
         };
 
-        // AHORA SÍ: Se llama de forma local infalible sin errores de definición
         fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
       });
     }
 
     baseTranscriptionSegments = fullSegments;
+    // LLAMADA LOCAL BLINDADA: Ahora sí se ejecuta de forma inmediata sin errores de referencia
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
 
     const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
@@ -727,7 +750,7 @@ export async function transcribeSelectedVoice() {
         transcription: baseTranscriptionSegments 
       });
 
-      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
+      console.log("✅ Archivo de texto UltraStar TXT creado con éxito en la Biblioteca");
       await renderLibrary("ultrastar_txt");
 
     } catch (err) {
