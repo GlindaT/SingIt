@@ -217,10 +217,11 @@
   </div>
 </div>
 
-
+<!--
   <div id="karaokeLyrics" class="karaoke-lyrics">
     <p class="karaoke-placeholder">Aquí se mostrará la letra sincronizada.</p>
   </div>
+   -->
 </div>
 
 </section>
@@ -234,23 +235,20 @@
     <button class="folder-btn" onclick="renderLibrary('todos')">📂 Todos</button>
     <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
     <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
-    <button class="folder-btn" onclick="renderLibrary('grabación')">💾 Grabaciones</button>
+    <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
     <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
-    <!-- NUEVA CATEGORÍA AGREGADA -->
-    <button class="folder-btn" onclick="renderLibrary('ultrastar_txt')">📝 Texto UltraStar</button>
   </div>
 
   <!-- SUBIR ARCHIVOS DESDE PC (ahorra API) -->
   <div class="card">
     <h3>📤 Subir archivo desde PC</h3>
     <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
-      Sube pistas, voces o letras sincronizadas. Los archivos se guardan en tu navegador.
+      Sube pistas instrumentales o voces sin gastar API. Los archivos se guardan en tu navegador.
     </p>
 
     <div class="settings-group">
-      <!-- Actualizado accept para permitir también archivos de texto (.txt) -->
-      <label for="libraryFileInput">Archivo (Audio o Letra TXT)</label>
-      <input type="file" id="libraryFileInput" accept="audio/*,.txt">
+      <label for="libraryFileInput">Archivo de audio (mp3, wav, ogg...)</label>
+      <input type="file" id="libraryFileInput" accept="audio/*">
     </div>
 
     <div class="settings-group">
@@ -259,8 +257,6 @@
         <option value="pista">🎵 Pista instrumental</option>
         <option value="voz">🎙️ Voz</option>
         <option value="grabacion">💾 Grabación / Mezcla</option>
-        <!-- NUEVA OPCIÓN EN EL SELECT -->
-        <option value="ultrastar_txt">📝 Texto UltraStar (.txt)</option>
       </select>
     </div>
 
@@ -280,7 +276,7 @@
     <div id="libraryList"></div>
   </div>
 </section>
-    
+
     <!-- KARAOKE -->
     <section id="karaoke" class="tab">
       <h1>🎤 Karaoke</h1>
@@ -298,7 +294,7 @@
         </div>
 
         <!-- Contenido que se va a ocultar -->
-        <div id="contenido-catalogo" class="contenido-desplegable oculto" style="margin-top: 15px;">
+        <div id="contenido-catalogo" class="contenido-desplegable" style="margin-top: 15px;">
           <!-- Catálogo pre-cargado -->
           <div id="catalogSection">
             <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
@@ -317,11 +313,64 @@
          
           <!-- Botones de acción -->
           <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+            <button id="importSingitBtn" type="button" style="background: #06b6d4;">📥 Importar .singit</button>
+            <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar UltraStar</button>
             <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
           </div>
+          <input type="file" id="importSingitFile" accept=".singit,application/json" style="display:none;">
         </div>
       </div>
       
+      <!-- MODAL IMPORTAR ULTRASTAR -->
+      <div id="ultrastarModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+          <h3 style="margin-top: 0; color: var(--accent);">📥 Importar Canción UltraStar</h3>
+          
+          <div style="background: var(--bg-main); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: var(--text-muted);">
+              <strong>¿Dónde conseguir canciones?</strong>
+            </p>
+            <a href="https://animux.de" target="_blank" style="color: #3b82f6; text-decoration: none;">
+              🔗 USDB (UltraStar Database) - Miles de canciones gratis
+            </a>
+            <p style="margin: 10px 0 0 0; font-size: 12px; color: var(--text-muted);">
+              Descarga el archivo .txt y consigue el audio (MP3) de la canción.
+            </p>
+          </div>
+          
+          <div class="settings-group">
+            <label>📄 Archivo UltraStar (.txt)</label>
+            <input type="file" id="ultrastarTxtFile" accept=".txt">
+          </div>
+          
+          <div class="settings-group">
+            <label>🎵 Audio de la canción (.mp3, .wav, .ogg)</label>
+            <input type="file" id="ultrastarAudioFile" accept="audio/*">
+          </div>
+          
+          <div class="settings-group">
+            <label>🎤 Voz separada (opcional)</label>
+            <input type="file" id="ultrastarVocalsFile" accept="audio/*">
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
+              Si no tienes la voz separada, puedes usar el Splitter después.
+            </p>
+          </div>
+          
+          <div id="ultrastarPreview" style="display: none; background: var(--bg-main); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h4 style="margin: 0 0 10px 0; color: #22c55e;">Vista previa:</h4>
+            <p id="ultrastarTitle" style="margin: 5px 0;"><strong>Título:</strong> ---</p>
+            <p id="ultrastarArtist" style="margin: 5px 0;"><strong>Artista:</strong> ---</p>
+            <p id="ultrastarBpm" style="margin: 5px 0;"><strong>BPM:</strong> ---</p>
+            <p id="ultrastarNotes" style="margin: 5px 0;"><strong>Notas:</strong> ---</p>
+          </div>
+          
+          <div class="studio-controls">
+            <button id="confirmImportBtn" type="button" style="background: #22c55e;">✅ Importar a Mi Biblioteca</button>
+            <button id="cancelImportBtn" type="button" style="background: #ef4444;">❌ Cancelar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Paso 1: Pista -->
       <div class="card">
         <!-- Encabezado interactivo sin onclick -->
@@ -331,7 +380,7 @@
         </div>
         
         <!-- Contenido que se va a ocultar -->
-        <div id="contenido-pista" class="contenido-desplegable oculto" style="margin-top: 15px;">
+        <div id="contenido-pista" class="contenido-desplegable" style="margin-top: 15px;">
           <!-- Opción A: Desde la Biblioteca -->
           <div class="studio-controls">
             <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
@@ -342,6 +391,11 @@
           <div class="studio-controls" style="margin-bottom: 15px;">
             <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
           </div>
+
+          <!-- Opción B: Desde la PC -->
+          <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
+          <input type="file" id="karaokeTrackFile" accept="audio/*">
+          
           <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
         </div>
       </div>
@@ -351,25 +405,18 @@
         <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
         
         <div id="karaokeDuoIndicator" style="display: none; margin-bottom: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
-  <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
-  <div style="display: flex; gap: 20px;">
-    <div style="flex: 1;">
-      <small>Mic 1:</small>
-      <!-- Le agregamos posición relativa y desbordamiento oculto a la barra contenedor -->
-      <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
-        <!-- Forzamos altura, color amarillo y transición suave -->
-        <div id="karaokeDuoMic1Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #facc15; transition: width 0.05s ease;"></div>
-      </div>
-    </div>
-    <div style="flex: 1;">
-      <small>Mic 2:</small>
-      <div class="mic-level-bar" style="background: rgba(255,255,255,0.1); height: 12px; border-radius: 4px; overflow: hidden; position: relative;">
-        <!-- Forzamos altura, color celeste y transición suave -->
-        <div id="karaokeDuoMic2Level" class="mic-level-fill" style="width: 0%; height: 100%; background: #06b6d4; transition: width 0.05s ease;"></div>
-      </div>
-    </div>
-  </div>
-</div>
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
+          <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+              <small>Mic 1:</small>
+              <div class="mic-level-bar"><div id="karaokeDuoMic1Level" class="mic-level-fill"></div></div>
+            </div>
+            <div style="flex: 1;">
+              <small>Mic 2:</small>
+              <div class="mic-level-bar"><div id="karaokeDuoMic2Level" class="mic-level-fill"></div></div>
+            </div>
+          </div>
+        </div>
         
         <div class="studio-controls">
           <button id="karaokeStartBtn" class="btn-danger" type="button">🎙️ Iniciar Grabación</button>
@@ -400,7 +447,7 @@
       <h1>✂️ Splitter IA</h1>
 
       <div class="card">
-        <h3>Separar Voz e Instrumental</h3>
+        <h3>Separar Voz y Pista</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">
           Sube una canción. La Inteligencia Artificial la separará y la guardará en tu Biblioteca.
         </p>
@@ -425,16 +472,6 @@
       <div class="card">
         <h3>Preferencias de la App</h3>
         <p style="color: var(--text-muted); margin-bottom: 20px;">Los cambios se guardan automáticamente.</p>
-        
-        <div class="settings-group">
-          <label for="userVoiceType">👤 Tipo de voz</label>
-          <select id="userVoiceType">
-            <option value="grave">Grave</option>
-            <option value="media">Media</option>
-            <option value="aguda">Aguda</option>
-            <option value="todas">Todas</option>
-          </select>
-        </div>
         
         <div class="settings-group">
           <label for="micCount">🔊 Cantidad de micrófonos</label>
@@ -467,12 +504,6 @@
         </div>
         
         <div class="settings-group">
-          <label for="micSensitivity">🎚️ Sensibilidad del Micrófono (Umbral)</label>
-          <input type="range" id="micSensitivity" min="0.000" max="0.050" step="0.001" value="0.010">
-          <small style="color: var(--text-muted);">Más alto = filtra más ruido de fondo.</small>
-        </div>
-        
-        <div class="settings-group">
           <label for="difficultyLevel">📊 Dificultad para el Afinador</label>
           <select id="difficultyLevel">
             <option value="facil">Fácil</option>
@@ -489,18 +520,6 @@
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
           </select>
-        </div>
-
-        <div class="settings-group">
-  <label for="karaokeThemeSelect">🏟️ Escenario de Karaoke (Tema Visual):</label>
-  <select id="karaokeThemeSelect"> <!-- Quitamos el onchange antiguo -->
-    <option value="theme-clasico">Clásico (Por defecto)</option>
-    <option value="theme-moderno">Moderno (Neón Azul)</option>
-    <option value="theme-disco">Disco (Rosa / Morado)</option>
-    <option value="theme-acustico">Acústico (Madera Relajante)</option>
-    <option value="theme-fiesta">Fiesta (Luces Locas Animadas)</option>
-    <option value="theme-retrowave">Cyberpunk Retro Wave 🌌</option>
-  </select>
         </div>
         <div class="settings-group">
           <label for="appTheme">🎨 Tema de la App</label>
@@ -522,6 +541,6 @@
 </div>
   
 <script src="script.js"></script>
-
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"7f7b0fd8732c4326aae4b9d58d5c514a","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
