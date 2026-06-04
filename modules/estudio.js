@@ -543,22 +543,6 @@ export async function transcribeSelectedVoice() {
     });
   }
 
-  function buildWordTimingFromSegment(seg) {
-    if (!seg.words || seg.words.length === 0) {
-      const wordsArr = (seg.text || "").split(" ").filter(Boolean);
-      const duration = (seg.end || 0) - (seg.start || 0);
-      const wordDuration = duration / Math.max(1, wordsArr.length);
-      seg.words = wordsArr.map((word, i) => ({
-        word: word,
-        start: seg.start + i * wordDuration,
-        end: seg.start + (i + 1) * wordDuration,
-        pitch: 0,
-        note: "C4"
-      }));
-    }
-    return seg;
-  }
-
   // CORRECCIÓN DE ALCANCE: Inyectado el rebanador de sílabas lineales de forma local
   function splitSegmentsIntoKaraokeLines(segments, maxWordsPerLine = 6) {
     let output = [];
@@ -1086,3 +1070,18 @@ export async function applyTapSync() {
   if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
 }
 
+export function buildWordTimingFromSegment(seg) {
+  if (!seg.words || seg.words.length === 0) {
+    const wordsArr = (seg.text || "").split(" ").filter(Boolean);
+    const duration = (seg.end || 0) - (seg.start || 0);
+    const wordDuration = duration / Math.max(1, wordsArr.length);
+    seg.words = wordsArr.map((word, i) => ({
+      word: word,
+      start: seg.start + i * wordDuration,
+      end: seg.start + (i + 1) * wordDuration,
+      pitch: 0,
+      note: "C4"
+    }));
+  }
+  return seg;
+}
