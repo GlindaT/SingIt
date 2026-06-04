@@ -198,3 +198,220 @@ class KaraokeCanvasRenderer {
       });
     });
   }
+ getBarColors(isPast, isActive, isCorrect) {
+    if (isPast) {
+      return {
+        barColor: "#4b5563",
+        textColor: "#9ca3af",
+        borderColor: "#6b7280"
+      };
+    } else if (isActive) {
+      if (isCorrect) {
+        return {
+          barColor: "#22c55e",
+          textColor: "#ffffff",
+          borderColor: "#4ade80"
+        };
+      } else {
+        return {
+          barColor: "#3b82f6",
+          textColor: "#ffffff",
+          borderColor: "#60a5fa"
+        };
+      }
+    } else {
+      return {
+        barColor: "#1e40af",
+        textColor: "#93c5fd",
+        borderColor: "#3b82f6"
+      };
+    }
+  }
+
+  /**
+   * Draw user's voice trace (optimized with limited history)
+   */
+  drawVoiceTrace(pitchHistory, currentFreq) {
+    if (currentFreq <= 0 || pitchHistory.length === 0) return;
+
+    const userMidi = this.frequencyToMidi(currentFreq);
+    const userY = this.midiToY(userMidi);
+
+    // Draw current point with glow effect
+    this.ctx.beginPath();
+    this.ctx.fillStyle = "#facc15";
+    this.ctx.shadowBlur = 15;
+    this.ctx.shadowColor = "#facc15";
+    this.ctx.arc(this.lineX, userY, 8, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.shadowBlur = 0;
+
+    // Draw trace (only last 30 points for performance)
+    const maxTraceLength = Math.min(30, pitchHistory.length);
+    const startIndex = pitchHistory.length - maxTraceLength;
+
+    this.ctx.beginPath();
+    this.ctx.strokeStyle = "rgba(250, 204, 21, 0.6)";
+    this.ctx.lineWidth = 3;
+
+    let started = false;
+    for (let i = startIndex; i < pitchHistory.length; i++) {
+      const freq = pitchHistory[i];
+      if (!freq) continue;
+
+      const midi = this.frequencyToMidi(freq);
+      const y = this.midiToY(midi);
+      const x = this.lineX - (pitchHistory.length - i) * 2;
+
+      if (!started) {
+        this.ctx.moveTo(x, y);
+        started = true;
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+    this.ctx.stroke();
+  }
+
+  /**
+   * Draw current and next lyrics
+   */
+  drawLyrics(transcriptionSegments, currentTime) {
+    const currentSegment = transcriptionSegments.find(seg =>
+      currentTime >= seg.start && currentTime <= seg.end + 0.5
+    );
+
+    if (currentSegment) {
+      // Background
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
+
+      // Text
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.font = "bold 20px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "middle";
+      this.ctx.fillText(currentSegment.text || "", this.canvas.width / 2, this.canvas.height - 25);
+    } else {
+      // Show next segment if no current
+      const nextSegment = transcriptionSegments.find(seg => seg.start > currentTime);
+      if (nextSegment) {
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
+
+        this.ctx.fillStyle = "#94a3b8";
+        this.ctx.font = "16px Arial";
+        this.ctx.textAlign = "center";
+        this.ctx.fillText("Próximo: " + (nextSegment.text || ""), this.canvas.width / 2, this.canvas.height - 25);
+      }
+    }
+  }
+
+  /**
+   * Frequency to MIDI conversion
+   */
+  frequencyToMidi(freq) {
+    if (freq <= 0) return 0;
+    return Math.round(12 * Math.log2(freq / 440) + 69);
+  }
+
+  /**
+   * Main render function with throttling and optimization
+   */
+  render(currentTime, currentFreq, transcriptionSegments, pitchHistory) {
+    // Throttle frame rate
+    if (!this.shouldRender()) {
+      return;
+    }
+
+    // Clear canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Draw static elements (staff and labels)
+    this.drawStaff();
+
+    // Draw notes
+    if (transcriptionSegments && transcriptionSegments.length > 0) {
+      this.drawNotes(transcriptionSegments, currentTime, currentFreq);
+    } else {
+      // Placeholder message
+      this.ctx.fillStyle = "#666";
+      this.ctx.font = "16px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas", this.canvas.width / 2, this.canvas.height / 2);
+    }
+
+    // Draw voice trace
+    if (pitchHistory && pitchHistory.length > 0) {
+      this.drawVoiceTrace(pitchHistory, currentFreq);
+    }
+
+    // Draw lyrics
+    if (transcriptionSegments && transcriptionSegments.length > 0) {
+      this.drawLyrics(transcriptionSegments, currentTime);
+    }
+  }
+
+  /**
+   * Clear all caches (call on memory pressure or tab change)
+   */
+  clearCaches() {
+    this.noteYCache.clear();
+    this.segmentBoundsCache.clear();
+    this.cache.clear();
+  }
+
+  /**
+   * Handle window resize
+   */
+  handleResize() {
+    this.pentagramBottom = this.canvas.height - 60;
+    this.pentagramHeight = this.pentagramBottom - this.pentagramTop;
+    this.pixelsPerSecond = (this.canvas.width - 40) / 6;
+    this.clearCaches();
+  }
+}
+
+// ==========================================
+// USAGE IN MAIN SCRIPT
+// ==========================================
+// Add this at the top of script.js after the global config:
+
+// Initialize renderer (once)
+let karaokeRenderer = null;
+
+function initKaraokeRenderer() {
+  if (!karaokeRenderer) {
+    karaokeRenderer = new KaraokeCanvasRenderer('karaokeCanvas', {
+      maxFrameRate: 30, // Limit to 30 FPS for better performance
+      enableDirtyRects: true,
+      cacheSize: 100
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      if (karaokeRenderer) {
+        karaokeRenderer.handleResize();
+      }
+    });
+  }
+  return karaokeRenderer;
+}
+
+// Replace the original drawKaraokeMonitor function with:
+function drawKaraokeMonitor(currentTime, currentFreq) {
+  const renderer = initKaraokeRenderer();
+  if (!renderer) return;
+
+  renderer.render(
+    currentTime,
+    currentFreq,
+    transcriptionSegments,
+    pitchHistory
+  );
+}
+
+// Also export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = KaraokeCanvasRenderer;
+}
