@@ -2,6 +2,8 @@
 // SINGIT CORE - CENTRAL DIRECTOR (script.js)
 // ==========================================
 
+let initDB = [],
+
 // --- 1. UTILIDADES GLOBALES COMPARTIDAS ---
 export function $(id) {
   return document.getElementById(id);
@@ -22,10 +24,8 @@ window.transcriptionSegments = [];
 window.pitchHistory = [];
 window.autoScrollEnabled = true;
 
-let initDB = [],
-  
-  // --- 3. NAVEGACIÓN PRINCIPAL ASÍNCRONA (LAZY LOADING) ---
-  export async function showTab(tabId) {
+// --- 3. NAVEGACIÓN PRINCIPAL ASÍNCRONA (LAZY LOADING) ---
+export async function showTab(tabId) {
   // Ocultar todas las pestañas físicas en el HTML
   document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
   const target = document.getElementById(tabId);
