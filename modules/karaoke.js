@@ -76,25 +76,34 @@ export class KaraokeCanvasRenderer {
    * Captura y calcula la paleta cromática exacta basándose en el LocalStorage
    */
   obtenerPaletaTema() {
-    const temaActual = localStorage.getItem("singIt_stage") || "theme-clasico";
-    let config = {
-      fondo: "#111827", lineas: "#333333", etiquetas: "#666666", barraFutura: "#1e40af", bordeFuturo: "#3b82f6"
-    };
+  const temaActual = localStorage.getItem("singIt_stage") || "theme-clasico";
+  let config = { fondo: "#111827", lineas: "#333333", etiquetas: "#666666", barraFutura: "#1e40af", bordeFuturo: "#3b82f6" };
 
-    if (temaActual === "theme-moderno") {
-      config = { fondo: "#082f49", lineas: "rgba(6, 182, 212, 0.2)", etiquetas: "#06b6d4", barraFutura: "#1e3a8a", bordeFuturo: "#06b6d4" };
-    } else if (temaActual === "theme-disco") {
-      config = { fondo: "#2e1065", lineas: "rgba(219, 39, 119, 0.25)", etiquetas: "#facc15", barraFutura: "#701a75", bordeFuturo: "#db2777" };
-    } else if (temaActual === "theme-acustico") {
-      config = { fondo: "#451a03", lineas: "rgba(120, 53, 15, 0.4)", etiquetas: "#fcd34d", barraFutura: "#78350f", bordeFuturo: "#b45309" };
-    } else if (temaActual === "theme-fiesta") {
-      const hue = (Date.now() / 20) % 360;
-      config = {
-        fondo: `hsl(${hue}, 40%, 12%)`, lineas: "rgba(255, 255, 255, 0.15)", etiquetas: "#ff007f",
-        barraFutura: `hsl(${(hue + 180) % 360}, 50%, 25%)`, bordeFuturo: `hsl(${(hue + 180) % 360}, 70%, 50%)`
-      };
-    }
-    return config;
+  if (temaActual === "theme-moderno") {
+    config = { fondo: "#082f49", lineas: "rgba(6, 182, 212, 0.2)", etiquetas: "#06b6d4", barraFutura: "#1e3a8a", bordeFuturo: "#06b6d4" };
+  } else if (temaActual === "theme-disco") {
+    config = { fondo: "#2e1065", lineas: "rgba(219, 39, 119, 0.25)", etiquetas: "#facc15", barraFutura: "#701a75", bordeFuturo: "#db2777" };
+  } else if (temaActual === "theme-acustico") {
+    config = { fondo: "#451a03", lineas: "rgba(120, 53, 15, 0.4)", etiquetas: "#fcd34d", barraFutura: "#78350f", bordeFuturo: "#b45309" };
+  } else if (temaActual === "theme-fiesta") {
+    const hue = (Date.now() / 20) % 360;
+    config = {
+      fondo: `hsl(${hue}, 40%, 12%)`, lineas: "rgba(255, 255, 255, 0.15)", etiquetas: "#ff007f",
+      barraFutura: `hsl(${(hue + 180) % 360}, 50%, 25%)`, bordeFuturo: `hsl(${(hue + 180) % 360}, 70%, 50%)`
+    };
+  } 
+  // 🔥 INYECCIÓN DE MEJORA: SOPORTE NATIVO PARA EL ESCENARIO RETROWAVE
+  else if (temaActual === "theme-retrowave") {
+    config = { 
+      fondo: "#1e0b36",                  // Morado profundo synthwave
+      lineas: "rgba(255, 0, 127, 0.25)", // Líneas neón fucsia degradadas
+      etiquetas: "#38bdf8",              // Azul celeste ciberpunk para las notas
+      barraFutura: "#4c1d95",            // Barras futuras moradas oscuras
+      bordeFuturo: "#ff007f"             // Bordes fucsia brillante de impacto
+    };
+  }
+  return config;
+}
   }
 
   /**
