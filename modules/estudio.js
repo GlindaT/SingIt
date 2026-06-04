@@ -326,11 +326,19 @@ export async function loadSelectedVoiceFromLibrary() {
   player.src = URL.createObjectURL(selectedVoiceBlob);
   status.textContent = `Voz cargada: ${item.name}`;
 
-  if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+   if (Array.isArray(item.transcription) && item.transcription.length > 0) {
     baseTranscriptionSegments = item.transcription.map(s => buildWordTimingFromSegment(s));
     transcriptionSegments = baseTranscriptionSegments;
-    const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-    renderKaraokeLyrics(transcriptionSegments); cargarLetrasEnMonitor();
+    
+    // CORRECCIÓN ASÍNCRONA BLINDADA: Importamos el módulo y ejecutamos sus funciones sueltas de interfaz
+    const karaokeModulo = await import('./karaoke.js');
+    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+    }
+    if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+      karaokeModulo.cargarLetrasEnMonitor();
+    }
+    
     if (text) text.value = transcriptionSegments.map(s => s.text || "").join("\n");
   }
 }
@@ -363,10 +371,18 @@ export async function transcribeSelectedVoice() {
       });
     }
 
-    baseTranscriptionSegments = fullSegments;
+     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-    const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-    renderKaraokeLyrics(transcriptionSegments); cargarLetrasEnMonitor();
+    
+    // CORRECCIÓN ASÍNCRONA BLINDADA: Importación perezosa protegida contra errores de herencia
+    const karaokeModulo = await import('./karaoke.js');
+    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+    }
+    if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+      karaokeModulo.cargarLetrasEnMonitor();
+    }
+    
     if (lyricsText) lyricsText.value = transcriptionSegments.map(l => l.text).join("\n");
     status.textContent = "Estado: Transcripción completada ✅";
   } catch (err) { console.error(err); status.textContent = "Estado: Error ❌"; }
@@ -461,9 +477,14 @@ export async function applyTapSync() {
     });
   }
 
-  const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-  renderKaraokeLyrics(transcriptionSegments); 
-  cargarLetrasEnMonitor();
+  // CORRECCIÓN ASÍNCRONA BLINDADA: Importación perezosa protegida contra errores de herencia
+  const karaokeModulo = await import('./karaoke.js');
+  if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+    karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+  }
+  if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+    karaokeModulo.cargarLetrasEnMonitor();
+  }
 
   if (selectedVoiceId) {
     await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
