@@ -1,88 +1,30 @@
-// modules/config.js
+// modules/config.js - PANEL DE CONFIGURACIÓN DE ESCENARIOS Y HARDWARE
 
-// Función auxiliar para notificar cambios guardados
-function showSaveNotification() {
-  // Si tienes una lógica visual para la notificación, ponla aquí. 
-  // Por ahora dejamos un log para evitar que la app se rompa si no existe.
-  console.log("Configuración guardada automáticamente.");
-}
-
-// Función auxiliar para aplicar el tema visual de la aplicación
-function applyAppTheme(themeName) {
-  document.body.className = `theme-${themeName}`;
-}
-
-export function initSettings() {
-  const sensInput = document.getElementById("micSensitivity");
-  if (sensInput) {
-    sensInput.value = localStorage.getItem("singIt_sensitivity") || "0.015";
-    sensInput.addEventListener("input", (e) => {
-      localStorage.setItem("singIt_sensitivity", e.target.value);
-    });
-  }
-
-  const settings = {
-    micCount: "singIt_micCount",
-    karaokeThemeSelect: "singIt_stage",
-    difficultyLevel: "singIt_difficulty",
-    userVoiceType: "singIt_voiceType",
-    appTheme: "singIt_theme"
-  };
-
-  Object.entries(settings).forEach(([id, storageKey]) => {
-    const el = document.getElementById(id);
-    if (el) {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) el.value = saved;
-      
-      el.addEventListener("change", (e) => {
-        localStorage.setItem(storageKey, e.target.value);
-        showSaveNotification();
-        
-        if (id === "appTheme") {
-          applyAppTheme(e.target.value);
-        }
-        
-        if (id === "karaokeThemeSelect") {
-          const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics");
-          if (contenedorKaraoke) {
-            // CORRECCIÓN REFORZADA: Incluye los 6 temas del catálogo visual actualizado
-            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
-            todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
-            contenedorKaraoke.classList.add(e.target.value);
-          }
-        }
-      });
-    }
-  });
-}
-
-export function $(id) {
-  return document.getElementById(id);
-}
-
-export function safeAdd(id, event, handler) {
-  const el = $(id);
-  if (el) el.addEventListener(event, handler);
-}
-
-// Configuración Global de la Aplicación
-export const state = {
-  instrumentalUrl: null,
-  letraLrc: "",
-  isRecording: false
-};
 import { $ } from '../script.js';
 
+// Variables técnicas globales de pruebas encapsuladas de forma segura dentro del módulo
+let micTestAudioContext = null;
+let micTestStream = null;
+let micTestAnalyser = null;
+let micTestAnimationId = null;
+
 /**
- * Muestra una notificación breve en la consola cuando los cambios se guardan con éxito
+ * Burbuja visual flotante que avisa al usuario que sus configuraciones se guardaron con éxito
  */
-function showSaveNotification() {
-  console.log("⚡ Configuración sincronizada y guardada en LocalStorage.");
+export function showSaveNotification() {
+  const notif = $("saveNotification");
+  if (notif) {
+    notif.classList.add("show");
+    setTimeout(() => {
+      notif.classList.remove("show");
+    }, 2000);
+  } else {
+    console.log("⚡ Configuración sincronizada y guardada en LocalStorage.");
+  }
 }
 
 /**
- * Modifica los atributos de datos del DOM para alterar las variables CSS del tema
+ * Modifica los atributos de datos del DOM para alterar las variables CSS del tema principal
  */
 export function applyAppTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
@@ -134,9 +76,10 @@ export function initSettings() {
         }
         
         if (id === "karaokeThemeSelect") {
-          const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
+          const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics") || document.querySelector(".karaoke-lyrics");
           if (contenedorKaraoke) {
-            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+            // CORRECCIÓN REFORZADA: Incluye los 6 temas del catálogo visual actualizado (¡Retrowave incluido!)
+            const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
             todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
             contenedorKaraoke.classList.add(e.target.value);
           }
@@ -145,22 +88,20 @@ export function initSettings() {
     }
   });
 
-  // OPTIMIZACIÓN DE ARRANQUE: Forzamos la carga del tema y el escenario una sola vez fuera del bucle
+  // OPTIMIZACIÓN DE ARRANQUE: Carga de tema inicial fija
   applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
   
   const savedStage = localStorage.getItem("singIt_stage") || "theme-clasico";
-  const contenedorKaraoke = document.querySelector(".karaoke-lyrics");
+  const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics") || document.querySelector(".karaoke-lyrics");
   if (contenedorKaraoke) {
-    const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta"];
+    const todosLosTemas = ["theme-clasico", "theme-moderno", "theme-disco", "theme-acustico", "theme-fiesta", "theme-retrowave"];
     todosLosTemas.forEach(tema => contenedorKaraoke.classList.remove(tema));
     contenedorKaraoke.classList.add(savedStage);
   }
 }
-import { $ } from '../script.js';
 
 /**
- * Solicita permisos de hardware, enumera los dispositivos de entrada de audio
- * y llena los selectores de micrófonos inyectando persistencia local para las elecciones.
+ * Solicita permisos de hardware, enumera los dispositivos de entrada de audio y llena los selectores
  */
 export async function loadAvailableMics() {
   try {
@@ -223,17 +164,13 @@ export async function loadAvailableMics() {
     const mic1Select = $("mic1Select");
     const mic2Select = $("mic2Select");
     
-    if (mic1Select) {
-      mic1Select.innerHTML = `<option value="">⚠️ Permite acceso al micrófono</option>`;
-    }
-    if (mic2Select) {
-      mic2Select.innerHTML = `<option value="">⚠️ Permite acceso al micrófono</option>`;
-    }
+    if (mic1Select) mic1Select.innerHTML = `<option value="">⚠️ Permite acceso al micrófono</option>`;
+    if (mic2Select) mic2Select.innerHTML = `<option value="">⚠️ Permite acceso al micrófono</option>`;
   }
 }
 
 /**
- * Controla si el bloque HTML del segundo micrófono debe mostrarse u ocultarse según el modo elegido (Dúo o Mono)
+ * Controla si el bloque HTML del segundo micrófono debe mostrarse u ocultarse según el modo (Dúo o Mono)
  */
 export function toggleMic2Visibility() {
   const micCount = $("micCount");
@@ -246,26 +183,6 @@ export function toggleMic2Visibility() {
       mic2Group.style.display = "none";
     }
   }
-}
-import { $ } from '../script.js';
-
-// Variables técnicas globales de pruebas encapsuladas de forma segura dentro del módulo
-let micTestAudioContext = null;
-let micTestStream = null;
-let micTestAnalyser = null;
-let micTestAnimationId = null;
-
-/**
- * Burbuja visual flotante que avisa al usuario que sus configuraciones se guardaron con éxito
- */
-export function showSaveNotification() {
-  const notif = $("saveNotification");
-  if (!notif) return;
-
-  notif.classList.add("show");
-  setTimeout(() => {
-    notif.classList.remove("show");
-  }, 2000);
 }
 
 /**
@@ -392,7 +309,7 @@ export async function testMicrophone(micNumber) {
 }
 export function inicializarEscenarioDesdeMemoria() {
   const select = document.getElementById("karaokeThemeSelect");
-  const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics");
+  const contenedorKaraoke = document.getElementById("karaokeLiveLyrics") || document.getElementById("karaokeLyrics") || document.querySelector(".karaoke-lyrics");
   if (!select || !contenedorKaraoke) return;
 
   let temaGuardado = localStorage.getItem("singIt_stage") || "theme-clasico";
