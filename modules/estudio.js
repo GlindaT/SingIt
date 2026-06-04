@@ -914,3 +914,52 @@ export async function guardarTextoUltraStarEnBiblioteca() {
     alert("❌ No se pudo guardar el archivo en la biblioteca.");
   }
 }
+export function buildWordTimingFromSegment(segment) {
+  const cleanText = (segment.text || "").trim();
+
+  if (!cleanText) {
+    return {
+      ...segment,
+      words: []
+    };
+  }
+
+  const rawWords = cleanText.split(/\s+/).filter(Boolean);
+  const segmentDuration = Math.max(0, (segment.end || 0) - (segment.start || 0));
+
+  if (!rawWords.length || segmentDuration <= 0) {
+    return {
+      ...segment,
+      words: rawWords.map(word => ({
+        word: word,
+        start: segment.start,
+        end: segment.end,
+        pitch: segment.pitch || 0,
+        note: segment.note || "C4"
+      }))
+    };
+  }
+
+  const sliceDuration = segmentDuration / rawWords.length;
+  let cursor = segment.start;
+
+  const timedWords = rawWords.map((word) => {
+    const wordStart = cursor;
+    const wordEnd = cursor + sliceDuration;
+    cursor = wordEnd;
+
+    return {
+      word: word,
+      start: wordStart,
+      end: wordEnd,
+      pitch: segment.pitch || 0,
+      note: segment.note || "C4",
+      sincronizado: false 
+    };
+  });
+
+  return {
+    ...segment,
+    words: timedWords
+  };
+}
