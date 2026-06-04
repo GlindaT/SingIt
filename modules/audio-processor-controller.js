@@ -1,16 +1,10 @@
-// ==========================================
-// AUDIO PROCESSING CONTROLLER (Main Thread)
-// ==========================================
-// Manages Web Worker communication for audio operations
-// File: audio-processor-controller.js
-
-class AudioProcessorController {
-  constructor(workerPath = './audio-processor.worker.js') {
+export class AudioProcessorController {
+  constructor(workerPath = '../audio-processor.worker.js') { // CORREGIDA: Ruta relativa exacta desde la carpeta modules/
     this.worker = new Worker(workerPath);
     this.pendingRequests = new Map();
     this.requestId = 0;
 
-    // Setup worker message handler
+    // Escuchador de respuestas provenientes del Web Worker secundario
     this.worker.onmessage = (event) => {
       const { id, result, error, success } = event.data;
       const request = this.pendingRequests.get(id);
@@ -32,7 +26,7 @@ class AudioProcessorController {
   }
 
   /**
-   * Send command to worker and wait for result
+   * Envía comandos estructurados y retorna promesas asíncronas
    */
   async execute(command, data) {
     return new Promise((resolve, reject) => {
@@ -49,10 +43,9 @@ class AudioProcessorController {
   }
 
   /**
-   * Mix audio buffers (supports TypedArrays)
+   * Mezclador de audio multicanal en diferido
    */
   async mixAudio(buffers, gains = null) {
-    // Convert buffers to transferable if needed
     const bufferData = buffers.map(b => ({
       buffer: b instanceof Float32Array ? b : new Float32Array(b)
     }));
@@ -66,12 +59,10 @@ class AudioProcessorController {
   }
 
   /**
-   * Detect pitch from audio buffer
+   * Envia fragmentos de audio para detección del Pitch matemático
    */
   async detectPitch(buffer, sampleRate) {
-    const floatBuffer =
-      buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
-
+    const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
     return await this.execute('detectPitch', {
       buffer: floatBuffer,
       sampleRate
@@ -79,98 +70,61 @@ class AudioProcessorController {
   }
 
   /**
-   * Apply gain to audio buffer
+   * Altera la amplitud (volumen) de un arreglo tipado
    */
   async applyGain(buffer, gain) {
-    const floatBuffer =
-      buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
-
-    const result = await this.execute('applyGain', {
-      buffer: floatBuffer,
-      gain
-    });
-
+    const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
+    const result = await this.execute('applyGain', { buffer: floatBuffer, gain });
     return new Float32Array(result);
   }
 
   /**
-   * Apply low-pass filter
+   * Filtro digital paso bajo offline
    */
   async applyLowPassFilter(buffer, cutoffFrequency, sampleRate) {
-    const floatBuffer =
-      buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
-
-    const result = await this.execute('lowPassFilter', {
-      buffer: floatBuffer,
-      cutoffFrequency,
-      sampleRate
-    });
-
+    const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
+    const result = await this.execute('lowPassFilter', { buffer: floatBuffer, cutoffFrequency, sampleRate });
     return new Float32Array(result);
   }
 
   /**
-   * Detect silence in buffer
+   * Analizador rápido de silencios y compresión
    */
   async detectSilence(buffer, threshold = 0.01) {
-    const floatBuffer =
-      buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
-
-    return await this.execute('detectSilence', {
-      buffer: floatBuffer,
-      threshold
-    });
+    const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
+    return await this.execute('detectSilence', { buffer: floatBuffer, threshold });
   }
 
   /**
-   * Normalize audio buffer
+   * Normalizador dinámico de decibelios
    */
   async normalizeAudio(buffer, targetLevel = 0.9) {
-    const floatBuffer =
-      buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
-
-    const result = await this.execute('normalize', {
-      buffer: floatBuffer,
-      targetLevel
-    });
-
+    const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
+    const result = await this.execute('normalize', { buffer: floatBuffer, targetLevel });
     return new Float32Array(result);
   }
 
   /**
-   * Process large audio in chunks
+   * Segmentación de buffers pesados para protección de memoria caché
    */
   async processInChunks(buffer, chunkSize = 4096) {
-    const floatBuffer =
-      buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
-
-    const chunks = await this.execute('processChunks', {
-      buffer: floatBuffer,
-      chunkSize
-    });
-
+    const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
+    const chunks = await this.execute('processChunks', { buffer: floatBuffer, chunkSize });
     return chunks.map(c => new Float32Array(c));
   }
 
-  /**
-   * Terminate worker
-   */
   terminate() {
     this.worker.terminate();
   }
 }
 
-// Global instance (lazy loaded)
+// Instancia única (Singleton) compartida de forma perezosa por toda la aplicación
 let audioController = null;
 
-function getAudioController() {
+// CORREGIDA: Exportación de ES Modules limpia y oficial
+export function getAudioController() {
   if (!audioController) {
     audioController = new AudioProcessorController();
   }
   return audioController;
-}
-
-// Export for use in main script
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { AudioProcessorController, getAudioController };
 }
