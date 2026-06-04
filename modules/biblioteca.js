@@ -290,3 +290,55 @@ export async function renderLibrary(filter = 'todos') {
     container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
   }
 }
+import { $, renderLibrary, addLibraryItem } from './biblioteca.js';
+
+export async function saveManualFileToLibrary() {
+  const fileInput = $("libraryFileInput");
+  const typeSelect = $("libraryFileType");
+  const nameInput = $("libraryFileName");
+
+  if (!fileInput || !fileInput.files[0]) {
+    alert("⚠️ Por favor, selecciona un archivo primero.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const selectedType = typeSelect ? typeSelect.value : "pista";
+  const customName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : file.name.replace(/\.[^.]+$/, "");
+
+  try {
+    // CASO A: Es un archivo de texto UltraStar (Letras)
+    if (selectedType === "ultrastar_txt") {
+      const textoPlano = await file.text();
+      
+      await addLibraryItem({
+        name: customName,
+        type: selectedType,
+        audioBlob: null, 
+        textoPlano: textoPlano, 
+        date: new Date().toLocaleString("es-ES"),
+        transcription: []
+      });
+    } 
+    // CASO B: Es cualquier archivo de audio (Pistas, Voces)
+    else {
+      await addLibraryItem({
+        name: customName,
+        type: selectedType,
+        audioBlob: file, // Sincronizado unificadamente como audioBlob
+        date: new Date().toLocaleString("es-ES"),
+        transcription: []
+      });
+    }
+
+    fileInput.value = "";
+    if (nameInput) nameInput.value = "";
+    
+    await renderLibrary(selectedType);
+    alert(`✅ ¡"${customName}" guardado en la biblioteca con éxito!`);
+
+  } catch (error) {
+    console.error("Error al guardar archivo manualmente:", error);
+    alert("❌ Ocurrió un error al procesar y guardar tu archivo.");
+  }
+}
