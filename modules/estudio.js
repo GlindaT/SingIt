@@ -1086,8 +1086,3 @@ export async function applyTapSync() {
   if (status) status.textContent = "Estado: ✅ Sincronización y notas aplicadas";
 }
 
-export function redoTapSync() {
-  const resultBox = document.getElementById("tapSyncResult");
-  if (resultBox) resultBox.style.display = "none";
-  startTapSync();
-}
