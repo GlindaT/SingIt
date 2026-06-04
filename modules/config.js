@@ -30,9 +30,6 @@ export function applyAppTheme(theme) {
   console.log("🎨 Tema aplicado de forma nativa:", theme);
 }
 
-/**
- * Guarda las claves básicas del formulario directamente en la persistencia local
- */
 export function saveSetting(key, element) {
   if (!element) return;
   localStorage.setItem(key, element.value);
@@ -86,7 +83,6 @@ export function initSettings() {
       });
     }
   });
-
   // OPTIMIZACIÓN DE ARRANQUE: Forzamos la sincronización visual inmediata al abrir la app
   applyAppTheme(localStorage.getItem("singIt_theme") || "oscuro");
   inicializarEscenarioDesdeMemoria();
