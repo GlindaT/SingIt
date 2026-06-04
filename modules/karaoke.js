@@ -1763,3 +1763,73 @@ export async function loadMyKaraokeSongs() {
     container.innerHTML = `<p style="color: #ef4444;">Error al cargar tus canciones personales</p>`;
   }
 }
+import { $ } from '../script.js';
+import { loadCatalogSong } from './karaoke.js'; // Conexión local interna inmediata
+
+/**
+ * Consulta de forma asíncrona el archivo descriptor central del catálogo remoto, 
+ * inyecta las canciones en el DOM y asocia los eventos de reproducción multimedia.
+ */
+export async function loadKaraokeCatalog() {
+  const container = $("catalogList");
+  if (!container) return;
+  
+  container.innerHTML = `<p style="color: var(--text-muted);">Cargando catálogo...</p>`;
+  
+  try {
+    const response = await fetch("./karaoke-catalog/catalog.json");
+    
+    if (!response.ok) {
+      throw new Error("No se pudo descargar el archivo descriptor del catálogo central");
+    }
+    
+    const catalog = await response.json();
+    
+    if (!catalog.songs || catalog.songs.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+          <p>📚 El catálogo está vacío.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = "";
+    
+    catalog.songs.forEach(song => {
+      const div = document.createElement("div");
+      div.className = "catalog-item";
+      
+      div.innerHTML = `
+        <div class="catalog-item-info">
+          <p class="catalog-item-title">🎵 ${song.title}</p>
+          <p class="catalog-item-artist">${song.artist}</p>
+        </div>
+        <div class="catalog-item-actions">
+          <button type="button" class="load-catalog-btn" data-folder="${song.folder}" data-title="${song.title}" data-artist="${song.artist}" style="background: #22c55e;">▶️ Cantar</button>
+        </div>
+      `;
+      
+      container.appendChild(div);
+    });
+    
+    // Asignación de clics sobre los botones inyectados de forma dinámica
+    container.querySelectorAll(".load-catalog-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        // Ejecuta la descarga remota del instrumental y partitura UltraStar
+        await loadCatalogSong(btn.dataset.folder, btn.dataset.title, btn.dataset.artist);
+      });
+    });
+    
+    console.log("📚 Catálogo cargado de forma exitosa:", catalog.songs.length, "canciones");
+    
+  } catch (error) {
+    console.error("Error crítico en la lectura del JSON del catálogo remoto:", error);
+    container.innerHTML = `
+      <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+        <p>📚 No se pudo cargar el catálogo de canciones.</p>
+        <p style="font-size: 13px;">Crea y sincroniza canciones propias en la pestaña de Estudio.</p>
+      </div>
+    `;
+  }
+}
