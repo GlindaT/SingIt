@@ -1,5 +1,5 @@
 import { $ } from '../script.js';
-import { addLibraryItem, getLibraryItemsByType, getLibraryItemById, updateLibraryItem, renderLibrary } from './biblioteca.js';
+import { getLibraryItemsByType, getLibraryItemById, updateLibraryItem, addLibraryItem, getAllLibraryItems } from './biblioteca.js'; // <-- ASEGÚRATE DE SUMAR "getAllLibraryItems" AQUÍ
 import { getNoteFromFrequency } from './afinador.js';
 
 // --- VARIABLES DE ESTADO GLOBALES ENCAPSULADAS EN EL MÓDULO ---
