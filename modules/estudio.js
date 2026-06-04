@@ -454,3 +454,211 @@ export async function loadVoiceOptionsInStudio() {
     console.error("Error al cargar opciones de voces en Estudio:", error);
   }
 }
+export async function loadSelectedVoiceFromLibrary() {
+  const select = $("voiceLibrarySelect");
+  const player = $("selectedVoicePlayer");
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  if (!select || !player || !status) return;
+
+  const selectedId = Number(select.value);
+
+  if (!selectedId) {
+    alert("⚠️ Selecciona una voz de la lista primero.");
+    return;
+  }
+
+  try {
+    const item = await getLibraryItemById(selectedId);
+
+    if (!item) {
+      alert("⚠️ No se encontró el archivo en la base de datos.");
+      return;
+    }
+
+    // CORRECCIÓN PROTECTORA: Sincronización polimórfica de propiedades binarias
+    selectedVoiceBlob = item.audioBlob || item.audioData;
+    selectedVoiceId = item.id;
+
+    if (!selectedVoiceBlob) {
+      alert("⚠️ El registro existe pero el archivo binario de audio está vacío o corrupto.");
+      return;
+    }
+
+    const audioURL = URL.createObjectURL(selectedVoiceBlob);
+    player.src = audioURL;
+    status.textContent = `Estado: voz seleccionada -> ${item.name} ✅`;
+
+    // Si el archivo de audio ya contiene letras sincronizadas de fondo, las restaura instantáneamente
+    if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+      baseTranscriptionSegments = item.transcription.map(seg => buildWordTimingFromSegment(seg));
+      transcriptionSegments = baseTranscriptionSegments;
+
+      // LLAMADA MODULAR ASÍNCRONA: Importamos las utilidades de renderizado de la pestaña Karaoke
+      const karaokeModulo = await import('./karaoke.js');
+      if (typeof karaokeModulo.renderKaraokeLyrics === "function") karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+      if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") karaokeModulo.cargarLetrasEnMonitor();
+
+      if (lyricsText) {
+        lyricsText.value = transcriptionSegments.map(seg => seg.text || "").join("\n").trim();
+      }
+
+      status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+    } else {
+      baseTranscriptionSegments = [];
+      transcriptionSegments = [];
+
+      const karaokeModulo = await import('./karaoke.js');
+      if (typeof karaokeModulo.renderKaraokeLyrics === "function") karaokeModulo.renderKaraokeLyrics([]);
+      if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") karaokeModulo.cargarLetrasEnMonitor();
+
+      if (lyricsText) lyricsText.value = "";
+      status.textContent = `Estado: voz seleccionada -> ${item.name} (sin transcripción guardada)`;
+    }
+  } catch (error) {
+    console.error("Error crítico al procesar la voz seleccionada de la biblioteca:", error);
+    alert("❌ No se pudo cargar la voz seleccionada.");
+  }
+}
+export async function transcribeSelectedVoice() {
+  if (!selectedVoiceBlob) {
+    alert("⚠️ Primero selecciona y carga una voz presionando el botón 'Cargar voz seleccionada'.");
+    return;
+  }
+
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  try {
+    if (status) status.textContent = "Estado: Preparando audio (cortando en porciones)... ⏳";
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    const CHUNK_SECONDS = 25; 
+    const sampleRate = audioBuffer.sampleRate;
+    const totalSamples = audioBuffer.length;
+    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
+
+    let fullSegments = [];
+
+    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
+      const end = Math.min(start + samplesPerChunk, totalSamples);
+      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
+      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
+
+      if (status) status.textContent = `Estado: Transcribiendo con Whisper IA (Parte ${chunkNumber} de ${totalChunks})... 🚀`;
+
+      const wavBlob = audioBufferToWav(audioBuffer, start, end);
+      const base64Audio = await blobToBase64(wavBlob);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioBase64: base64Audio })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
+      const timeOffset = start / sampleRate;
+
+      (result.segments || []).forEach((seg) => {
+        const segText = (seg?.text || "").trim();
+        if (!segText) return;
+
+        const esFantasma = palabrasProhibidas.some((p) => segText.toLowerCase().includes(p.toLowerCase()));
+        if (esFantasma) return;
+
+        const segmentWithOffset = {
+          start: Number(seg.start || 0) + timeOffset,
+          end: Number(seg.end || 0) + timeOffset,
+          text: segText,
+          words: seg.words ? seg.words.map(w => ({...w, start: w.start + timeOffset, end: w.end + timeOffset})) : null
+        };
+
+        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+      });
+    }
+
+    baseTranscriptionSegments = fullSegments;
+    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+    // LLAMADA MODULAR ASÍNCRONA: Transferencia cruzada segura de las sílabas hacia el monitor del Karaoke
+    const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
+    if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+
+    if (lyricsText) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    }
+
+    // GENERADOR AUTOMÁTICO DE ARCHIVO DE TEXTO ULTRASTAR COMPATIBLE (.txt offline)
+    try {
+      const vozOriginal = await getLibraryItemById(selectedVoiceId); 
+      const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
+      
+      const bpmPorDefecto = 120;
+      const gapPorDefecto = 0;
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4); 
+
+      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
+      let lineasCuerpo = [];
+
+      baseTranscriptionSegments.forEach((seg) => {
+        const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
+        const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
+        const lengthBeats = endBeat - startBeat;
+        const pitchBase = 0; 
+        const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
+
+        lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
+
+        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
+          lineasCuerpo.push("-");
+        }
+      });
+
+      lineasCuerpo.push("E");
+      const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
+
+      const { addLibraryItem, renderLibrary } = await import('./biblioteca.js');
+      await addLibraryItem({
+        name: `UltraStar - ${nombreBase}`,
+        type: "ultrastar_txt", 
+        audioBlob: null,       
+        textoPlano: contenidoFinalTxt, 
+        date: new Date().toLocaleString("es-ES"),
+        transcription: baseTranscriptionSegments 
+      });
+
+      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
+      await renderLibrary("ultrastar_txt");
+
+    } catch (err) {
+      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
+    }
+
+    if (selectedVoiceId) {
+      try {
+        await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
+        console.log("✅ Transcripción vinculada a la voz original.");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la voz:", err);
+      }
+    }
+
+    if (status) status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+
+  } catch (error) {
+    console.error("Error crítico en la llamada de Whisper IA:", error);
+    alert("❌ Error al transcribir el audio mediante Inteligencia Artificial.");
+    if (status) status.textContent = "Estado: Error en la transcripción";
+  }
+}
