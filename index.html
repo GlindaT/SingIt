@@ -229,21 +229,56 @@
 <section id="biblioteca" class="tab">
   <h1>📁 Biblioteca</h1>
 
-  <!-- NUEVOS BOTONES DE CARPETA -->
-  <div class="folder-controls">
-    <button class="folder-btn" onclick="renderLibrary('todos')">📂 Todos</button>
-    <button class="folder-btn" onclick="renderLibrary('pista')">🎵 Pistas</button>
-    <button class="folder-btn" onclick="renderLibrary('voz')">🎙️ Voces</button>
-    <button class="folder-btn" onclick="renderLibrary('grabacion')">💾 Grabaciones</button>
-    <button class="folder-btn" onclick="renderLibrary('karaoke')">🎤 Karaoke</button>
+  <!-- PANEL DE SUBIDA MANUAL (AÑADIDO PARA SOLUCIONAR LA OMISIÓN) -->
+  <div class="card" style="border: 1px dashed var(--border); background: rgba(30, 41, 59, 0.5);">
+    <h3 style="margin-top: 0; color: var(--accent);">📥 Cargar Archivo Manual a la Base de Datos</h3>
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
+      Añade recursos locales para consumirlos después en las pestañas de Estudio o Karaoke de forma offline.
+    </p>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+      <div>
+        <label for="libraryFileType" style="font-size: 13px; font-weight: bold; color: var(--text-muted);">📁 Categoría / Destino:</label>
+        <select id="libraryFileType" style="margin-top: 5px;">
+          <option value="pista">🎵 Pista Instrumental</option>
+          <option value="voz">🎙️ Voz / Grabación base</option>
+          <option value="ultrastar_txt">📝 Letra Estructurada (.txt UltraStar)</option>
+          <option value="grabacion">💾 Grabación / Mezcla exportada</option>
+          <option value="karaoke">🎤 Proyecto Karaoke listo</option>
+        </select>
+      </div>
+      
+      <div>
+        <label for="libraryFileName" style="font-size: 13px; font-weight: bold; color: var(--text-muted);">✏️ Nombre personalizado (Opcional):</label>
+        <input type="text" id="libraryFileName" placeholder="Ej: Canción instrumental - Artista" style="margin-top: 5px;">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <label for="libraryFileInput" style="font-size: 13px; font-weight: bold; color: var(--text-muted);">📂 Seleccionar archivo de tu PC:</label>
+      <input type="file" id="libraryFileInput" accept="audio/*, .txt" style="margin-top: 5px;">
+    </div>
+
+    <div class="studio-controls">
+      <button id="saveLibraryFileBtn" type="button" style="background: var(--accent); color: black; padding: 10px 25px;">💾 Guardar e Importar a Biblioteca</button>
+    </div>
   </div>
 
-  <div class="card">
+  <!-- CONTROLADORES DE CARPETA RECTIFICADOS -->
+  <div class="folder-controls" style="margin-top: 25px;">
+    <button class="folder-btn" type="button" onclick="import('./modules/biblioteca.js').then(m => m.renderLibrary('todos'))">📂 Todos</button>
+    <button class="folder-btn" type="button" onclick="import('./modules/biblioteca.js').then(m => m.renderLibrary('pista'))">🎵 Pistas</button>
+    <button class="folder-btn" type="button" onclick="import('./modules/biblioteca.js').then(m => m.renderLibrary('voz'))">🎙️ Voces</button>
+    <button class="folder-btn" type="button" onclick="import('./modules/biblioteca.js').then(m => m.renderLibrary('grabacion'))">💾 Grabaciones</button>
+    <button class="folder-btn" type="button" onclick="import('./modules/biblioteca.js').then(m => m.renderLibrary('karaoke'))">🎤 Karaoke</button>
+    <button class="folder-btn" type="button" onclick="import('./modules/biblioteca.js').then(m => m.renderLibrary('ultrastar_txt'))">📝 Letras .TXT</button>
+  </div>
+
+  <div class="card" style="margin-top: 20px;">
     <h3>Archivos guardados</h3>
     <div id="libraryList"></div>
   </div>
 </section>
-
     <!-- KARAOKE -->
     <section id="karaoke" class="tab">
       <h1>🎤 Karaoke</h1>
