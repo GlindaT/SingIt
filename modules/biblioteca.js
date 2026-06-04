@@ -1,14 +1,19 @@
-// Variable interna para la conexión
+import { $ } from '../script.js';
+
+// Variable interna exclusiva para sostener la conexión a la base de datos
 let db = null;
 
-// Función para compartir la conexión activa con otros módulos
+/**
+ * Función exportable imprescindible para que otros módulos compartan la conexión activa a la DB
+ */
 export function getDB() {
   return db;
 }
 
 // ==========================================
-// INDEXED DB - BIBLIOTECA
+// MOTOR CRUD - INDEXED DB
 // ==========================================
+
 export function initDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("SingItDB", 1);
@@ -40,6 +45,7 @@ export function initDB() {
 
 export function addLibraryItem(item) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject("Base de datos no inicializada");
     const transaction = db.transaction(["library"], "readwrite");
     const store = transaction.objectStore("library");
     const request = store.add(item);
@@ -56,6 +62,7 @@ export function addLibraryItem(item) {
 
 export function getAllLibraryItems() {
   return new Promise((resolve, reject) => {
+    if (!db) return reject("Base de datos no inicializada");
     const transaction = db.transaction(["library"], "readonly");
     const store = transaction.objectStore("library");
     const request = store.getAll();
@@ -72,6 +79,7 @@ export function getAllLibraryItems() {
 
 export function updateLibraryItem(id, changes) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject("Base de datos no inicializada");
     const transaction = db.transaction(["library"], "readwrite");
     const store = transaction.objectStore("library");
     const getReq = store.get(id);
@@ -93,6 +101,7 @@ export function updateLibraryItem(id, changes) {
 
 export function deleteLibraryItemFromDB(id) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject("Base de datos no inicializada");
     const transaction = db.transaction(["library"], "readwrite");
     const store = transaction.objectStore("library");
     const request = store.delete(id);
@@ -109,6 +118,7 @@ export function deleteLibraryItemFromDB(id) {
 
 export function getLibraryItemsByType(type) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject("Base de datos no inicializada");
     const transaction = db.transaction(["library"], "readonly");
     const store = transaction.objectStore("library");
     const index = store.index("type");
@@ -126,6 +136,7 @@ export function getLibraryItemsByType(type) {
 
 export function getLibraryItemById(id) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject("Base de datos no inicializada");
     const transaction = db.transaction(["library"], "readonly");
     const store = transaction.objectStore("library");
     const request = store.get(id);
@@ -139,8 +150,10 @@ export function getLibraryItemById(id) {
     };
   });
 }
-import { $ } from '../script.js';
-import { addLibraryItem, getAllLibraryItems } from './biblioteca.js'; // Conexiones locales del motor interno
+
+// ==========================================
+// CAPA INTERFAZ VISUAL - BIBLIOTECA
+// ==========================================
 
 /**
  * Función puente optimizada para guardar archivos y recargar la vista visual
@@ -150,7 +163,7 @@ export async function saveToLibrary(blob, options = {}) {
     await addLibraryItem({
       name: options.name || "Archivo",
       type: options.type || "audio",
-      audioBlob: blob || null, // Sincronizado unificadamente como audioBlob
+      audioBlob: blob || null, 
       textoPlano: options.textoPlano || null, 
       date: new Date().toLocaleString("es-ES"),
       transcription: options.transcription || [] 
@@ -170,7 +183,6 @@ export async function renderLibrary(filter = 'todos') {
   const container = $("libraryList");
   if (!container) return;
 
-  // ILUMINAR LA CARPETA SELECCIONADA (Cambiado el onclick inline problemático por lógica nativa)
   document.querySelectorAll(".folder-btn").forEach(btn => {
     const clickAttr = btn.getAttribute("onclick") || "";
     if (clickAttr.includes(`'${filter}'`)) {
@@ -184,11 +196,7 @@ export async function renderLibrary(filter = 'todos') {
   
   try {
     let library = await getAllLibraryItems();
-
-    let filteredItems = library;
-    if (filter !== 'todos') {
-      filteredItems = library.filter(item => item.type === filter);
-    }
+    let filteredItems = filter !== 'todos' ? library.filter(item => item.type === filter) : library;
 
     container.innerHTML = "";
 
@@ -200,10 +208,8 @@ export async function renderLibrary(filter = 'todos') {
         div.className = "library-item card"; 
         div.style.marginBottom = "10px";
 
-        // Tarjeta para archivos de texto UltraStar
         if (item.type === 'ultrastar_txt') {
           const previewTexto = item.textoPlano ? item.textoPlano.substring(0, 120) + "..." : "Sin contenido";
-
           div.innerHTML = `
             <p><strong>${item.name}</strong></p>
             <small>Tipo: 📝 TEXTO ULTRASTAR | ${item.date}</small>
@@ -215,12 +221,8 @@ export async function renderLibrary(filter = 'todos') {
               <button type="button" data-id="${item.id}" class="delete-library-btn" style="background:#e11d48;">🗑️ Eliminar</button>
             </div>
           `;
-        } 
-        // Tarjeta para archivos binarios de audio (Pistas, Voces, Karaoke)
-        else {
-          // Sincronizado unificadamente a item.audioBlob para evitar errores accidentales
+        } else {
           const audioURL = item.audioBlob ? URL.createObjectURL(item.audioBlob) : "";
-
           div.innerHTML = `
             <p><strong>${item.name}</strong></p>
             <small>Tipo: ${item.type.toUpperCase()} | ${item.date}</small>
@@ -232,18 +234,14 @@ export async function renderLibrary(filter = 'todos') {
       });
     }
     
-    // Asignación limpia de eventos de eliminación
     document.querySelectorAll(".delete-library-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
-        if (typeof deleteLibraryItemFromDB === "function") {
-          await deleteLibraryItemFromDB(id);
-          renderLibrary(filter); 
-        }
+        await deleteLibraryItemFromDB(id);
+        renderLibrary(filter); 
       });
     });
-    
-    // CARGAR LETRAS DIRECTAMENTE EN EL MONITOR DEL ESTUDIO (Lazy Import integrado)
+
     document.querySelectorAll(".load-monitor-btn").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = Number(btn.dataset.id);
@@ -256,10 +254,8 @@ export async function renderLibrary(filter = 'todos') {
             monitor.value = item.textoPlano;
             
             if (item.transcription) {
-              // Importación dinámica para inyectar de forma segura los segmentos en la pestaña de Estudio
               try {
                 const estudioModulo = await import('./estudio.js');
-                // Asumiendo que tu archivo modules/estudio.js exporte una función para actualizar su estado de segmentos
                 if (typeof estudioModulo.setTranscriptionSegments === 'function') {
                   estudioModulo.setTranscriptionSegments(item.transcription);
                 }
@@ -280,7 +276,6 @@ export async function renderLibrary(filter = 'todos') {
       });
     });
 
-    // Validadores de ejecución segura para recargar selectores periféricos sin romper la app
     if (typeof loadVoiceOptionsInStudio === "function") await loadVoiceOptionsInStudio();
     if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
     if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
@@ -290,14 +285,12 @@ export async function renderLibrary(filter = 'todos') {
     container.innerHTML = "<p>❌ Error al cargar la biblioteca.</p>";
   }
 }
-import { $, renderLibrary, addLibraryItem } from './biblioteca.js';
-
 export async function saveManualFileToLibrary() {
   const fileInput = $("libraryFileInput");
   const typeSelect = $("libraryFileType");
   const nameInput = $("libraryFileName");
 
-  if (!fileInput || !fileInput.files[0]) {
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     alert("⚠️ Por favor, selecciona un archivo primero.");
     return;
   }
@@ -307,7 +300,6 @@ export async function saveManualFileToLibrary() {
   const customName = nameInput && nameInput.value.trim() ? nameInput.value.trim() : file.name.replace(/\.[^.]+$/, "");
 
   try {
-    // CASO A: Es un archivo de texto UltraStar (Letras)
     if (selectedType === "ultrastar_txt") {
       const textoPlano = await file.text();
       
@@ -319,13 +311,11 @@ export async function saveManualFileToLibrary() {
         date: new Date().toLocaleString("es-ES"),
         transcription: []
       });
-    } 
-    // CASO B: Es cualquier archivo de audio (Pistas, Voces)
-    else {
+    } else {
       await addLibraryItem({
         name: customName,
         type: selectedType,
-        audioBlob: file, // Sincronizado unificadamente como audioBlob
+        audioBlob: file, 
         date: new Date().toLocaleString("es-ES"),
         transcription: []
       });
