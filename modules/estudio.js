@@ -625,3 +625,292 @@ export async function loadSelectedVoiceFromLibrary() {
     alert("❌ No se pudo cargar la voz seleccionada");
   }
 }
+import { $ } from '../script.js';
+import { addLibraryItem, getLibraryItemById, updateLibraryItem, renderLibrary } from './biblioteca.js';
+
+// Variables compartidas con el grabador (asegúrate de que estén declaradas arriba en este mismo archivo)
+let selectedVoiceBlob = null;
+let selectedVoiceId = null;
+let transcriptionSegments = [];
+let baseTranscriptionSegments = [];
+
+/**
+ * UTILERÍA: Convierte porciones de AudioBuffer a formato WAV binario nativo
+ */
+function audioBufferToWav(buffer, startSample, endSample) {
+  const numOfChan = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const subBufferLength = endSample - startSample;
+  const bufferLength = subBufferLength * numOfChan * 2 + 44;
+  const arrayBuffer = new ArrayBuffer(bufferLength);
+  const view = new DataView(arrayBuffer);
+  
+  // Escribir cabecera WAV (RIFF)
+  view.setUint32(0, 0x46464952, true); // "RIFF"
+  view.setUint32(4, bufferLength - 8, true);
+  view.setUint32(8, 0x45564157, true); // "WAVE"
+  view.setUint32(12, 0x20746d66, true); // "fmt "
+  view.setUint32(16, 16, true); // tamaño subchunk
+  view.setUint16(20, 1, true); // PCM sin compresión
+  view.setUint16(22, numOfChan, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numOfChan * 2, true); // byte rate
+  view.setUint16(32, numOfChan * 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  view.setUint32(36, 0x61746164, true); // "data"
+  view.setUint32(40, subBufferLength * numOfChan * 2, true);
+
+  // Escribir muestras entrelazadas de audio
+  let offset = 44;
+  for (let i = startSample; i < endSample; i++) {
+    for (let channel = 0; channel < numOfChan; channel++) {
+      let sample = buffer.getChannelData(channel)[i];
+      sample = Math.max(-1, Math.min(1, sample)); // Clamping seguro
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+/**
+ * UTILERÍA: Transforma un objeto Blob a String Base64 de forma asíncrona
+ */
+function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result.split(",")[1];
+      resolve(base64String);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * UTILERÍA: Divide segmentos de texto largos en líneas cortas ideales para cantar
+ */
+function splitSegmentsIntoKaraokeLines(segments, maxWordsPerLine = 6) {
+  let output = [];
+  segments.forEach(seg => {
+    const words = seg.words || [];
+    if (words.length <= maxWordsPerLine) {
+      output.push(seg);
+      return;
+    }
+    // Sub-segmentación matemática por número de palabras
+    for (let i = 0; i < words.length; i += maxWordsPerLine) {
+      const chunkWords = words.slice(i, i + maxWordsPerLine);
+      const textLine = chunkWords.map(w => w.word).join(" ");
+      output.push({
+        start: chunkWords[0].start,
+        end: chunkWords[chunkWords.length - 1].end,
+        text: textLine,
+        words: chunkWords
+      });
+    }
+  });
+  return output;
+}
+
+/**
+ * Corrección de respaldo por seguridad
+ */
+function buildWordTimingFromSegment(seg) {
+  if (!seg.words) {
+    // Si Whisper no devolvió marcas por palabra, creamos una simulación matemática lineal homogénea
+    const wordsArr = seg.text.split(" ");
+    const duration = seg.end - seg.start;
+    const wordDuration = duration / wordsArr.length;
+    seg.words = wordsArr.map((word, i) => ({
+      word: word,
+      start: seg.start + i * wordDuration,
+      end: seg.start + (i + 1) * wordDuration
+    }));
+  }
+  return seg;
+}
+
+/**
+ * Corta el archivo de voz en porciones y lo envía a procesar a la API de Whisper
+ */
+export async function transcribeSelectedVoice() {
+  if (!selectedVoiceBlob) {
+    alert("⚠️ Primero selecciona y carga una voz desde Biblioteca");
+    return;
+  }
+
+  const status = $("selectedVoiceStatus");
+  const lyricsText = $("lyricsText");
+
+  try {
+    if (status) status.textContent = "Estado: Preparando audio (cortando en porciones)...";
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    const CHUNK_SECONDS = 25; // Tamaño del trozo para evitar agotar la RAM de la API
+    const sampleRate = audioBuffer.sampleRate;
+    const totalSamples = audioBuffer.length;
+    const samplesPerChunk = CHUNK_SECONDS * sampleRate;
+
+    let fullSegments = [];
+
+    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
+      const end = Math.min(start + samplesPerChunk, totalSamples);
+      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
+      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
+
+      if (status) status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+
+      const wavBlob = audioBufferToWav(audioBuffer, start, end);
+      const base64Audio = await blobToBase64(wavBlob);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audioBase64: base64Audio })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
+      const timeOffset = start / sampleRate;
+
+      (result.segments || []).forEach((seg) => {
+        const segText = (seg?.text || "").trim();
+        if (!segText) return;
+
+        const esFantasma = palabrasProhibidas.some((p) => segText.toLowerCase().includes(p.toLowerCase()));
+        if (esFantasma) return;
+
+        const segmentWithOffset = {
+          start: Number(seg.start || 0) + timeOffset,
+          end: Number(seg.end || 0) + timeOffset,
+          text: segText,
+          words: seg.words ? seg.words.map(w => ({...w, start: w.start + timeOffset, end: w.end + timeOffset})) : null
+        };
+
+        fullSegments.push(buildWordTimingFromSegment(segmentWithOffset));
+      });
+    }
+
+    baseTranscriptionSegments = fullSegments;
+    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+
+    if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(transcriptionSegments);
+    if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
+
+    if (lyricsText) {
+      lyricsText.value = transcriptionSegments.map(line => line.text).join("\n");
+    }
+
+    // GENERADOR AUTOMÁTICO DE ARCHIVO DE TEXTO ULTRASTAR COMPATIBLE
+    try {
+      const vozOriginal = await getLibraryItemById(selectedVoiceId); 
+      const nombreBase = vozOriginal ? vozOriginal.name.replace(/🎙️ Voz - |Voz - /g, "") : "Nueva Canción";
+      
+      const bpmPorDefecto = 120;
+      const gapPorDefecto = 0;
+      const duracionUnBeat = 60 / (bpmPorDefecto * 4); // Resolución x4 para evitar desfases de tiempo
+
+      const cabeceraUltraStar = `#TITLE:${nombreBase}\n#ARTIST:Whisper Transcribe\n#BPM:${bpmPorDefecto}\n#GAP:${gapPorDefecto}\n`;
+      let lineasCuerpo = [];
+
+      baseTranscriptionSegments.forEach((seg) => {
+        const startBeat = Math.max(0, Math.floor(seg.start / duracionUnBeat));
+        const endBeat = Math.max(startBeat + 1, Math.floor(seg.end / duracionUnBeat));
+        const lengthBeats = endBeat - startBeat;
+        const pitchBase = 0; // Se inicializa en 0 para edición por Taps o canto posterior
+        const textoLimpio = seg.text ? ` ${seg.text.trim()}` : " ...";
+
+        lineasCuerpo.push(`: ${startBeat} ${lengthBeats} ${pitchBase}${textoLimpio}`);
+
+        if (seg.text && (seg.text.includes("\n") || seg.text.includes(".") || seg.text.includes(","))) {
+          lineasCuerpo.push("-");
+        }
+      });
+
+      lineasCuerpo.push("E");
+      const contenidoFinalTxt = cabeceraUltraStar + lineasCuerpo.join("\n");
+
+      await addLibraryItem({
+        name: `UltraStar - ${nombreBase}`,
+        type: "ultrastar_txt", 
+        audioBlob: null,       
+        textoPlano: contenidoFinalTxt, 
+        date: new Date().toLocaleString("es-ES"),
+        transcription: baseTranscriptionSegments 
+      });
+
+      console.log("✅ Archivo estructurado de UltraStar TXT creado con éxito en la Biblioteca");
+      await renderLibrary("ultrastar_txt");
+
+    } catch (err) {
+      console.error("❌ Error al generar el archivo UltraStar estructurado:", err);
+    }
+
+    if (selectedVoiceId) {
+      try {
+        await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
+        console.log("✅ Transcripción vinculada a la voz original");
+      } catch (err) {
+        console.error("❌ Error guardando transcripción en la voz:", err);
+      }
+    }
+
+    if (status) status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+
+  } catch (error) {
+    console.error(error);
+    alert("❌ Error al transcribir el audio.");
+    if (status) status.textContent = "Estado: Error en la transcripción";
+  }
+}
+
+/**
+ * Captura el texto del mini monitor de edición y lo almacena de forma física offline
+ */
+export async function guardarTextoUltraStarEnBiblioteca() {
+  try {
+    const textoMonitor = document.getElementById("miniMonitorTextArea")?.value || ""; 
+    
+    if (!textoMonitor.trim()) {
+      alert("⚠️ El monitor está vacío. No hay texto para guardar.");
+      return;
+    }
+
+    const tituloCancion = window.currentSongTitle || "Nueva Canción";
+    const artistaCancion = window.currentSongArtist || "Artista Desconocido";
+
+    await addLibraryItem({
+        name: `UltraStar - ${tituloCancion} (${artistaCancion})`,
+        type: "ultrastar_txt", 
+        audioBlob: null,
+        date: new Date().toLocaleString("es-ES"),
+        textoPlano: textoMonitor, // Guardamos el formato de texto plano estructurado
+        metadata: {
+            title: tituloCancion,
+            artist: artistaCancion,
+            generadoPor: "Whisper + Manual Tap"
+        }
+    };
+
+    // 4. Guardar en tu base de datos existente
+    await addLibraryItem(nuevoElemento);
+
+    // 5. Refrescar la vista actual de la biblioteca
+    await renderLibrary("ultrastar_txt");
+    
+    alert("✅ ¡Texto UltraStar guardado en la biblioteca con éxito!");
+
+  } catch (error) {
+    console.error("Error al guardar texto UltraStar:", error);
+    alert("❌ No se pudo guardar el archivo en la biblioteca.");
+  }
+}
