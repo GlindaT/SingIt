@@ -1,5 +1,11 @@
 import { $ } from '../script.js';
 
+// CORRECCIÓN PROTECTORA: Declaramos las variables de control de pruebas al inicio del módulo
+let micTestAudioContext = null;
+let micTestStream = null;
+let micTestAnalyser = null;
+let micTestAnimationId = null;
+
 /**
  * Burbuja visual flotante que avisa al usuario que sus configuraciones se guardaron con éxito
  */
