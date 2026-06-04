@@ -489,13 +489,27 @@
         </div>
         
         <div class="settings-group">
-          <label for="difficultyLevel">📊 Dificultad para el Pentagrama</label>
-          <select id="difficultyLevel">
+          <!-- CORREGIDO: ID ÚNICO para evitar que colisione con el afinador matemático -->
+          <label for="karaokeDifficultyLevel">📊 Dificultad para el Pentagrama</label>
+          <select id="karaokeDifficultyLevel">
             <option value="facil">Fácil</option>
             <option value="medio">Medio</option>
             <option value="dificil">Difícil</option>
           </select>
         </div>
+
+        <div class="settings-group">
+          <label for="karaokeThemeSelect">🎨 Escenario de Canto (Fondo)</label>
+          <select id="karaokeThemeSelect">
+            <option value="theme-clasico">Default Clásico</option>
+            <option value="theme-moderno">Cian Moderno</option>
+            <option value="theme-disco">Disco Fucsia</option>
+            <option value="theme-acustico">Madera Acústico</option>
+            <option value="theme-fiesta">Arcoíris Fiesta</option>
+            <option value="theme-retrowave">Retro Synthwave Neon 💜</option>
+          </select>
+        </div>
+
         <div class="settings-group">
           <label for="appTheme">🎨 Tema de la App</label>
           <select id="appTheme">
@@ -515,6 +529,6 @@
 
 </div>
   
-<script src="script.js"></script>
+<script src="script.js" type="module"></script> <!-- CORREGIDO: type="module" obligatorio para ES6 Imports -->
 </body>
 </html>
