@@ -2,8 +2,6 @@
 // SINGIT CORE - CENTRAL DIRECTOR (script.js)
 // ==========================================
 
-const initDB = [],
-
 // --- 1. UTILIDADES GLOBALES COMPARTIDAS ---
 export function $(id) {
   return document.getElementById(id);
