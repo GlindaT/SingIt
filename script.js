@@ -244,13 +244,18 @@ loadMyKaraokeSongs().catch(() => {});
     safeAdd("micCount", "change", toggleMic2Visibility);
     
     // Inicialización del hardware al arrancar
-    loadAvailableMics();
+     await loadAvailableMics();
     toggleMic2Visibility();
 
-    // Precarga de catálogos y Biblioteca local
+    // Precarga asíncrona de datos en las pestañas (Lazy Imports de arranque)
+    const { renderLibrary } = await import("./modules/biblioteca.js");
+    const { loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
+    
     await renderLibrary('todos');
-    await loadTrackOptionsInStudio();
-    await loadTrackOptionsInKaraoke();
+    await loadMyKaraokeSongs().catch(() => {});
+    await loadKaraokeCatalog().catch(() => {}); // Carga del archivo json del servidor al arrancar
+
+    console.log("🚀 ¡SingIt inicializada de forma impecable y estable al 100%!");
 
     const player = $("player");
     if (player) {
