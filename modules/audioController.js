@@ -1,5 +1,5 @@
 export class AudioProcessorController {
-  constructor(workerPath = '../audio-processor.worker.js') { // CORREGIDA: Ruta relativa exacta desde la carpeta modules/
+  constructor(workerPath = '../audio-processor.worker.js') { // Ruta relativa exacta desde la carpeta modules/
     this.worker = new Worker(workerPath);
     this.pendingRequests = new Map();
     this.requestId = 0;
@@ -59,7 +59,7 @@ export class AudioProcessorController {
   }
 
   /**
-   * Envia fragmentos de audio para detección del Pitch matemático
+   * Envía fragmentos de audio para detección del Pitch matemático
    */
   async detectPitch(buffer, sampleRate) {
     const floatBuffer = buffer instanceof Float32Array ? buffer : new Float32Array(buffer);
@@ -121,7 +121,7 @@ export class AudioProcessorController {
 // Instancia única (Singleton) compartida de forma perezosa por toda la aplicación
 let audioController = null;
 
-// CORREGIDA: Exportación de ES Modules limpia y oficial
+// Exportación de ES Modules limpia y oficial
 export function getAudioController() {
   if (!audioController) {
     audioController = new AudioProcessorController();
