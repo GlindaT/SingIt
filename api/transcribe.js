@@ -1,12 +1,15 @@
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb', // Permite fragmentos de audio más largos
-    },
-  },
-};
-
 export default async function handler(req, res) {
+  // 💡 1. Configurar cabeceras CORS obligatorias al inicio
+  res.setHeader('Access-Control-Allow-Origin', 'https://vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  // 💡 2. Responder de inmediato con éxito a la verificación previa (Preflight)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  // 💡 3. Validar el método permitido posterior
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método no permitido" });
   }
@@ -32,9 +35,7 @@ export default async function handler(req, res) {
     formData.append("model", "whisper-1");
     formData.append("language", "es");
     formData.append("response_format", "verbose_json");
-    
-    // CORRECCIÓN: Cambiado "words" por "word" (singular obligatorio por OpenAI)
-    formData.append("timestamp_granularities[]", "word"); 
+    formData.append("timestamp_granularities[]", "segment");
 
     const openAIResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
