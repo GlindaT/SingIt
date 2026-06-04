@@ -190,15 +190,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Catálogos externos de Karaoke
     safeAdd("refreshKaraokeCatalogBtn", "click", async () => {
-  const { loadMyKaraokeSongs } = await import("./modules/karaoke.js");
-  if (typeof loadKaraokeCatalog === "function") await loadKaraokeCatalog(); // Si tienes el catálogo de servidor en otro lado
-  await loadMyKaraokeSongs();
-});
-
-// Carga inicial automatizada de tus canciones al arrancar la app
-const { loadMyKaraokeSongs } = await import("./modules/karaoke.js");
-loadMyKaraokeSongs().catch(() => {});
-
+      const { loadMyKaraokeSongs } = await import("./modules/karaoke.js");
+      if (typeof loadKaraokeCatalog === "function") await loadKaraokeCatalog(); // Si tienes el catálogo de servidor en otro lado
+      await loadMyKaraokeSongs();
+    });
     
     // Carga manual de archivos hacia la Biblioteca
     safeAdd("saveLibraryFileBtn", "click", saveManualFileToLibrary);
