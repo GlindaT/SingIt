@@ -1,24 +1,43 @@
-const pitchBuffer = new Float32Array(2048);
-let pitchHistory = [];
-let pitchHistoryMic1 = [];
-let pitchHistoryMic2 = [];
-
-let isPitchDetectionRunning = false;
-let micTestAudioContext = null;
-let micTestAnimationId = null;
-let micTestStream = null;
-
-// Importamos el controlador de audio y la utilidad $ desde sus archivos correspondientes
 import { getAudioController } from './audioController.js';
-import { $ } from '../script.js'; 
+import { drawKaraokeMonitor, $ } from '../script.js';
 
-// Variables técnicas encapsuladas (Evita colisiones con la pestaña de Estudio)
-let audioContext, analyser, stream;
+// Variables de estado y buffers encapsulados en el ámbito local del módulo
 const pitchBuffer = new Float32Array(2048);
+let audioContext = null;
+let analyser = null;
+let stream = null;
 let isAfinadorRunning = false;
 
+// Variables compartidas expuestas en el objeto window para evitar colisiones
+window.pitchHistoryMic1 = [];
+window.pitchHistoryMic2 = [];
+
 /**
- * Controla el botón de encendido/apagado del Afinador de forma independiente
+ * UTILERÍA LOCAL: Convierte una frecuencia analítica (Hz) a una etiqueta de nota musical (ej. C4, A5)
+ */
+export function getNoteFromFrequency(frequency) {
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const midi = Math.round(12 * Math.log2(frequency / 440) + 69);
+  const noteIndex = (midi % 12 + 12) % 12;
+  const octave = Math.floor(midi / 12) - 1;
+  return noteNames[noteIndex] + octave;
+}
+
+/**
+ * UTILERÍA LOCAL: Traduce una nota en formato texto a su frecuencia matemática exacta en Hz
+ */
+function getNoteFrequency(note) {
+  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const match = note.match(/^([A-G]#?)(\d+)$/);
+  if (!match) return 440; 
+  const name = match[1];
+  const octave = parseInt(match[2], 10);
+  const semitones = noteNames.indexOf(name) + (octave + 1) * 12;
+  return 440 * Math.pow(2, (semitones - 69) / 12);
+}
+
+/**
+ * Controla de forma segura el interruptor de encendido del hardware desde el botón visual del panel
  */
 export async function toggleAfinadorRecording() {
   const btn = $("recordBtn");
@@ -41,137 +60,94 @@ export async function toggleAfinadorRecording() {
 }
 
 /**
- * Filtra el audio nativamente antes de enviarlo al analizador matemático
+ * Aplica filtros analógicos de paso alto y paso bajo para limpiar ruidos antes del análisis
  */
 function aplicarCadenaDeAudio(audioCtx, source) {
- const highPass = audioCtx.createBiquadFilter();
- highPass.type = "highpass";
- highPass.frequency.value = 80; // Elimina zumbidos graves de fondo
+  const highPass = audioCtx.createBiquadFilter();
+  highPass.type = "highpass";
+  highPass.frequency.value = 80; // Corta zumbidos graves de la habitación
  
- const lowPass = audioCtx.createBiquadFilter();
- lowPass.type = "lowpass";
- lowPass.frequency.value = 1000; // Corta brillos para optimizar la detección del tono
+  const lowPass = audioCtx.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.value = 1000; // Aísla los armónicos vocales primarios
  
- const gainNode = audioCtx.createGain();
- gainNode.gain.value = 1.5;
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = 1.5;
  
- source.connect(highPass);
- highPass.connect(lowPass);
+  source.connect(highPass);
+  highPass.connect(lowPass);
  lowPass.connect(gainNode);
  
- return gainNode; 
+  return gainNode; 
 }
 
 /**
- * Enciende el micrófono y arranca el ciclo de escucha
+ * Captura el hardware de entrada y activa los nodos de análisis en el contexto web audio
  */
 async function startAfinador() {
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true, // Cambiado a true para mejorar la experiencia con bocinas
-      noiseSuppression: true,
-      autoGainControl: false
-    }
-  });
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true, 
+        noiseSuppression: true,
+        autoGainControl: false
+      }
+    });
 
-  const mic = audioContext.createMediaStreamSource(stream);
-  const cadenaLimpia = aplicarCadenaDeAudio(audioContext, mic);
+    const mic = audioContext.createMediaStreamSource(stream);
+    const cadenaLimpia = aplicarCadenaDeAudio(audioContext, mic);
   
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 2048;
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
   
-  cadenaLimpia.connect(analyser);
+    cadenaLimpia.connect(analyser);
 
-  // Ciclo asíncrono de detección de tono utilizando el Web Worker
-  ejecutarCicloDeteccion();
+    // Arrancar el ciclo de renderizado matemático unificado
+    ejecutarCicloDeteccion();
+  } catch (err) {
+    console.error("No se pudo iniciar el hardware del afinador:", err);
+    alert("❌ Error al acceder al micrófono. Concede permisos en tu navegador.");
+    isAfinadorRunning = false;
+    const btn = $("recordBtn");
+    if (btn) { btn.textContent = "Iniciar Afinador"; btn.classList.remove("recording"); }
+  }
 }
 
 /**
- * Apaga el micrófono de manera segura liberando el hardware
+ * Apaga los flujos binarios y libera el micrófono de forma limpia
  */
 function stopAfinador() {
   isAfinadorRunning = false;
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
+    stream = null;
   }
   if (audioContext && audioContext.state !== 'closed') {
-    audioContext.close();
+    audioContext.close().catch(() => {});
+    audioContext = null;
   }
+  analyser = null;
 }
 
 /**
- * Ciclo infinito optimizado que envía el audio al Worker para detectar la nota musical
+ * Ciclo de renderizado de alta velocidad unificado: extrae audio, delega al Worker y refresca la pantalla
  */
 async function ejecutarCicloDeteccion() {
   if (!isAfinadorRunning || !analyser) return;
 
-  // Extrae los datos crudos del micrófono
-  analyser.getFloatTimeDomainData(pitchBuffer);
-
-  try {
-    // LLAMADA AL WORKER (Evita congelar la UI y no duplica el código del algoritmo)
-    const audioCtrl = getAudioController();
-    const frequency = await audioCtrl.detectPitch(pitchBuffer, audioContext.sampleRate);
-
-    if (frequency > 0) {
-      // Aquí puedes llamar a tu función para convertir Hz a nota (ej. C4, A5) y pintarla en "noteDisplay"
-      actualizarInterfazAfinador(frequency);
-    }
-  } catch (error) {
-    console.error("Error en la detección de pitch del afinador:", error);
-  }
-
-  // Siguiente fotograma de audio
-  requestAnimationFrame(ejecutarCicloDeteccion);
-}
-
-function actualizarInterfazAfinador(freq) {
-  const display = $("noteDisplay");
-  if (display) {
-    display.textContent = Math.round(freq) + " Hz";
-  }
-}
-import { getAudioController } from './audioController.js';
-import { drawKaraokeMonitor } from '../script.js';
-import { $ } from '../script.js';
-
-// Utilidades matemáticas locales para conversión de notas (Evita duplicados globales)
-function getNoteFromFrequency(frequency) {
-  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const midi = Math.round(12 * Math.log2(frequency / 440) + 69);
-  const noteIndex = (midi % 12 + 12) % 12;
-  const octave = Math.floor(midi / 12) - 1;
-  return noteNames[noteIndex] + octave;
-}
-
-function getNoteFrequency(note) {
-  const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const match = note.match(/^([A-G]#?)(\d+)$/);
-  if (!match) return 440; // Por defecto nota LA
-  const name = match[1];
-  const octave = parseInt(match[2], 10);
-  const semitones = noteNames.indexOf(name) + (octave + 1) * 12;
-  return 440 * Math.pow(2, (semitones - 69) / 12);
-}
-
-/**
- * Ciclo de renderizado analítico del afinador conectado al Web Worker
- */
-export async function ejecutarCicloDeteccionAvanzado(analyser, pitchBuffer, audioContext, estadoAfinador) {
-  if (!estadoAfinador.running || !analyser) return;
-
+  // Cargar datos crudos en la memoria compartida local
   analyser.getFloatTimeDomainData(pitchBuffer);
   
   try {
     const audioCtrl = getAudioController();
-    // Procesamiento matemático derivado al Worker secundario (No bloquea la UI)
+    // Derivación matemática al Web Worker (0% congelamiento visual)
     const pitch = await audioCtrl.detectPitch(pitchBuffer, audioContext.sampleRate);
     
-    // Si el monitor de karaoke está activo en pantalla, le reportamos la frecuencia en tiempo real
+    // Si el lienzo interactivo del karaoke está presente, le reportamos la nota en vivo
     if (document.getElementById("karaokeCanvas")) {
-      drawKaraokeMonitor(0, pitch); 
+      drawKaraokeMonitor(0, pitch, 0); 
     }
 
     const display = $("noteDisplay");
@@ -213,9 +189,11 @@ export async function ejecutarCicloDeteccionAvanzado(analyser, pitchBuffer, audi
       }
     }
   } catch (error) {
-    console.error("Error en ciclo avanzado de afinador:", error);
+    console.error("Error en ciclo analítico de afinación:", error);
   }
 
-  // Continuar el bucle nativo de animación gráfica
-  requestAnimationFrame(() => ejecutarCicloDeteccionAvanzado(analyser, pitchBuffer, audioContext, estadoAfinador));
+  // Escuchar el siguiente cuadro de audio de forma recursiva
+  if (isAfinadorRunning) {
+    requestAnimationFrame(ejecutarCicloDeteccion);
+  }
 }
