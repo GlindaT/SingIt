@@ -1,6 +1,6 @@
 import { $ } from '../script.js';
 import { saveToLibrary } from './biblioteca.js'; // Conexión modular segura para guardar voz y pista
-import { exportStereoWav } from './karaoke.js';    // Reutilización matemática del exportador para no duplicar código
+import { exportStereoWav } from './audioController.js'; 
 
 /**
  * Muestra el resultado de la API directamente en el contenedor del Splitter
