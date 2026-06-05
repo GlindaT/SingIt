@@ -573,21 +573,60 @@ export function parseUltrastarTxt(content) {
 // ====================================================================
 // 📥 SUBIDA DE INTERFAZ LOCAL Y ASOCIACIÓN DE COMPONENTES VISUALES
 // ====================================================================
-export function cargarPistaKaraoke(e) {
-  const file = e.target.files[0]; 
-  if (!file) return;
+export async function cargarPistaKaraoke(e) {
+  console.log("📥 [karaoke.js] Selección manual de archivos detectada en la pestaña Karaoke...");
+  const archivos = e.target.files;
+  if (!archivos || archivos.length === 0) return;
 
-  karaokeSelectedTrackBlob = file; 
-  karaokeSelectedTrackName = file.name;
+  const statusEl = document.getElementById("karaokeStatus");
+  const trackPlayer = document.getElementById("karaokeTrack");
+  
+  // Identificamos el archivo de audio dentro del input
+  const archivoAudio = Array.from(archivos).find(file => file.type.startsWith("audio/"));
+  // Identificamos el archivo de letras estructuradas .txt si el usuario subió ambos juntos
+  const archivoTxt = Array.from(archivos).find(file => file.name.endsWith(".txt") || file.type === "text/plain");
 
-  const track = $("karaokeTrack"); 
-  if (track) { 
-    track.src = URL.createObjectURL(file); 
-    track.volume = 0.4; 
+  try {
+    // 1. CARGA DEL COMPONENTE DE AUDIO INSTRUMENTAL
+    if (archivoAudio) {
+      if (statusEl) statusEl.textContent = `Estado: Cargando audio instrumental (${archivoAudio.name})... ⏳`;
+      if (trackPlayer) {
+        trackPlayer.src = URL.createObjectURL(archivoAudio);
+        console.log(`🎵 [karaoke.js] Audio acoplado de forma exitosa al reproductor: [${archivoAudio.name}]`);
+      }
+    }
+
+    // 2. PROCESAMIENTO E INYECCIÓN DEL ARCHIVO ULTRASTAR .TXT (AQUÍ VA TU FRAGMENTO)
+    if (archivoTxt) {
+      if (statusEl) statusEl.textContent = "Estado: Parseando partituras y escalonando notas UltraStar... ⏳";
+      console.log(`📝 [karaoke.js] Detectado archivo de letras UltraStar: [${archivoTxt.name}]. Procesando...`);
+      
+      const contenidoTxt = await archivoTxt.text();
+      const datosParseados = parseUltrastarTxt(contenidoTxt);
+
+      // ALINEACIÓN DE FLUJO: Convertimos los beats a segmentos armónicos y los inyectamos en la memoria global del Canvas
+      window.transcriptionSegments = ultrastarToSegments(datosParseados);
+
+      // Refrescamos las letras en la barra inferior negra
+      if (typeof cargarLetrasEnMonitor === "function") {
+        cargarLetrasEnMonitor();
+      }
+      console.log("🚀 [Karaoke] Letras .txt de UltraStar cargadas, escalonadas y sincronizadas en el Canvas.");
+    } else {
+      console.log("ℹ️ [karaoke.js] No se adjuntó un archivo .txt en esta subida manual. El Canvas esperará una canción de la Biblioteca.");
+    }
+
+    // 3. ACTUALIZACIÓN VISUAL FINAL DEL ESTADO
+    if (statusEl) {
+      const nombrePista = archivoAudio ? archivoAudio.name : "Archivo local";
+      statusEl.textContent = `Estado: 🎧 Pista lista (${nombrePista}). Presiona Iniciar para cantar.`;
+    }
+
+  } catch (error) {
+    console.error("❌ [karaoke.js] Error crítico procesando la subida manual en el Karaoke:", error);
+    if (statusEl) statusEl.textContent = "Estado: ❌ Error cargando los archivos locales";
+    alert("❌ Hubo un error al leer tus archivos. Asegúrate de que el .txt tenga el formato UltraStar correcto.");
   }
-  const status = $("karaokeStatus");
-  if (status) status.textContent = "Estado: Pista lista. ¡Presiona Iniciar Grabación!";
-  cargarLetrasEnMonitor();
 }
 
 export async function loadTrackOptionsInKaraoke() {
