@@ -1,7 +1,7 @@
+// modules/karaoke.js - PARTE 1: ARRANQUE, CONFIGURACIÓN GRÁFICA Y MÉTODO RENDER
 import { $ } from '../script.js';
-import { getLibraryItemById, getLibraryItemsByType, addLibraryItem } from './biblioteca.js';
+import { getLibraryItemById, getLibraryItemsByType } from './biblioteca.js';
 
-// --- ARREGLOS GLOBALES TEMPORALES DE CAPTURA DE AUDIO ---
 let karaokeChunks = [];
 let karaokeMediaRecorder = null;
 let karaokeRecordedAudioBlob = null;
@@ -17,11 +17,12 @@ export class KaraokeCanvasRenderer {
     this.frameInterval = 1000 / this.options.maxFrameRate;
     this.noteYCache = new Map();
     
+    // CALIBRACIÓN MAESTRA DE DOBLE TAMAÑO (Para monitor gigante de 1800x600px)
     this.pentagramTop = 40; 
-    this.midiMin = 36;      
-    this.midiMax = 84;      
+    this.midiMin = 36;      // Rango elástico extendido para notas graves masculinas
+    this.midiMax = 84;      // Rango agudo limpio
     this.midiRange = this.midiMax - this.midiMin;
-    this.lineX = 80;        
+    this.lineX = 80;        // Aguja vertical roja desplazada a la derecha
 
     if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
     if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
@@ -80,7 +81,6 @@ export class KaraokeCanvasRenderer {
     const pentagramHeight = pentagramBottom - this.pentagramTop;
 
     // --- ENRUTADOR ELÁSTICO DE HERCIOS CERTIFICADO ---
-    // Si los parámetros llegan movidos, detectamos cuál variable es el número de hercios real
     let freqMic1 = -1;
     let freqMic2 = -1;
     let segmentosLetras = window.transcriptionSegments || transcriptionSegments;
@@ -88,7 +88,6 @@ export class KaraokeCanvasRenderer {
     if (typeof currentFreq === 'number') freqMic1 = currentFreq;
     if (typeof currentFreq2 === 'number') freqMic2 = currentFreq2;
     
-    // Si el segundo argumento llegó como array, significa que script.js omitió los hercios
     if (Array.isArray(currentFreq)) {
       segmentosLetras = currentFreq;
       freqMic1 = -1;
@@ -220,69 +219,7 @@ export class KaraokeCanvasRenderer {
         this.ctx.beginPath(); this.ctx.fillStyle = "#facc15"; this.ctx.shadowBlur = 20; this.ctx.shadowColor = "#facc15";
         this.ctx.arc(this.lineX, userY1, 9, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
       }
-
-      // --- 🐬 TRAZO CONTINUO DEL MICRÓFONO 2 (CIAN EN TIEMPO REAL) ---
-      if (window.pitchHistoryMic2 && window.pitchHistoryMic2.length > 0) {
-        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(6, 182, 212, 0.9)"; this.ctx.lineWidth = 5;
-        let started2 = false;
-        window.pitchHistoryMic2.forEach((freq, i) => {
-          if (freq && freq > 0) {
-            const y = this.midiToY(this.frequencyToMidi(freq));
-            const x = this.lineX - (window.pitchHistoryMic2.length - i) * 3; 
-            if (x >= 0) {
-              if (!started2) { this.ctx.moveTo(x, y); started2 = true; } else { this.ctx.lineTo(x, y); }
-            }
-          } else { started2 = false; }
-        });
-        this.ctx.stroke();
-      }
-
-      if (freqMic2 && freqMic2 > 0) {
-        const userY2 = this.midiToY(this.frequencyToMidi(freqMic2));
-        this.ctx.beginPath(); this.ctx.fillStyle = "#06b6d4"; this.ctx.shadowBlur = 20; this.ctx.shadowColor = "#06b6d4";
-        this.ctx.arc(this.lineX + 6, userY2, 9, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
-      }
-
-      // --- BANNER DE LETRAS INFERIORES SUB-TÍTULO (RE-CALIBRADO GIGANTE A 90PX) ---
-      const currentIndex = segmentosLetras.findIndex(seg => currentTime >= seg.start && currentTime <= seg.end + 0.5);
-      this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; 
-      this.ctx.fillRect(0, this.canvas.height - 90, this.canvas.width, 90);
-
-      if (currentIndex !== -1) {
-        const currentSegment = segmentosLetras[currentIndex];
-        const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-        this.ctx.fillStyle = "#ffffff"; this.ctx.font = "bold 32px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "top";
-        this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 80);
-
-        const nextSegment = segmentosLetras[currentIndex + 1];
-        if (nextSegment) {
-          const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; this.ctx.font = "bold 22px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "bottom";
-          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 12);
-        }
-      } else {
-        const upcomingSegment = segmentosLetras.find(seg => seg.start > currentTime);
-        if (upcomingSegment) {
-          const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; this.ctx.font = "bold 24px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
-          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 45);
-        }
-      }
-
-    } else {
-      this.ctx.fillStyle = paleta.etiquetas; this.ctx.font = "20px sans-serif"; this.ctx.textAlign = "center";
-      this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
-    }
-  }
-
-  handleResize() { this.noteYCache.clear(); }
-}
-
-// ====================================================================
-// 2. DISPARADORES DE HARDWARE (CAPTURA REAL DE AUDIO)
-// ====================================================================
-
-export async function startKaraokeRecording() {
+      export async function startKaraokeRecording() {
   console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
   const statusEl = document.getElementById("karaokeStatus"), track = document.getElementById("karaokeTrack");
   try {
@@ -326,7 +263,6 @@ export async function startKaraokeRecording() {
       if (document.getElementById("karaokeDuoIndicator")) document.getElementById("karaokeDuoIndicator").style.display = "block";
     }
 
-    // --- GRABACIÓN NATIVA REAL DE LA SESIÓN DE CANTO ---
     const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
     karaokeMediaRecorder = new MediaRecorder(destGrabacion.stream, options);
     karaokeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) karaokeChunks.push(e.data); };
@@ -337,10 +273,8 @@ export async function startKaraokeRecording() {
     };
     
     karaokeMediaRecorder.start();
-
     if (track?.src) { track.currentTime = 0; track.play().catch(() => {}); }
     
-    // BLINDAJE ABSOLUTO: Forzamos la bandera true antes de gatillar las animaciones
     window.isPitchDetectionRunning = true; 
     await startKaraokePitchDetection();
     
@@ -363,9 +297,6 @@ export function stopKaraokeRecording() {
   if (document.getElementById("karaokeDuoIndicator")) document.getElementById("karaokeDuoIndicator").style.display = "none";
 }
 
-// ====================================================================
-// 3. CAPTURA EN PARALELO DE TONOS (PROMISE.ALL CONCURRENTE HACIA EL WORKER)
-// ====================================================================
 export async function startKaraokePitchDetection() {
   const bufferSize = 2048, staticBufferMic1 = new Float32Array(bufferSize), staticBufferMic2 = new Float32Array(bufferSize);
   async function loop() {
@@ -381,7 +312,6 @@ export async function startKaraokePitchDetection() {
     if (window.karaokeDuoAnalyser1) {
       window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
       let sum = 0; for (let i = 0; i < bufferSize; i++) sum += staticBufferMic1[i] * staticBufferMic1[i];
-      // CALIBRACIÓN DE MÁXIMA SENSIBILIDAD A 0.003
       if (Math.sqrt(sum / bufferSize) > 0.003) promesas.push(audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema));
       else promesas.push(Promise.resolve(-1));
     } else promesas.push(Promise.resolve(-1));
@@ -398,346 +328,8 @@ export async function startKaraokePitchDetection() {
       const { drawKaraokeMonitor } = await import('../script.js');
       if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(currentTime, p1, p2);
     } catch (err) { console.warn(err); }
+
     if (window.isPitchDetectionRunning) requestAnimationFrame(loop);
   }
   window.isPitchDetectionRunning = true; loop();
-}
-
-export function restartKaraokeRecording() {
-  stopKaraokeRecording();
-  const player = document.getElementById("karaokeVoicePlayer");
-  if (player) player.src = "";
-  const resultBox = document.getElementById("karaokeMixResult");
-  if (resultBox) resultBox.innerHTML = "";
-  if (document.getElementById("karaokeStatus")) document.getElementById("karaokeStatus").textContent = "Estado: Monitor limpio. Listo para reiniciar.";
-}
-
-// ====================================================================
-// 🎧 MEZCLADOR MULTIPISTA REAL CON EXPORTADOR DE DESCARGA BINARIA WAV
-// ====================================================================
-export async function mixKaraoke() {
-  console.log("🎧 [karaoke.js] Iniciando mezclador digital multipista real offline...");
-  const resultBox = document.getElementById("karaokeMixResult");
-  const trackElement = document.getElementById("karaokeTrack");
-  
-  if (!karaokeRecordedAudioBlob) {
-    alert("⚠️ No se ha detectado ninguna grabación de voz. Canta frente al micrófono antes de mezclar.");
-    return;
-  }
-
-  if (resultBox) {
-    resultBox.innerHTML = `
-      <div style="padding: 15px; background: rgba(168, 85, 247, 0.15); border: 1px dashed #a855f7; border-radius: 8px; margin-top: 10px;">
-        <p style='color: #a855f7; font-weight: bold; margin: 0 0 10px 0;'>🎧 Decodificando canales y sumando frecuencias (Pista + Voz)...</p>
-        <div style="width: 100%; background: #334155; height: 6px; border-radius: 3px; overflow:hidden;">
-          <div style="width: 100%; height: 100%; background: #a855f7; animation: mix-rendering 2.5s linear forwards;"></div>
-        </div>
-      </div>
-      <style>@keyframes mix-rendering { 0% { width: 0%; } 100% { width: 100%; } }</style>
-    `;
-  }
-
-  try {
-    // 1. INICIALIZAR ENTORNO ACÚSTICO DE RENDERIZADO CONCURRENTE
-    const offlineCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const { getAudioController, exportStereoWav } = await import('./audioController.js');
-    const audioCtrl = getAudioController();
-
-    // 2. EXTRAER BÚFER BINARIO DE LA VOZ GRABADA
-    const vozArrayBuffer = await karaokeRecordedAudioBlob.arrayBuffer();
-    const vozAudioBuffer = await offlineCtx.decodeAudioData(vozArrayBuffer);
-    const vozFloatArray = vozAudioBuffer.getChannelData(0);
-
-    let instrumentalFloatArray = new Float32Array(vozFloatArray.length);
-
-    // 3. EXTRAER BÚFER BINARIO DE LA PISTA INSTRUMENTAL DE FONDO (SI EXISTE)
-    if (trackElement && trackElement.src) {
-      try {
-        console.log("⏳ [karaoke.js] Descargando buffer de la pista instrumental de fondo...");
-        const resPista = await fetch(trackElement.src);
-        const pistaArrayBuffer = await resPista.arrayBuffer();
-        const pistaAudioBuffer = await offlineCtx.decodeAudioData(pistaArrayBuffer);
-        const pistaData = pistaAudioBuffer.getChannelData(0);
-        
-        // Copiamos los datos de la pista alineándolos estrictamente al largo de la grabación
-        for (let i = 0; i < Math.min(instrumentalFloatArray.length, pistaData.length); i++) {
-          instrumentalFloatArray[i] = pistaData[i];
-        }
-      } catch (pistaErr) {
-        console.warn("⚠️ No se pudo decodificar la pista de fondo para la mezcla, se exportará la voz sola:", pistaErr);
-      }
-    }
-
-    // 4. DISPARAR MEZCLA BALANCEDADA EN EL WEB WORKER SECUNDARIO
-    console.log("⚙️ [karaoke.js] Enviando matrices numéricas al Web Worker...");
-    // Atenuamos ligeramente la pista (-3dB -> 0.7) y centramos la voz (1.0) para un acabado profesional
-    const matrizMezclada = await audioCtrl.mixAudio([instrumentalFloatArray, vozFloatArray], [0.7, 1.0]);
-
-    // 5. ENCAPSULAR EL RESULTADO EN UN CONTENEDOR AUDIOBUFFER ESTÉREO
-    const renderBuffer = offlineCtx.createBuffer(2, matrizMezclada.length / 2, offlineCtx.sampleRate);
-    const renderL = renderBuffer.getChannelData(0);
-    const renderR = renderBuffer.getChannelData(1);
-
-    // Desentrelazamos los canales devueltos por el Worker para reconstruir el estéreo
-    let idx = 0;
-    for (let i = 0; i < renderBuffer.length; i++) {
-      renderL[i] = matrizMezclada[idx++];
-      renderR[i] = matrizMezclada[idx++];
-    }
-
-    // Codificamos las muestras PCM en un Blob WAV legítimo de 16 Bits
-    const mezclaDefinitivaBlob = exportStereoWav(renderBuffer);
-    const urlFinal = URL.createObjectURL(mezclaDefinitivaBlob);
-    const trackName = trackElement?.dataset?.name || "Cancion Sincronizada";
-
-    // 6. INYECTAR EL REPRODUCTOR MULTIMEDIA VISIBLE CON CONTROLES DE DESCARGA
-    if (resultBox) {
-      resultBox.innerHTML = `
-        <div style="padding: 20px; background: var(--bg-main); border: 2px solid #a855f7; border-radius: 10px; margin-top: 15px;">
-          <p style="color: #a855f7; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">🎧 ¡Mezcla Multipista Completada!</p>
-          <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 15px 0;">Escucha tu voz combinada con la música de fondo o descárgala a tu PC:</p>
-          
-          <audio id="finalMixPlayer" src="${urlFinal}" controls style="width: 100%; margin-bottom: 15px;"></audio>
-          
-          <div class="studio-controls" style="margin-top: 10px;">
-            <a href="${urlFinal}" download="Mezcla_Karaoke_${trackName.replace(/\s+/g, '_')}.wav" style="background: #a855f7; color: white; font-weight: bold; padding: 12px 25px; border-radius: 8px; text-decoration: none; display: inline-block; text-align: center;">📥 Descargar Mezcla Final (WAV)</a>
-          </div>
-        </div>
-      `;
-    }
-
-    // 7. PERSISTIR EN LA BIBLIOTECA OFFLINE (INDEXEDDB)
-    const { addLibraryItem, renderLibrary } = await import('./biblioteca.js');
-    await addLibraryItem({
-      name: `Mezcla - ${trackName}`,
-      type: "grabacion",
-      audioBlob: mezclaDefinitivaBlob,
-      date: new Date().toLocaleString("es-ES")
-    });
-
-    await renderLibrary("todos").catch(() => {});
-    console.log("💾 [karaoke.js] ¡Mezcla combinada guardada físicamente en IndexedDB de forma exitosa!");
-
-  } catch (error) {
-    console.error("❌ Error en el proceso de mezcla multipista:", error);
-    if (resultBox) resultBox.innerHTML = "<p style='color: var(--danger); font-weight:bold;'>❌ Error procesando el renderizado de la mezcla.</p>";
-  }
-}
-// ====================================================================
-// 4. PASO DE DATOS DESDE LA BIBLIOTECA (PLAYLISTS)
-// ====================================================================
-
-export async function loadTrackOptionsInKaraoke() {
-  const select = document.getElementById("karaokeTrackSelect"); if (!select) return;
-  select.innerHTML = `<option value="">Selecciona una pista desde tu Biblioteca</option>`;
-  const tracks = await getLibraryItemsByType("pista");
-  tracks.forEach(t => { const o = document.createElement("option"); o.value = t.id; o.textContent = t.name; select.appendChild(o); });
-}
-
-export async function loadSelectedTrackFromLibraryKaraoke() {
-  const select = document.getElementById("karaokeTrackSelect"), player = document.getElementById("karaokeTrack"), status = document.getElementById("karaokeStatus");
-  const item = await getLibraryItemById(Number(select.value));
-  if (item) { player.src = URL.createObjectURL(item.audioBlob); player.dataset.name = item.name; status.textContent = `Pista cargada de Biblioteca: ${item.name}`; }
-}
-
-export async function loadMyKaraokeSongs() {
-  const container = document.getElementById("myKaraokeList"); if (!container) return;
-  const { getAllLibraryItems } = await import('./biblioteca.js');
-  const todos = await getAllLibraryItems();
-  const filtered = todos.filter(i => i.type?.toLowerCase() === "karaoke");
-
-  if (filtered.length === 0) { container.innerHTML = `<p style="color: var(--text-muted); font-size: 13px; margin: 5px 0;">No tienes canciones grabadas en el Estudio aún.</p>`; return; }
-  
-  container.innerHTML = "";
-  filtered.forEach(item => {
-    const div = document.createElement("div"); div.className = "my-karaoke-item";
-    div.innerHTML = `<div class="my-karaoke-item-info"><p class="my-karaoke-item-title">🎤 ${item.name}</p><p class="my-karaoke-item-artist">${item.date}</p></div><button type="button" class="load-karaoke-btn" data-id="${item.id}" style="font-size:12px; padding:6px 12px;">▶️ Cantar</button>`;
-    container.appendChild(div);
-  });
-
-  container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const selectedId = Number(btn.dataset.id);
-      const item = await getLibraryItemById(selectedId);
-      if (item) {
-        window.transcriptionSegments = item.transcription || [];
-        cargarLetrasEnMonitor();
-        const track = document.getElementById("karaokeTrack");
-        if (track && item.audioBlob) { track.src = URL.createObjectURL(item.audioBlob); track.dataset.name = item.name; track.play().catch(() => {}); }
-        document.getElementById("karaokeStatus").textContent = `Estado: Cantando -> ${item.name}`;
-      }
-    });
-  });
-}
-
-export async function loadKaraokeCatalog() {
-  const container = document.getElementById("catalogList"); if (!container) return;
-  container.innerHTML = "";
-  
-  const canciones = [
-    { id: 991, title: "Tu Falta De Querer", artist: "Mon Laferte", date: "Catálogo Integrado" },
-    { id: 992, title: "Lo Que Construimos", artist: "Natalia Lafourcade", date: "Catálogo Integrado" }
-  ];
-
-  canciones.forEach(item => {
-    const div = document.createElement("div"); div.className = "catalog-item";
-    div.innerHTML = `<div class="catalog-item-info"><p class="catalog-item-title">🎵 ${item.title}</p><p class="catalog-item-artist">${item.artist}</p></div><button type="button" class="load-catalog-btn" data-id="${item.id}" style="font-size:12px; padding:6px 12px; background:#22c55e;">▶️ Cantar</button>`;
-    container.appendChild(div);
-  });
-
-  container.querySelectorAll(".load-catalog-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      alert("🎵 Cargando partituras y guías MIDI de la canción seleccionada del catálogo oficial...");
-      document.getElementById("karaokeStatus").textContent = `Estado: Inicializando canción base del catálogo`;
-    });
-  });
-}
-
-export function cargarLetrasEnMonitor() {
-  const container = document.getElementById("karaokeLiveLyrics"); if (!container) return;
-  if (!window.transcriptionSegments || window.transcriptionSegments.length === 0) {
-    container.innerHTML = `<p class="karaoke-placeholder" style="font-size: 16px; text-align: center;">⚠️ Monitor en reposo. Carga una pista instrumental o sincronizada.</p>`;
-    return;
-  }
-  container.innerHTML = "";
-  window.transcriptionSegments.forEach(seg => {
-    const p = document.createElement("p"); p.className = "karaoke-live-line"; p.textContent = seg.text || ""; container.appendChild(p);
-  });
-}
-
-export function syncKaraokeMonitor(time) {
-  const lines = document.querySelectorAll(".karaoke-live-line");
-  if (!lines.length || !window.transcriptionSegments) return;
-  
-  window.transcriptionSegments.forEach((seg, i) => {
-    const el = lines[i]; if (!el) return;
-    el.classList.remove("active", "past", "upcoming");
-    if (time >= seg.start && time <= seg.end + 0.5) el.classList.add("active");
-    else if (time > seg.end) el.classList.add("past");
-    else el.classList.add("upcoming");
-  });
-}
-
-export function updateKaraokeHighlight(time) {
-  const container = document.getElementById("karaokeLyrics"); if (!container || !window.transcriptionSegments) return;
-  container.innerHTML = "";
-  window.transcriptionSegments.forEach(seg => {
-    const p = document.createElement("p"); p.className = "karaoke-line";
-    if (time >= seg.start && time <= seg.end + 0.5) p.className += " active";
-    p.textContent = seg.text || ""; container.appendChild(p);
-  });
-}
-
-export function reconstruirFraseDesdeWords(segment) {
-  if (!segment) return "";
-  if (Array.isArray(segment.words) && segment.words.length > 0) return segment.words.map(w => w.word).join(" ");
-  return segment.text || "";
-}
-
-// ====================================================================
-// 5. PARSEADORES DE ARCHIVOS ESTRUCTURADOS ULTRASTAR .TXT
-// ====================================================================
-
-export function parseUltrastarTxt(content) {
-  console.log("📝 [karaoke.js] Iniciando parseo de archivo estructurado UltraStar .txt...");
-  const lines = content.split("\n"), metadata = {}, notes = [];
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("#")) {
-      const match = trimmed.match(/^#(\w+):(.*)$/);
-      if (match) metadata[match[1].toUpperCase()] = match[2].trim();
-      continue;
-    }
-    if (trimmed.match(/^[:*F\-]/)) {
-      const parts = trimmed.split(/\s+/), type = parts[0];
-      if (type === "-") continue;
-      if (parts.length >= 4) {
-        notes.push({ 
-          type, 
-          startBeat: parseInt(parts[1], 10), 
-          duration: parseInt(parts[2], 10), 
-          pitch: parseInt(parts[3], 10), 
-          syllable: parts.slice(4).join(" ") 
-        });
-      }
-    }
-  }
-  return { 
-    title: metadata.TITLE || "Sin título", 
-    artist: metadata.ARTIST || "Desconocido", 
-    bpm: parseFloat(metadata.BPM) || 120, 
-    gap: parseFloat(metadata.GAP) || 0, 
-    notes 
-  };
-}
-
-export function safeGetNoteName(midi) {
-  const nombres = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  return `${nombres[midi % 12]}${Math.floor(midi / 12) - 1}`;
-}
-
-export function ultrastarToSegments(parsed) {
-  console.log("📝 [karaoke.js] Despertando transformador lineal de partituras UltraStar Master...");
-  if (!parsed || !parsed.notes || !parsed.notes.length) return [];
-  
-  const bpm = parsed.bpm, gap = parsed.gap / 1000, beatDuration = 60 / bpm / 4;
-  const segments = []; let currentWords = [], lastEndBeat = 0;
-
-  for (let i = 0; i < parsed.notes.length; i++) {
-    const note = parsed.notes[i];
-    const startTime = gap + (note.startBeat * beatDuration), endTime = startTime + (note.duration * beatDuration);
-    let midiNote = 60 + parseInt(note.pitch, 10);
-    
-    if (midiNote < 36) midiNote = 36; if (midiNote > 84) midiNote = 84;
-    if (note.startBeat - lastEndBeat > 8 && currentWords.length > 0) {
-      segments.push({ 
-        start: currentWords[0].start, 
-        end: currentWords[currentWords.length - 1].end, 
-        text: currentWords.map(w => w.word).join(""), 
-        words: currentWords, 
-        midi: currentWords[0].midi, 
-        note: currentWords[0].note 
-      });
-      currentWords = [];
-    }
-    currentWords.push({ word: note.syllable || "", start: startTime, end: endTime, midi: midiNote, note: safeGetNoteName(midiNote) });
-    lastEndBeat = note.startBeat + note.duration;
-  }
-  if (currentWords.length > 0) {
-    segments.push({ 
-      start: currentWords[0].start, 
-      end: currentWords[currentWords.length - 1].end, 
-      text: currentWords.map(w => w.word).join(""), 
-      words: currentWords, 
-      midi: currentWords[0].midi, 
-      note: currentWords[0].note 
-    });
-  }
-  return segments;
-}
-
-export async function cargarPistaKaraoke(e) {
-  console.log("📥 [karaoke.js] Selección manual de archivos detectada en la pestaña Karaoke...");
-  const archivos = e.target.files; if (!archivos || archivos.length === 0) return;
-  const statusEl = document.getElementById("karaokeStatus"), trackPlayer = document.getElementById("karaokeTrack");
-  const archivoAudio = Array.from(archivos).find(file => file.type.startsWith("audio/")), archivoTxt = Array.from(archivos).find(file => file.name.endsWith(".txt") || file.type === "text/plain");
-
-  try {
-    if (archivoAudio) { 
-      if (statusEl) statusEl.textContent = `Estado: Cargando audio instrumental... ⏳`; 
-      if (trackPlayer) { trackPlayer.src = URL.createObjectURL(archivoAudio); trackPlayer.dataset.name = archivoAudio.name; } 
-    }
-    if (archivoTxt) {
-      if (statusEl) statusEl.textContent = "Estado: Parseando partituras UltraStar... ⏳";
-      const contenidoTxt = await archivoTxt.text(), datosParseados = parseUltrastarTxt(contenidoTxt);
-      window.transcriptionSegments = ultrastarToSegments(datosParseados);
-      cargarLetrasEnMonitor();
-      console.log("🚀 [Karaoke] Letras .txt de UltraStar cargadas, escalonadas y sincronizadas en el Canvas.");
-    }
-    if (statusEl) statusEl.textContent = `Estado: 🎧 Pista lista (${archivoAudio ? archivoAudio.name : "Archivo local"}). Presiona Iniciar para cantar.`;
-  } catch (error) { 
-    console.error(error); 
-    if (statusEl) statusEl.textContent = "Estado: ❌ Error cargando los archivos locales"; 
-  }
 }
