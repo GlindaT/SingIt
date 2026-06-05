@@ -55,6 +55,10 @@ export class KaraokeCanvasRenderer {
     this.midiMax = 84; // C6
     this.midiRange = this.midiMax - this.midiMin;
     this.lineX = 50; 
+
+    // BLINDAJE DE INICIALIZACIÓN: Forzamos la existencia de los arreglos para que jamás den "undefined"
+    if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
+    if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
   }
 
   shouldRender() {
@@ -115,15 +119,20 @@ export class KaraokeCanvasRenderer {
     const pentagramBottom = this.canvas.height - 60;
     const pentagramHeight = pentagramBottom - this.pentagramTop;
 
-    window.pitchHistoryMic1?.push(currentFreq > 0 ? currentFreq : null);
-    if (window.pitchHistoryMic1?.length > 60) window.pitchHistoryMic1.shift();
+    // Sincronización segura de historiales analíticos
+    if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
+    window.pitchHistoryMic1.push(currentFreq > 0 ? currentFreq : null);
+    if (window.pitchHistoryMic1.length > 60) window.pitchHistoryMic1.shift();
 
-    window.pitchHistoryMic2?.push(currentFreq2 > 0 ? currentFreq2 : null);
-    if (window.pitchHistoryMic2?.length > 60) window.pitchHistoryMic2.shift();
+    if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
+    window.pitchHistoryMic2.push(currentFreq2 > 0 ? currentFreq2 : null);
+    if (window.pitchHistoryMic2.length > 60) window.pitchHistoryMic2.shift();
 
+    // Limpieza total de fotograma
     this.ctx.fillStyle = paleta.fondo;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Dibujar rejilla musical
     this.ctx.strokeStyle = paleta.lineas; 
     this.ctx.lineWidth = 1;
     const numLines = 10;
@@ -132,6 +141,7 @@ export class KaraokeCanvasRenderer {
       this.ctx.beginPath(); this.ctx.moveTo(35, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke();
     }
 
+    // Dibujar nombres de las notas de guía
     this.ctx.fillStyle = paleta.etiquetas; 
     this.ctx.font = "11px sans-serif"; this.ctx.textAlign = "right";
     const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
@@ -145,6 +155,7 @@ export class KaraokeCanvasRenderer {
       const timeWindowEnd = currentTime + 5;
       const pixelsPerSecond = (this.canvas.width - 50) / 6;
 
+      // Aguja del tiempo actual (Línea roja vertical)
       this.ctx.strokeStyle = "#ef4444"; this.ctx.lineWidth = 2;
       this.ctx.beginPath(); this.ctx.moveTo(this.lineX, this.pentagramTop); this.ctx.lineTo(this.lineX, pentagramBottom); this.ctx.stroke();
 
@@ -189,9 +200,11 @@ export class KaraokeCanvasRenderer {
             barColor = paleta.barraFutura; textColor = "rgba(255, 255, 255, 0.7)"; borderColor = paleta.bordeFuturo;
           }
           
-          this.ctx.fillStyle = barColor; this.ctx.beginPath();
-          this.ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 6); this.ctx.fill();
-          this.ctx.strokeStyle = borderColor; this.ctx.lineWidth = isActive ? 2 : 1; this.ctx.stroke();
+          // CORRECCIÓN COMPATIBLE EXPLICITA: Reemplazado roundRect por el infalible fillRect compatible universal
+          this.ctx.fillStyle = barColor;
+          this.ctx.fillRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
+          
+          this.ctx.strokeStyle = borderColor; this.ctx.lineWidth = isActive ? 2 : 1; this.ctx.strokeRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
           
           this.ctx.fillStyle = textColor; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
           let displayWord = word.word || word.text || "";
@@ -202,8 +215,9 @@ export class KaraokeCanvasRenderer {
         });
       });
 
+      // --- 🎤 TRAZO DEL MICRÓFONO 1 (AMARILLO COLOCO INTERNO CON "this") ---
       if (window.pitchHistoryMic1 && window.pitchHistoryMic1.length > 0) {
-        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(250, 204, 21, 0.6)"; this.ctx.lineWidth = 4;
+        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(250, 204, 21, 0.8)"; this.ctx.lineWidth = 4;
         let started1 = false;
         window.pitchHistoryMic1.forEach((freq, i) => {
           if (freq && freq > 0) {
@@ -222,10 +236,10 @@ export class KaraokeCanvasRenderer {
         this.ctx.beginPath(); this.ctx.fillStyle = "#facc15"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#facc15";
         this.ctx.arc(this.lineX, userY1, 8, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
       }
+
+      // --- 🐬 TRAZO DEL MICRÓFONO 2 (CIAN COLOCADO INTERNO CON "this") ---
       if (window.pitchHistoryMic2 && window.pitchHistoryMic2.length > 0) {
-        this.ctx.beginPath(); 
-        this.ctx.strokeStyle = "rgba(6, 182, 212, 0.6)"; 
-        this.ctx.lineWidth = 4;
+        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(6, 182, 212, 0.8)"; this.ctx.lineWidth = 4;
         let started2 = false;
         window.pitchHistoryMic2.forEach((freq, i) => {
           if (freq && freq > 0) {
@@ -241,8 +255,13 @@ export class KaraokeCanvasRenderer {
 
       if (currentFreq2 && currentFreq2 > 0) {
         const userY2 = this.midiToY(this.frequencyToMidi(currentFreq2));
-        this.ctx.beginPath(); this.ctx.fillStyle = "#06b6d4"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4";
-        this.ctx.arc(this.lineX + 6, userY2, 8, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
+        this.ctx.beginPath(); 
+        this.ctx.fillStyle = "#06b6d4"; 
+        this.ctx.shadowBlur = 15; 
+        this.ctx.shadowColor = "#06b6d4";
+        this.ctx.arc(this.lineX + 6, userY2, 8, 0, Math.PI * 2); 
+        this.ctx.fill(); 
+        this.ctx.shadowBlur = 0;
       }
 
       // --- BANNER DE LETRAS INFERIORES SUB-TÍTULO ---
@@ -253,31 +272,44 @@ export class KaraokeCanvasRenderer {
       if (currentIndex !== -1) {
         const currentSegment = transcriptionSegments[currentIndex];
         const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-        this.ctx.fillStyle = "#ffffff"; this.ctx.font = "bold 16px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "top";
+        this.ctx.fillStyle = "#ffffff"; 
+        this.ctx.font = "bold 16px sans-serif"; 
+        this.ctx.textAlign = "center"; 
+        this.ctx.textBaseline = "top";
         this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 42);
 
         const nextSegment = transcriptionSegments[currentIndex + 1];
         if (nextSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; this.ctx.font = "12px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "bottom";
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
+          this.ctx.font = "12px sans-serif"; 
+          this.ctx.textAlign = "center"; 
+          this.ctx.textBaseline = "bottom";
           this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 6);
         }
       } else {
         const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
         if (upcomingSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; this.ctx.font = "14px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
+          this.ctx.font = "14px sans-serif"; 
+          this.ctx.textAlign = "center"; 
+          this.ctx.textBaseline = "middle";
           this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 25);
         }
       }
 
     } else {
-      this.ctx.fillStyle = paleta.etiquetas; this.ctx.font = "15px sans-serif"; this.ctx.textAlign = "center";
+      this.ctx.fillStyle = paleta.etiquetas; 
+      this.ctx.font = "15px sans-serif"; 
+      this.ctx.textAlign = "center";
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
   }
 
-  handleResize() { this.noteYCache.clear(); }
+  handleResize() { 
+    this.noteYCache.clear(); 
+  }
 }
 
 /**
