@@ -2,6 +2,8 @@
 // SINGIT CORE - CENTRAL DIRECTOR (script.js)
 // ==========================================
 
+console.log("🎬 [SingIt] Cargando Cerebro Central (script.js)...");
+
 // --- 1. UTILIDADES GLOBALES COMPARTIDAS ---
 export function $(id) {
   return document.getElementById(id);
@@ -9,7 +11,12 @@ export function $(id) {
 
 export function safeAdd(id, event, handler) {
   const el = $(id);
-  if (el) el.addEventListener(event, handler);
+  if (el) {
+    el.addEventListener(event, handler);
+    console.log(`🔌 [DOM Link] Evento '${event}' enlazado con éxito al elemento ID: [${id}]`);
+  } else {
+    console.warn(`⚠️ [DOM Link] No se encontró el elemento ID: [${id}] para enlazar el evento '${event}'`);
+  }
 }
 
 // --- 2. ESTADOS GLOBALES DE LA APLICACIÓN ---
@@ -27,14 +34,13 @@ window.autoScrollEnabled = true;
 
 // --- 3. NAVEGACIÓN PRINCIPAL ASÍNCRONA (LAZY LOADING) ---
 export async function showTab(tabId) {
-  // Ocultar todas las pestañas físicas en el HTML
+  console.log(`\n📌 [Navegación] Solicitando cambio a la pestaña: [${tabId.toUpperCase()}]`);
+  
   document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
   const target = document.getElementById(tabId);
   if (target) target.classList.add("active");
 
-  // Limpiar estilos activos del sidebar
   document.querySelectorAll(".sidebar button").forEach(btn => btn.classList.remove("active"));
-
   const btnMap = {
     config: "btnConfig",
     biblioteca: "btnBiblioteca",
@@ -47,29 +53,32 @@ export async function showTab(tabId) {
   const activeBtn = document.getElementById(btnMap[tabId]);
   if (activeBtn) activeBtn.classList.add("active");
 
-  // DISPARADORES DE DESCARGA BAJO DEMANDA
   try {
     if (tabId === "config") {
+      console.log("⚙️ [Lazy Load] Cargando configuraciones de hardware...");
       const { initSettings, loadAvailableMics } = await import("./modules/config.js");
       initSettings();
       await loadAvailableMics();
     } 
     else if (tabId === "biblioteca") {
+      console.log("📁 [Lazy Load] Cargando visor de Base de Datos Offline...");
       const { renderLibrary } = await import("./modules/biblioteca.js");
       await renderLibrary('todos');
     }
     else if (tabId === "splitter") {
-      // Módulo Splitter listo para interactuar
+      console.log("✂️ [Lazy Load] Módulo Splitter IA listo.");
     }
     else if (tabId === "afinador") {
-      // Módulo Afinador listo para interactuar
+      console.log("🎵 [Lazy Load] Módulo Afinador Vocal listo.");
     }
     else if (tabId === "estudio") {
+      console.log("🎧 [Lazy Load] Cargando entorno de sincronización y listados...");
       const { loadTrackOptionsInStudio, loadVoiceOptionsInStudio } = await import("./modules/estudio.js");
       await loadTrackOptionsInStudio();
       await loadVoiceOptionsInStudio();
     }
     else if (tabId === "karaoke") {
+      console.log("🎤 [Lazy Load] Inicializando Canvas y Playlists...");
       const { applyKaraokeTheme, loadTrackOptionsInKaraoke, cargarLetrasEnMonitor, loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
       applyKaraokeTheme();
       cargarLetrasEnMonitor();
@@ -77,15 +86,17 @@ export async function showTab(tabId) {
       await loadMyKaraokeSongs().catch(() => {});
       await loadKaraokeCatalog().catch(() => {});
     }
+    console.log(`✅ [Navegación] Pestaña [${tabId.toUpperCase()}] cargada y visualizada.`);
   } catch (error) {
-    console.error(`Error crítico haciendo Lazy Import de la pestaña [${tabId}]:`, error);
+    console.error(`❌ [Lazy Load Error] Falló el módulo [${tabId}]:`, error);
   }
 }
 
-// --- 4. CONTROLADOR COMPARTIDO DEL MONITOR DE KARAOKE GRAPHICS ---
+// --- 4. CONTROLADOR DEL MONITOR DE KARAOKE CANVA RENDER ---
 let karaokeRenderer = null;
 export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 = 0) {
   if (!karaokeRenderer) {
+    console.log("🎨 [Canvas] Creando nueva instancia del renderizador gráfico unificado...");
     const { KaraokeCanvasRenderer } = await import('./modules/karaoke.js');
     karaokeRenderer = new KaraokeCanvasRenderer('karaokeCanvas', {
       maxFrameRate: 30,
@@ -94,18 +105,17 @@ export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 
     });
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
-  
-  // ALINEACIÓN MATEMÁTICA: Pasamos los argumentos en el orden exacto que espera el método render()
+  // Pasamos de forma exacta los tonos binarios al motor de dibujo
   karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
 
-
 // ==========================================
-// INIT - ENTRADA PRINCIPAL DE LA APP 
+// INIT - ARRANCADOR CENTRAL
 // ==========================================
 document.addEventListener("DOMContentLoaded", async () => {
+  console.log("🚀 [Boot] SingIt despertando en el DOMContentLoaded...");
+
   const encabezados = document.querySelectorAll('.encabezado-desplegable');
-  
   encabezados.forEach(encabezado => {
     encabezado.addEventListener('click', () => {
       const content = document.getElementById(encabezado.getAttribute('data-target'));
@@ -118,57 +128,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
-    // 1. IMPORTACIÓN DINÁMICA DE ARRANQUE SEGURO
-    const { initDB, renderLibrary } = await import("./modules/biblioteca.js");
+    const { initDB } = await import("./modules/biblioteca.js");
     const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria, applyAppTheme } = await import("./modules/config.js");
     
-    // 2. ENCENDEMOS LA PERSISTENCIA DE DATOS LOCAL
+    console.log("💾 [Boot] Inicializando Base de Datos IndexDB...");
     await initDB();
     
-    // 3. INICIALIZAMOS CONFIGURACIONES (Mapea los eventos automáticos del formulario)
+    console.log("⚙️ [Boot] Cargando configuraciones persistentes del disco duro...");
     initSettings();
-    
-    // 4. CORRECCIÓN CRÍTICA DE APORTACIÓN CROMÁTICA: 
-    // Leemos el LocalStorage y forzamos la inyección directa en el <html> y <body> al arrancar
+    inicializarEscenarioDesdeMemoria(); 
+
     const temaGuardado = localStorage.getItem("singIt_theme") || "oscuro";
     applyAppTheme(temaGuardado);
-    
-    // 5. RESTAURAMOS EL ESCENARIO DEL KARAOKE SIEMPRE CON VALIDACIÓN DE RENDER
-    inicializarEscenarioDesdeMemoria(); 
-    
-    // Escuchador manual para el botón de aplicar Escenario Karaoke
-    safeAdd("applyKaraokeStageBtn", "click", async () => {
-      const select = document.getElementById("karaokeThemeSelect");
-      if (select) {
-        // Forzamos el almacenamiento manual persistente en disco
-        localStorage.setItem("singIt_stage", select.value);
-        
-        // Importamos dinámicamente el módulo para pintar la clase visual al instante
-        const { inicializarEscenarioDesdeMemoria, showSaveNotification } = await import("./modules/config.js");
-        inicializarEscenarioDesdeMemoria();
-        showSaveNotification();
-      }
-    });
 
-    // Escuchador manual para el botón de aplicar Tema Global de la App
-    safeAdd("applyGlobalThemeBtn", "click", async () => {
-      const select = document.getElementById("appTheme");
-      if (select) {
-        localStorage.setItem("singIt_theme", select.value);
-        
-        const { applyAppTheme, showSaveNotification } = await import("./modules/config.js");
-        applyAppTheme(select.value);
-        showSaveNotification();
-      }
-    });
-
-    // Ajuste dinámico manual para el selector de temas de la App (Previene hilos huérfanos)
-    safeAdd("appTheme", "change", async (e) => {
-      const { applyAppTheme } = await import("./modules/config.js");
-      applyAppTheme(e.target.value);
-    });
-
-    // Enlace de clics de la barra de navegación lateral principal
+    // Enlace maestro de botones del menú lateral
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
@@ -176,29 +149,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("btnSplitter", "click", () => showTab("splitter"));
     safeAdd("btnConfig", "click", () => showTab("config"));
 
-    // Eventos Lazy del Módulo: Afinador
+    // --- ENLACE DE EVENTOS COMPLEMENTARIOS (LAZY LOAD) ---
     safeAdd("recordBtn", "click", async () => {
       const { toggleAfinadorRecording } = await import("./modules/afinador.js");
       await toggleAfinadorRecording();
     });
 
-    // Eventos Lazy del Módulo: Estudio de Grabación y Edición
     safeAdd("audioFile", "change", async (e) => { const { cargarAudioEstudio } = await import("./modules/estudio.js"); cargarAudioEstudio(e); });
     safeAdd("refreshStudioTrackListBtn", "click", async () => { const { loadTrackOptionsInStudio } = await import("./modules/estudio.js"); await loadTrackOptionsInStudio(); });
     safeAdd("loadStudioTrackBtn", "click", async () => { const { loadSelectedTrackFromLibraryStudio } = await import("./modules/estudio.js"); await loadSelectedTrackFromLibraryStudio(); });
     safeAdd("playTrackBtn", "click", async () => { const { playTrack } = await import("./modules/estudio.js"); playTrack(); });
     safeAdd("pauseTrackBtn", "click", async () => { const { pauseTrack } = await import("./modules/estudio.js"); pauseTrack(); });
     safeAdd("stopTrackBtn", "click", async () => { const { stopTrack } = await import("./modules/estudio.js"); stopTrack(); });
+    
     safeAdd("startStudioRecBtn", "click", async () => { const { startStudioRecording } = await import("./modules/estudio.js"); await startStudioRecording(); });
     safeAdd("stopStudioRecBtn", "click", async () => { const { stopStudioRecording } = await import("./modules/estudio.js"); stopStudioRecording(); });
     safeAdd("redoStudioRecBtn", "click", async () => { const { redoStudioRecording } = await import("./modules/estudio.js"); redoStudioRecording(); });
     safeAdd("saveStudioRecBtn", "click", async () => { const { saveStudioRecording } = await import("./modules/estudio.js"); await saveStudioRecording(); });
+    
     safeAdd("refreshVoiceListBtn", "click", async () => { const { loadVoiceOptionsInStudio } = await import("./modules/estudio.js"); await loadVoiceOptionsInStudio(); });
     safeAdd("loadSelectedVoiceBtn", "click", async () => { const { loadSelectedVoiceFromLibrary } = await import("./modules/estudio.js"); await loadSelectedVoiceFromLibrary(); });
     safeAdd("transcribeVoiceBtn", "click", async () => { const { transcribeSelectedVoice } = await import("./modules/estudio.js"); await transcribeSelectedVoice(); });
     safeAdd("applyCorrectedLyricsBtn", "click", async () => { const { applyCorrectedLyrics } = await import("./modules/estudio.js"); await applyCorrectedLyrics(); });
 
-    // Conmutador del Auto-scroll
     safeAdd("toggleAutoScrollBtn", "click", () => {
       window.autoScrollEnabled = !window.autoScrollEnabled;
       const btn = $("toggleAutoScrollBtn");
@@ -208,23 +181,40 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // Eventos de Sincronización Manual por Taps (Estudio)
     safeAdd("startTapSyncBtn", "click", async () => { const { startTapSync } = await import("./modules/estudio.js"); startTapSync(); });
     safeAdd("cancelTapSyncBtn", "click", async () => { const { cancelTapSync } = await import("./modules/estudio.js"); cancelTapSync(); });
     safeAdd("tapBeatBtn", "click", async () => { const { recordTap } = await import("./modules/estudio.js"); recordTap(); });
     safeAdd("applyTapSyncBtn", "click", async () => { const { applyTapSync } = await import("./modules/estudio.js"); await applyTapSync(); });
     safeAdd("redoTapSyncBtn", "click", async () => { const { redoTapSync } = await import("./modules/estudio.js"); redoTapSync(); });
-
-    // Eventos Lazy del Módulo: Karaoke
+    
     safeAdd("karaokeTrackFile", "change", async (e) => { const { cargarPistaKaraoke } = await import("./modules/karaoke.js"); cargarPistaKaraoke(e); });
     safeAdd("karaokeStartBtn", "click", async () => { const { startKaraokeRecording } = await import("./modules/karaoke.js"); await startKaraokeRecording(); });
     safeAdd("karaokeStopBtn", "click", async () => { const { stopKaraokeRecording } = await import("./modules/karaoke.js"); stopKaraokeRecording(); });
-    safeAdd("karaokeRestartBtn", "click", async () => { const { restartKaraokeRecording } = await import("./modules/karaoke.js"); restartKaraokeRecording(); });
-    safeAdd("karaokeMixBtn", "click", async () => { const { mixKaraoke } = await import("./modules/karaoke.js"); await mixKaraoke(); });
-    safeAdd("refreshKaraokeTrackBtn", "click", async () => { const { loadTrackOptionsInKaraoke } = await import("./modules/karaoke.js"); await loadTrackOptionsInKaraoke(); });
-    safeAdd("loadKaraokeTrackBtn", "click", async () => { const { loadSelectedTrackFromLibraryKaraoke } = await import("./modules/karaoke.js"); await loadSelectedTrackFromLibraryKaraoke(); });
+    safeAdd("karaokeRestartBtn", "click", async () => {
+      console.log("🔄 [script.js] Gatillando botón: Volver a intentar Karaoke");
+      const { restartKaraokeRecording } = await import("./modules/karaoke.js");
+      restartKaraokeRecording();
+    });
 
-    // Escuchadores de actualización de tiempo de reproducción (Karaoke y Estudio)
+    safeAdd("karaokeMixBtn", "click", async () => {
+      console.log("🎧 [script.js] Gatillando botón: Mezclar Pista + Voz");
+      const { mixKaraoke } = await import("./modules/karaoke.js");
+      await mixKaraoke();
+    });
+
+    safeAdd("refreshKaraokeTrackBtn", "click", async () => {
+      console.log("🔄 [script.js] Gatillando botón: Actualizar pistas en Karaoke");
+      const { loadTrackOptionsInKaraoke } = await import("./modules/karaoke.js");
+      await loadTrackOptionsInKaraoke();
+    });
+
+    safeAdd("loadKaraokeTrackBtn", "click", async () => {
+      console.log("📥 [script.js] Gatillando botón: Cargar Pista de Biblioteca en Karaoke");
+      const { loadSelectedTrackFromLibraryKaraoke } = await import("./modules/karaoke.js");
+      await loadSelectedTrackFromLibraryKaraoke();
+    });
+
+    // --- ESCUCHADORES DE ACTUALIZACIÓN DE TIEMPO (MONITORES) ---
     const kTrack = $("karaokeTrack");
     if (kTrack) {
       kTrack.addEventListener("timeupdate", async () => {
@@ -249,50 +239,69 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    // Catálogos e Importadores del Karaoke
+    // --- REFRESCAR CATÁLOGOS E IMPORTADORES ---
     safeAdd("refreshKaraokeCatalogBtn", "click", async () => {
+      console.log("🔄 [script.js] Gatillando botón: Actualizar catálogos de Karaoke");
       const { loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
       await loadKaraokeCatalog().catch(() => {});
       await loadMyKaraokeSongs().catch(() => {});
     });
 
-    // Carga manual de archivos hacia la Biblioteca
-    safeAdd("saveLibraryFileBtn", "click", async () => {
-      const { saveManualFileToLibrary } = await import("./modules/biblioteca.js");
-      await saveManualFileToLibrary();
-    });
-    safeAdd("libraryFileInput", "change", (e) => {
-      const file = e.target.files[0];
-      const nameInput = $("libraryFileName");
-      if (file && nameInput && !nameInput.value.trim()) {
-        nameInput.value = file.name.replace(/\.[^.]+$/, "");
-      }
-    });
-
-    // Eventos Lazy del Módulo: Splitter IA
+    // --- MÓDULO: SPLITTER IA ---
     safeAdd("splitBtn", "click", async () => {
+      console.log("✂️ [script.js] Gatillando botón: Separar Audio con IA");
       const { splitAudio } = await import("./modules/splitter.js");
       await splitAudio();
     });
 
-    // Eventos de Hardware de Configuración Avanzada de Micrófonos
-    safeAdd("refreshMicsBtn", "click", async () => { const { loadAvailableMics } = await import("./modules/config.js"); await loadAvailableMics(); });
-    safeAdd("testMic1Btn", "click", async () => { const { testMicrophone } = await import("./modules/config.js"); await testMicrophone(1); });
-    safeAdd("testMic2Btn", "click", async () => { const { testMicrophone } = await import("./modules/config.js"); await testMicrophone(2); });
-    safeAdd("mic1Select", "change", async () => { const { saveMicSelection } = await import("./modules/config.js"); saveMicSelection(1); });
-    safeAdd("mic2Select", "change", async () => { const { saveMicSelection } = await import("./modules/config.js"); saveMicSelection(2); });
-    safeAdd("micCount", "change", async () => { const { toggleMic2Visibility } = await import("./modules/config.js"); toggleMic2Visibility(); });
+    // --- MÓDULO: CONFIGURACIÓN AVANZADA DE HARDWARE ---
+    safeAdd("refreshMicsBtn", "click", async () => {
+      console.log("🔄 [script.js] Gatillando botón: Actualizar lista de micrófonos");
+      const { loadAvailableMics } = await import("./modules/config.js");
+      await loadAvailableMics();
+    });
 
-    // Inicializaciones de hardware básicas de arranque rápido
+    safeAdd("testMic1Btn", "click", async () => {
+      console.log("🔊 [script.js] Gatillando botón: Probar Micrófono Principal");
+      const { testMicrophone } = await import("./modules/config.js");
+      await testMicrophone(1);
+    });
+
+    safeAdd("testMic2Btn", "click", async () => {
+      console.log("🔊 [script.js] Gatillando botón: Probar Micrófono Secundario");
+      const { testMicrophone } = await import("./modules/config.js");
+      await testMicrophone(2);
+    });
+
+    safeAdd("mic1Select", "change", async () => {
+      console.log("🎙️ [script.js] Cambio detectado en Micrófono Principal");
+      const { saveMicSelection } = await import("./modules/config.js");
+      saveMicSelection(1);
+    });
+
+    safeAdd("mic2Select", "change", async () => {
+      console.log("🎙️ [script.js] Cambio detectado en Micrófono Secundario");
+      const { saveMicSelection } = await import("./modules/config.js");
+      saveMicSelection(2);
+    });
+
+    safeAdd("micCount", "change", async () => {
+      console.log("🔊 [script.js] Cambio detectado en cantidad de micrófonos");
+      const { toggleMic2Visibility } = await import("./modules/config.js");
+      toggleMic2Visibility();
+    });
+
+    // --- INICIALIZACIONES INMEDIATAS EN SEGUNDO PLANO ---
+    console.log("⚙️ [script.js] Ejecutando análisis de hardware inicial...");
     await loadAvailableMics();
     toggleMic2Visibility();
 
-    // Precarga inicial del catálogo visual de archivos guardados
+    console.log("📁 [script.js] Precargando lista visual de la Biblioteca...");
     await renderLibrary('todos');
 
-    console.log("🚀 ¡SingIt inicializada de forma impecable y estable al 100%!");
+    console.log("🚀 ¡SingIt Core inicializado de forma impecable y estable al 100%! All tabs active.");
   } catch (error) {
-    console.error("Fallo general en la inicialización:", error);
-    alert("❌ Error inicializando la app");
+    console.error("❌ [script.js] Fallo general catastrófico en la inicialización:", error);
+    alert("❌ Error inicializando la aplicación");
   }
 });
