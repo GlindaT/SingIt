@@ -50,35 +50,14 @@ export class KaraokeCanvasRenderer {
     this.frameInterval = 1000 / this.options.maxFrameRate;
     this.noteYCache = new Map();
     
-    this.pentagramTop = 20;
-    
-    // AMPLIACIÓN MASIVA DE RANGO: Expandimos el rango para capturar desde notas graves (C2/Midi 36) hasta agudas (C6/Midi 84)
-    export class KaraokeCanvasRenderer {
-  constructor(canvasId, options = {}) {
-    this.canvas = document.getElementById(canvasId);
-    if (!this.canvas) throw new Error(`Canvas con ID ${canvasId} no encontrado`);
-    this.ctx = this.canvas.getContext('2d');
-    
-    this.options = { maxFrameRate: options.maxFrameRate || 30, cacheSize: options.cacheSize || 100, ...options };
-    this.lastFrameTime = 0;
-    this.frameInterval = 1000 / this.options.maxFrameRate;
-    this.noteYCache = new Map();
-    
-    this.pentagramTop = 20;
-    
-    // AMPLIACIÓN MASIVA DE RANGO: Expandimos el rango para capturar desde notas graves (C2/Midi 36) hasta agudas (C6/Midi 84)
-    this.midiMin = 36; // Corregido: baja de 48 a 36 (Acepta tonos graves profundos masculinos)
-    this.midiMax = 84; // Mantiene el límite agudo limpio
+    // CALIBRACIÓN MAESTRA DE DOBLE TAMAÑO (Para monitor de 600px de alto)
+    this.pentagramTop = 40; // Ampliado para dar más aire visual arriba
+    this.midiMin = 36;      // Rango elástico ampliado para voces graves masculinas
+    this.midiMax = 84;      // Límite agudo limpio
     this.midiRange = this.midiMax - this.midiMin;
-    this.lineX = 50; 
+    this.lineX = 80;        // Desplazamos la aguja de tiempo un poco a la derecha (look de cine)
 
-    // BLINDAJE DE INICIALIZACIÓN: Forzamos la existencia de los arreglos para que jamás den "undefined"
-    if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
-    if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
-  }
-
-
-    // BLINDAJE DE INICIALIZACIÓN: Forzamos la existencia de los arreglos para que jamás den "undefined"
+    // BLINDAJE DE INICIALIZACIÓN: Forzamos la existencia de los arreglos en el arranque
     if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
     if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
   }
@@ -89,7 +68,7 @@ export class KaraokeCanvasRenderer {
     this.lastFrameTime = now;
     return true;
   }
-
+  
   midiToY(midi) {
     let m = midi || 60;
     if (this.noteYCache.has(m)) return this.noteYCache.get(m);
