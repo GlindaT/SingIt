@@ -72,11 +72,9 @@ export class KaraokeCanvasRenderer {
     }
     return config;
   }
-}
-
-render(currentTime, currentFreq, currentFreq2, transcriptionSegments) {
+  
+  render(currentTime, currentFreq, currentFreq2, transcriptionSegments) {
     if (!this.shouldRender()) return;
-
     const paleta = this.obtenerPaletaTema();
     const pentagramBottom = this.canvas.height - 60;
     const pentagramHeight = pentagramBottom - this.pentagramTop;
@@ -210,19 +208,18 @@ render(currentTime, currentFreq, currentFreq2, transcriptionSegments) {
             if (x >= 0) {
               if (!started1) { this.ctx.moveTo(x, y); started1 = true; } else { this.ctx.lineTo(x, y); }
             }
-          } else { started1 = false; }
-        });
-        this.ctx.stroke();
-      }
+          } else {
+            this.ctx.fillStyle = paleta.etiquetas; this.ctx.font = "20px sans-serif"; this.ctx.textAlign = "center";
+            this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
+          }
+        }
+                                        
+                        }
+      
+    } // <-- AQUÍ CIERRA EL MÉTODO RENDER()
 
-      if (freqMic1 && freqMic1 > 0) {
-        const userY1 = this.midiToY(this.frequencyToMidi(freqMic1));
-        this.ctx.beginPath(); this.ctx.fillStyle = "#facc15"; this.ctx.shadowBlur = 20; this.ctx.shadowColor = "#facc15";
-        this.ctx.arc(this.lineX, userY1, 9, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
-      }
-    }
-}
-
+  handleResize() { this.noteYCache.clear(); }
+} // <-- AQUÍ CIERRA DEFINITIVAMENTE LA CLASE KaraokeCanvasRenderer
 
 export async function startKaraokeRecording() {
         console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
