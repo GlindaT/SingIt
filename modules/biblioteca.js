@@ -300,17 +300,19 @@ export async function saveManualFileToLibrary() {
   const typeSelect = document.getElementById("libraryFileType");
   const nameInput = document.getElementById("libraryFileName");
 
+  // Validación de seguridad de la existencia del archivo
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     alert("⚠️ Por favor, selecciona primero un archivo de tu computadora (.mp3, .wav, .txt, etc.) antes de intentar guardarlo.");
     return;
   }
 
-  // CORRECCIÓN MAESTRA: Extraemos el primer archivo real (File/Blob) de la lista de entrada
+  // CORRECCIÓN MATEMÁTICA PROTECTORA: Extraemos de forma estricta el primer archivo REAL [0] de la lista
   const fileObj = fileInput.files[0]; 
   const categoriaSeleccionada = typeSelect ? typeSelect.value : "pista";
   
+  // Extraemos el nombre: si está vacío el input, usamos el nombre original del archivo físico de tu PC
   let nombreFinal = nameInput && nameInput.value.trim() ? nameInput.value.trim() : fileObj.name;
-  nombreFinal = nombreFinal.replace(/\.[^.]+$/, ""); // Remueve extensiones redundantes
+  nombreFinal = nombreFinal.replace(/\.[^.]+$/, ""); // Remueve extensiones duplicadas (.wav, .mp3)
 
   console.log(`⏳ [biblioteca.js] Procesando archivo binario legítimo: [${nombreFinal}] - Tipo: [${categoriaSeleccionada.toUpperCase()}]`);
 
@@ -325,28 +327,28 @@ export async function saveManualFileToLibrary() {
         date: new Date().toLocaleString("es-ES")
       });
     } else {
-      // Guardamos el objeto binario File/Blob puro de forma unificada
+      // Guardamos el objeto binario File/Blob puro de forma unificada en la transacción offline
       await addLibraryItem({
         name: nombreFinal,
         type: categoriaSeleccionada,
-        audioBlob: fileObj, 
+        audioBlob: fileObj, // Inyectamos el Blob binario puro certificado
         date: new Date().toLocaleString("es-ES"),
         metadata: {
           pesoBytes: fileObj.size,
           mimeType: fileObj.type,
-          generadoPor: "Importador Manual SingIt"
+          generadoPor: "Importador Manual SingIt Master"
         }
       });
     }
 
-    console.log(`✅ [biblioteca.js] ¡Archivo [${nombreFinal}] inyectado con éxito en IndexedDB de forma persistente!`);
-    alert(`🎉 ¡Importación completada con éxito!\n\nEl archivo "${nombreFinal}" ha sido guardado de forma permanente en tu Biblioteca offline. Ya está listo para usarse en la aplicación.`);
+    console.log(`✅ [biblioteca.js] ¡Archivo [${nombreFinal}] inyectado con éxito en IndexedDB!`);
+    alert(`🎉 ¡Importación completada con éxito!\n\nEl archivo "${nombreFinal}" ha sido guardado de forma permanente en tu Biblioteca offline. Ya está listo para usarse.`);
 
-    // Limpieza de campos en el formulario
+    // Limpieza de campos en el formulario de la interfaz
     if (fileInput) fileInput.value = "";
     if (nameInput) nameInput.value = "";
 
-    // Forzamos el re-renderizado visual inmediato de la lista de archivos guardados
+    // Forzamos el re-renderizado visual inmediato de la lista de carpetas
     await renderLibrary("todos");
 
   } catch (error) {
