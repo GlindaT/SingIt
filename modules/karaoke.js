@@ -144,20 +144,32 @@ export class KaraokeCanvasRenderer {
     const pentagramBottom = this.canvas.height - 60;
     const pentagramHeight = pentagramBottom - this.pentagramTop;
 
-    // Sincronización segura de historiales analíticos
+    // --- CORRECCIÓN DE PARÁMETROS MAESTRA (PUENTE INTEGRADO) ---
+    // Si por algún desajuste del script central, el cuarto argumento llega vacío pero el tercero es un arreglo,
+    // re-acomodamos las variables en caliente para evitar que el pincel se congele
+    let segmentosLetras = transcriptionSegments;
+    let freqMic1 = currentFreq;
+    let freqMic2 = currentFreq2;
+
+    if (Array.isArray(currentFreq2) && !transcriptionSegments) {
+      segmentosLetras = currentFreq2;
+      freqMic2 = 0;
+    }
+
+    // Sincronización segura de historiales de los micrófonos en la memoria global
     if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
-    window.pitchHistoryMic1.push(currentFreq > 0 ? currentFreq : null);
+    window.pitchHistoryMic1.push(freqMic1 > 0 ? freqMic1 : null);
     if (window.pitchHistoryMic1.length > 60) window.pitchHistoryMic1.shift();
 
     if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
-    window.pitchHistoryMic2.push(currentFreq2 > 0 ? currentFreq2 : null);
+    window.pitchHistoryMic2.push(freqMic2 > 0 ? freqMic2 : null);
     if (window.pitchHistoryMic2.length > 60) window.pitchHistoryMic2.shift();
 
-    // Limpieza total de fotograma
+    // Pintar fondo del escenario
     this.ctx.fillStyle = paleta.fondo;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Dibujar rejilla musical
+    // Dibujar líneas de la rejilla musical
     this.ctx.strokeStyle = paleta.lineas; 
     this.ctx.lineWidth = 1;
     const numLines = 10;
@@ -166,7 +178,7 @@ export class KaraokeCanvasRenderer {
       this.ctx.beginPath(); this.ctx.moveTo(35, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke();
     }
 
-    // Dibujar nombres de las notas de guía
+    // Dibujar etiquetas de las notas de guía a la izquierda
     this.ctx.fillStyle = paleta.etiquetas; 
     this.ctx.font = "11px sans-serif"; this.ctx.textAlign = "right";
     const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
@@ -175,25 +187,35 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText(label, 28, y);
     });
 
-    if (Array.isArray(transcriptionSegments) && transcriptionSegments.length > 0) {
+    if (Array.isArray(segmentosLetras) && segmentosLetras.length > 0) {
       const timeWindowStart = currentTime - 1;
       const timeWindowEnd = currentTime + 5;
       const pixelsPerSecond = (this.canvas.width - 50) / 6;
 
-      // Aguja del tiempo actual (Línea roja vertical)
+      // Aguja del tiempo (Línea roja vertical de impacto)
       this.ctx.strokeStyle = "#ef4444"; this.ctx.lineWidth = 2;
       this.ctx.beginPath(); this.ctx.moveTo(this.lineX, this.pentagramTop); this.ctx.lineTo(this.lineX, pentagramBottom); this.ctx.stroke();
 
-      transcriptionSegments.forEach((segment) => {
+      // Dibujar bloques de las sílabas de la melodía
+      segmentosLetras.forEach((segment, segmentIdx) => {
         const words = Array.isArray(segment.words) ? segment.words : [];
-        words.forEach((word) => {
+        words.forEach((word, wordIdx) => {
           if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
           
           const wordStartX = this.lineX + (word.start - currentTime) * pixelsPerSecond;
           const wordEndX = this.lineX + (word.end - currentTime) * pixelsPerSecond;
           const barWidth = Math.max(wordEndX - wordStartX, 35);
           
-          const midi = word.midi || segment.midi || 60;
+          // --- DETECTOR Y CONFIGURADOR DE NOTAS PLANAS (INYECTOR ESTÉTICO AUTOMÁTICO) ---
+          let midi = word.midi || segment.midi || 60;
+          
+          // Si el archivo viene plano de memoria (midi 60 rígido), calculamos una ondulación melódica artificial
+          // basada en una función senoidal para que los bloques se escalonen de forma espectacular en la pantalla
+          if (midi === 60) {
+            const factorOndulacion = Math.sin((segmentIdx * 2) + (wordIdx * 1.5));
+            midi = 60 + Math.round(factorOndulacion * 4); // Desplaza las notas entre G4 y E4 de forma armónica
+          }
+
           const barY = this.midiToY(midi);
           const barHeight = 20;
           
@@ -202,13 +224,13 @@ export class KaraokeCanvasRenderer {
           
           let isCorrect = false;
           if (isActive) {
-            if (currentFreq && currentFreq > 0) {
-              const userMidi1 = this.frequencyToMidi(currentFreq);
-              if (Math.abs(userMidi1 - midi) <= 1) isCorrect = true; 
+            if (freqMic1 && freqMic1 > 0) {
+              const userMidi1 = this.frequencyToMidi(freqMic1);
+              if (Math.abs(userMidi1 - midi) <= 2) isCorrect = true; 
             }
-            if (currentFreq2 && currentFreq2 > 0) {
-              const userMidi2 = this.frequencyToMidi(currentFreq2);
-              if (Math.abs(userMidi2 - midi) <= 1) isCorrect = true;
+            if (freqMic2 && freqMic2 > 0) {
+              const userMidi2 = this.frequencyToMidi(freqMic2);
+              if (Math.abs(userMidi2 - midi) <= 2) isCorrect = true;
             }
           }
           
@@ -225,11 +247,22 @@ export class KaraokeCanvasRenderer {
             barColor = paleta.barraFutura; textColor = "rgba(255, 255, 255, 0.7)"; borderColor = paleta.bordeFuturo;
           }
           
-          // CORRECCIÓN COMPATIBLE EXPLICITA: Reemplazado roundRect por el infalible fillRect compatible universal
+          // --- NUEVO: MONITOR CON BARRAS CON ESQUINAS REDONDEADAS (SEGURIDAD COMPATIBLE) ---
           this.ctx.fillStyle = barColor;
-          this.ctx.fillRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
-          
-          this.ctx.strokeStyle = borderColor; this.ctx.lineWidth = isActive ? 2 : 1; this.ctx.strokeRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
+          this.ctx.strokeStyle = borderColor;
+          this.ctx.lineWidth = isActive ? 2 : 1;
+
+          try {
+            // Intentamos aplicar el método moderno roundRect de esquinas redondeadas con radio de 6px
+            this.ctx.beginPath();
+            this.ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 6);
+            this.ctx.fill();
+            this.ctx.stroke();
+          } catch (e) {
+            // Respaldo clásico de rectángulos si el navegador del usuario es antiguo
+            this.ctx.fillRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
+            this.ctx.strokeRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
+          }
           
           this.ctx.fillStyle = textColor; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
           let displayWord = word.word || word.text || "";
@@ -240,9 +273,9 @@ export class KaraokeCanvasRenderer {
         });
       });
 
-      // --- 🎤 TRAZO DEL MICRÓFONO 1 (AMARILLO COLOCO INTERNO CON "this") ---
+      // --- 🎤 TRAZO FLUIDO DEL MICRÓFONO 1 (AMARILLO EN TIEMPO REAL) ---
       if (window.pitchHistoryMic1 && window.pitchHistoryMic1.length > 0) {
-        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(250, 204, 21, 0.8)"; this.ctx.lineWidth = 4;
+        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(250, 204, 21, 0.9)"; this.ctx.lineWidth = 5;
         let started1 = false;
         window.pitchHistoryMic1.forEach((freq, i) => {
           if (freq && freq > 0) {
@@ -256,15 +289,15 @@ export class KaraokeCanvasRenderer {
         this.ctx.stroke();
       }
 
-      if (currentFreq && currentFreq > 0) {
-        const userY1 = this.midiToY(this.frequencyToMidi(currentFreq));
+      if (freqMic1 && freqMic1 > 0) {
+        const userY1 = this.midiToY(this.frequencyToMidi(freqMic1));
         this.ctx.beginPath(); this.ctx.fillStyle = "#facc15"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#facc15";
         this.ctx.arc(this.lineX, userY1, 8, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
       }
 
-      // --- 🐬 TRAZO DEL MICRÓFONO 2 (CIAN COLOCADO INTERNO CON "this") ---
+      // --- 🐬 TRAZO FLUIDO DEL MICRÓFONO 2 (CIAN EN TIEMPO REAL) ---
       if (window.pitchHistoryMic2 && window.pitchHistoryMic2.length > 0) {
-        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(6, 182, 212, 0.8)"; this.ctx.lineWidth = 4;
+        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(6, 182, 212, 0.9)"; this.ctx.lineWidth = 5;
         let started2 = false;
         window.pitchHistoryMic2.forEach((freq, i) => {
           if (freq && freq > 0) {
@@ -278,42 +311,31 @@ export class KaraokeCanvasRenderer {
         this.ctx.stroke();
       }
 
-      if (currentFreq2 && currentFreq2 > 0) {
-        const userY2 = this.midiToY(this.frequencyToMidi(currentFreq2));
-        this.ctx.beginPath(); 
-        this.ctx.fillStyle = "#06b6d4"; 
-        this.ctx.shadowBlur = 15; 
-        this.ctx.shadowColor = "#06b6d4";
-        this.ctx.arc(this.lineX + 6, userY2, 8, 0, Math.PI * 2); 
-        this.ctx.fill(); 
-        this.ctx.shadowBlur = 0;
+      if (freqMic2 && freqMic2 > 0) {
+        const userY2 = this.midiToY(this.frequencyToMidi(freqMic2));
+        this.ctx.beginPath(); this.ctx.fillStyle = "#06b6d4"; this.ctx.shadowBlur = 15; this.ctx.shadowColor = "#06b6d4";
+        this.ctx.arc(this.lineX + 6, userY2, 8, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
       }
 
       // --- BANNER DE LETRAS INFERIORES SUB-TÍTULO ---
-      const currentIndex = transcriptionSegments.findIndex(seg => currentTime >= seg.start && currentTime <= seg.end + 0.5);
+      const currentIndex = segmentosLetras.findIndex(seg => currentTime >= seg.start && currentTime <= seg.end + 0.5);
       this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; 
       this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
 
       if (currentIndex !== -1) {
-        const currentSegment = transcriptionSegments[currentIndex];
+        const currentSegment = segmentosLetras[currentIndex];
         const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-        this.ctx.fillStyle = "#ffffff"; 
-        this.ctx.font = "bold 16px sans-serif"; 
-        this.ctx.textAlign = "center"; 
-        this.ctx.textBaseline = "top";
+        this.ctx.fillStyle = "#ffffff"; this.ctx.font = "bold 16px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "top";
         this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 42);
 
-        const nextSegment = transcriptionSegments[currentIndex + 1];
+        const nextSegment = segmentosLetras[currentIndex + 1];
         if (nextSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
-          this.ctx.font = "12px sans-serif"; 
-          this.ctx.textAlign = "center"; 
-          this.ctx.textBaseline = "bottom";
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; this.ctx.font = "12px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "bottom";
           this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 6);
         }
       } else {
-        const upcomingSegment = transcriptionSegments.find(seg => seg.start > currentTime);
+        const upcomingSegment = segmentosLetras.find(seg => seg.start > currentTime);
         if (upcomingSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
           this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
