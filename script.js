@@ -94,6 +94,8 @@ export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 
     });
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
+  
+  // CORRECCIÓN PROTECTORA: Pasamos los argumentos en el estricto orden matemático que espera el Canvas
   karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
 
