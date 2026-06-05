@@ -259,12 +259,13 @@ export async function renderLibrary(filter = 'todos') {
                 if (typeof estudioModulo.setTranscriptionSegments === 'function') {
                   estudioModulo.setTranscriptionSegments(item.transcription);
                 }
+                const karaokeModulo = await import('./karaoke.js');
+                if (typeof karaokeModulo.cargarLetrasEnMonitor === 'function') {
+                  karaokeModulo.cargarLetrasEnMonitor();
+                }
               } catch (e) {
-                console.warn("Módulo de estudio no listo para recibir segmentos asíncronos todavía.");
+                console.warn("Módulo no listo para recibir segmentos:", e);
               }
-              
-              if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
-              if (typeof renderKaraokeLyrics === "function") renderKaraokeLyrics(item.transcription);
             }
 
             alert(`✅ Letra de "${item.name}" cargada en el monitor del Estudio.`);
@@ -276,9 +277,13 @@ export async function renderLibrary(filter = 'todos') {
       });
     });
 
-    if (typeof loadVoiceOptionsInStudio === "function") await loadVoiceOptionsInStudio();
-    if (typeof loadTrackOptionsInStudio === "function") await loadTrackOptionsInStudio();
-    if (typeof loadTrackOptionsInKaraoke === "function") await loadTrackOptionsInKaraoke();
+    try {
+      const estudioModulo = await import('./estudio.js');
+      if (typeof estudioModulo.loadVoiceOptionsInStudio === "function") await estudioModulo.loadVoiceOptionsInStudio();
+      if (typeof estudioModulo.loadTrackOptionsInStudio === "function") await estudioModulo.loadTrackOptionsInStudio();
+      const karaokeModulo = await import('./karaoke.js');
+      if (typeof karaokeModulo.loadTrackOptionsInKaraoke === "function") await karaokeModulo.loadTrackOptionsInKaraoke();
+    } catch (e) { /* modules may not be loaded yet */ }
   
   } catch (error) {
     console.error(error);

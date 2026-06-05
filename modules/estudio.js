@@ -26,7 +26,51 @@ let tapSyncLines = [];
 let tapSyncTimestamps = [];
 let tapSyncCurrentIndex = 0;
 
-export function buildWordTimingFromSegment(seg) {
+let studioMediaRecorder = null;
+let baseTranscriptionSegments = [];
+let transcriptionSegments = [];
+
+export function setTranscriptionSegments(segs) {
+  baseTranscriptionSegments = segs;
+  transcriptionSegments = segs;
+  window.transcriptionSegments = segs;
+}
+
+function audioBufferToWav(audioBuffer, startSample, endSample) {
+  const numChannels = 1;
+  const sampleRate = audioBuffer.sampleRate;
+  const length = endSample - startSample;
+  const arrayBuffer = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(arrayBuffer);
+  const channelData = audioBuffer.getChannelData(0);
+
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  view.setUint16(32, numChannels * 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, length * 2, true);
+
+  let offset = 44;
+  for (let i = startSample; i < endSample; i++) {
+    const sample = Math.max(-1, Math.min(1, channelData[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    offset += 2;
+  }
+
+  return new Blob([arrayBuffer], { type: 'audio/wav' });
+}
   if (!seg.words || seg.words.length === 0) {
     const wordsArr = (seg.text || "").split(" ").filter(Boolean);
     const duration = (seg.end || 0) - (seg.start || 0);
@@ -215,11 +259,9 @@ export async function loadSelectedVoiceFromLibrary() {
     console.log("♻️ [Estudio] ¡Reutilizando transcripción existente para evitar re-transcribir con la API!");
     baseTranscriptionSegments = item.transcription.map(s => buildWordTimingFromSegment(s));
     transcriptionSegments = baseTranscriptionSegments;
-    
+    window.transcriptionSegments = transcriptionSegments;
+
     const karaokeModulo = await import('./karaoke.js');
-    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
-      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
-    }
     if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
       karaokeModulo.cargarLetrasEnMonitor();
     }
@@ -228,6 +270,7 @@ export async function loadSelectedVoiceFromLibrary() {
   } else {
     baseTranscriptionSegments = [];
     transcriptionSegments = [];
+    window.transcriptionSegments = [];
     if (text) text.value = "";
   }
 }
@@ -273,11 +316,9 @@ export async function transcribeSelectedVoice() {
 
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
-    
+    window.transcriptionSegments = transcriptionSegments;
+
     const karaokeModulo = await import('./karaoke.js');
-    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
-      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
-    }
     if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
       karaokeModulo.cargarLetrasEnMonitor();
     }
@@ -310,12 +351,11 @@ export async function applyCorrectedLyrics() {
     return { start: timed.length ? timed[0].start : 0, end: timed.length ? timed[timed.length-1].end : 0, text: line, words: timed };
   });
 
-  baseTranscriptionSegments = rebuilt; transcriptionSegments = rebuilt;
-  
+  baseTranscriptionSegments = rebuilt;
+  transcriptionSegments = rebuilt;
+  window.transcriptionSegments = rebuilt;
+
   const karaokeModulo = await import('./karaoke.js');
-  if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
-    karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
-  }
   if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
     karaokeModulo.cargarLetrasEnMonitor();
   }
@@ -331,7 +371,7 @@ export function startTapSync() {
   if (!text?.value.trim() || !player?.src) { alert("⚠️ Carga voz y letra primero"); return; }
   tapSyncLines = text.value.split("\n").map(l => l.trim()).filter(Boolean);
   tapSyncTimestamps = []; tapSyncCurrentIndex = 0; tapSyncMode = true;
-  $("startTapSyncBtn").style.style.display = "none"; $("cancelTapSyncBtn").style.display = "inline-block"; $("tapSyncActive").style.display = "block"; $("tapSyncResult").style.display = "none";
+  $("startTapSyncBtn").style.display = "none"; $("cancelTapSyncBtn").style.display = "inline-block"; $("tapSyncActive").style.display = "block"; $("tapSyncResult").style.display = "none";
   updateTapSyncDisplay(); player.currentTime = 0; player.play();
   document.removeEventListener("keydown", handleTapSyncKeypress); document.addEventListener("keydown", handleTapSyncKeypress);
 }
