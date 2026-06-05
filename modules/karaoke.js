@@ -388,3 +388,11 @@ export async function startKaraokePitchDetection() {
     } else promesas.push(Promise.resolve(-1));
 
     try {
+      const [p1, p2] = await Promise.all(promesas);
+      const { drawKaraokeMonitor } = await import('../script.js');
+      if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(currentTime, p1, p2);
+    } catch (err) { console.warn(err); }
+    if (window.isPitchDetectionRunning) requestAnimationFrame(loop);
+  }
+  window.isPitchDetectionRunning = true; loop();
+}
