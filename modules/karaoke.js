@@ -333,3 +333,279 @@ export async function startKaraokePitchDetection() {
   }
   window.isPitchDetectionRunning = true; loop();
 }
+export function restartKaraokeRecording() {
+  stopKaraokeRecording();
+  const player = document.getElementById("karaokeVoicePlayer");
+  if (player) player.src = "";
+  const resultBox = document.getElementById("karaokeMixResult");
+  if (resultBox) resultBox.innerHTML = "";
+  if (document.getElementById("karaokeStatus")) document.getElementById("karaokeStatus").textContent = "Estado: Monitor limpio. Listo para reiniciar.";
+}
+
+export async function mixKaraoke() {
+  console.log("🎧 [karaoke.js] Iniciando mezclador digital multipista real a tempo normal...");
+  const resultBox = document.getElementById("karaokeMixResult");
+  const trackElement = document.getElementById("karaokeTrack");
+  
+  if (!karaokeRecordedAudioBlob) {
+    alert("⚠️ No se ha detectado ninguna grabación de voz. Canta frente al micrófono antes de mezclar.");
+    return;
+  }
+
+  if (resultBox) {
+    resultBox.innerHTML = `
+      <div style="padding: 15px; background: rgba(168, 85, 247, 0.15); border: 1px dashed #a855f7; border-radius: 8px; margin-top: 10px;">
+        <p style='color: #a855f7; font-weight: bold; margin: 0 0 10px 0;'>🎧 Sincronizando Sample Rates y sumando canales estéreo... ⏳</p>
+        <div style="width: 100%; background: #334155; height: 6px; border-radius: 3px; overflow:hidden;">
+          <div style="width: 100%; height: 100%; background: #a855f7; animation: mix-rendering 2.5s linear forwards;"></div>
+        </div>
+      </div>
+      <style>@keyframes mix-rendering { 0% { width: 0%; } 100% { width: 100%; } }</style>
+    `;
+  }
+
+  setTimeout(async () => {
+    try {
+      const TASA_MUESTREO_SISTEMA = window.karaokeDuoAudioContext?.sampleRate || 48000;
+      const offlineCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: TASA_MUESTREO_SISTEMA });
+      
+      const { getAudioController, exportStereoWav } = await import('./audioController.js');
+      const audioCtrl = getAudioController();
+
+      const vozArrayBuffer = await karaokeRecordedAudioBlob.arrayBuffer();
+      const vozAudioBuffer = await offlineCtx.decodeAudioData(vozArrayBuffer);
+      const vozFloatArray = vozAudioBuffer.getChannelData(0);
+
+      let instrumentalFloatArray = new Float32Array(vozFloatArray.length);
+
+      if (trackElement && trackElement.src) {
+        try {
+          console.log(`⏳ [karaoke.js] Descargando buffer instrumental a ${TASA_MUESTREO_SISTEMA}Hz...`);
+          const resPista = await fetch(trackElement.src);
+          const pistaArrayBuffer = await resPista.arrayBuffer();
+          const pistaAudioBuffer = await offlineCtx.decodeAudioData(pistaArrayBuffer);
+          const pistaData = pistaAudioBuffer.getChannelData(0);
+          
+          for (let i = 0; i < Math.min(instrumentalFloatArray.length, pistaData.length); i++) {
+            instrumentalFloatArray[i] = pistaData[i];
+          }
+        } catch (pistaErr) {
+          console.warn("⚠️ Error alineando pista de fondo, se exportará la voz sola:", pistaErr);
+        }
+      }
+
+      console.log("⚙️ [karaoke.js] Transfiriendo matrices numéricas síncronas hacia el Worker...");
+      const matrizMezclada = await audioCtrl.mixAudio([instrumentalFloatArray, vozFloatArray], [0.7, 1.0]);
+
+      const renderBuffer = offlineCtx.createBuffer(2, matrizMezclada.length / 2, TASA_MUESTREO_SISTEMA);
+      const renderL = renderBuffer.getChannelData(0);
+      const renderR = renderBuffer.getChannelData(1);
+
+      let idx = 0;
+      for (let i = 0; i < renderBuffer.length; i++) {
+        renderL[i] = matrizMezclada[idx++];
+        renderR[i] = matrizMezclada[idx++];
+      }
+
+      const mezclaDefinitivaBlob = exportStereoWav(renderBuffer);
+      const urlFinal = URL.createObjectURL(mezclaDefinitivaBlob);
+      const trackName = trackElement?.dataset?.name || "Cancion Sincronizada";
+
+      if (resultBox) {
+        resultBox.innerHTML = `
+          <div style="padding: 20px; background: var(--bg-main); border: 2px solid #a855f7; border-radius: 10px; margin-top: 15px;">
+            <p style="color: #a855f7; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">🎧 ¡Mezcla Multipista Sincronizada!</p>
+            <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 15px 0;">Escucha tu voz combinada con la música a velocidad normal y tempo real:</p>
+            
+            <audio id="finalMixPlayer" src="${urlFinal}" controls style="width: 100%; margin-bottom: 15px;"></audio>
+            
+            <div class="studio-controls" style="margin-top: 10px;">
+              <a href="${urlFinal}" download="Mezcla_Karaoke_${trackName.replace(/\s+/g, '_')}.wav" style="background: #a855f7; color: white; font-weight: bold; padding: 12px 25px; border-radius: 8px; text-decoration: none; display: inline-block; text-align: center;">📥 Descargar Mezcla Final (WAV)</a>
+            </div>
+          </div>
+        `;
+      }
+
+      const { addLibraryItem, renderLibrary } = await import('./biblioteca.js');
+      await addLibraryItem({
+        name: `Mezcla - ${trackName}`,
+        type: "grabacion",
+        audioBlob: mezclaDefinitivaBlob,
+        date: new Date().toLocaleString("es-ES")
+      });
+
+      await renderLibrary("todos").catch(() => {});
+      console.log("💾 [karaoke.js] ¡Mezcla balanceada a velocidad 1:1 guardada de forma exitosa!");
+
+    } catch (error) {
+      console.error("❌ Error en el proceso de mezcla multipista:", error);
+      if (resultBox) resultBox.innerHTML = "<p style='color: var(--danger); font-weight:bold;'>❌ Error procesando el renderizado de la mezcla.</p>";
+    }
+  }, 2600);
+}
+
+export async function loadTrackOptionsInKaraoke() {
+  const select = document.getElementById("karaokeTrackSelect"); if (!select) return;
+  select.innerHTML = `<option value="">Selecciona una pista desde tu Biblioteca</option>`;
+  const tracks = await getLibraryItemsByType("pista");
+  tracks.forEach(t => { const o = document.createElement("option"); o.value = t.id; o.textContent = t.name; select.appendChild(o); });
+}
+
+export async function loadSelectedTrackFromLibraryKaraoke() {
+  const select = document.getElementById("karaokeTrackSelect"), player = document.getElementById("karaokeTrack"), status = document.getElementById("karaokeStatus");
+  const item = await getLibraryItemById(Number(select.value));
+  if (item) { player.src = URL.createObjectURL(item.audioBlob); player.dataset.name = item.name; status.textContent = `Pista cargada de Biblioteca: ${item.name}`; }
+}
+
+export async function loadMyKaraokeSongs() {
+  const container = document.getElementById("myKaraokeList"); if (!container) return;
+  const { getAllLibraryItems } = await import('./biblioteca.js');
+  const todos = await getAllLibraryItems();
+  const filtered = todos.filter(i => i.type?.toLowerCase() === "karaoke");
+
+  if (filtered.length === 0) { container.innerHTML = `<p style="color: var(--text-muted); font-size: 13px; margin: 5px 0;">No tienes canciones grabadas en el Estudio aún.</p>`; return; }
+  
+  container.innerHTML = "";
+  filtered.forEach(item => {
+    const div = document.createElement("div"); div.className = "my-karaoke-item";
+    div.innerHTML = `<div class="my-karaoke-item-info"><p class="my-karaoke-item-title">🎤 ${item.name}</p><p class="my-karaoke-item-artist">${item.date}</p></div><button type="button" class="load-karaoke-btn" data-id="${item.id}" style="font-size:12px; padding:6px 12px;">▶️ Cantar</button>`;
+    container.appendChild(div);
+  });
+
+  container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const selectedId = Number(btn.dataset.id);
+      const item = await getLibraryItemById(selectedId);
+      if (item) {
+        window.transcriptionSegments = item.transcription || [];
+        cargarLetrasEnMonitor();
+        const track = document.getElementById("karaokeTrack");
+        if (track && item.audioBlob) { track.src = URL.createObjectURL(item.audioBlob); track.dataset.name = item.name; track.play().catch(() => {}); }
+        document.getElementById("karaokeStatus").textContent = `Estado: Cantando -> ${item.name}`;
+      }
+    });
+  });
+}
+
+export async function loadKaraokeCatalog() {
+  const container = document.getElementById("catalogList"); if (!container) return;
+  container.innerHTML = "";
+  const canciones = [
+    { id: 991, title: "Tu Falta De Querer", artist: "Mon Laferte", date: "Catálogo Integrado" },
+    { id: 992, title: "Lo Que Construimos", artist: "Natalia Lafourcade", date: "Catálogo Integrado" }
+  ];
+  canciones.forEach(item => {
+    const div = document.createElement("div"); div.className = "catalog-item";
+    div.innerHTML = `<div class="catalog-item-info"><p class="catalog-item-title">🎵 ${item.title}</p><p class="catalog-item-artist">${item.artist}</p></div><button type="button" class="load-catalog-btn" data-id="${item.id}" style="font-size:12px; padding:6px 12px; background:#22c55e;">▶️ Cantar</button>`;
+    container.appendChild(div);
+  });
+}
+
+export function cargarLetrasEnMonitor() {
+  const container = document.getElementById("karaokeLiveLyrics"); if (!container) return;
+  if (!window.transcriptionSegments || window.transcriptionSegments.length === 0) {
+    container.innerHTML = `<p class="karaoke-placeholder" style="font-size: 16px; text-align: center;">⚠️ Monitor en reposo. Carga una pista instrumental o sincronizada.</p>`;
+    return;
+  }
+  container.innerHTML = "";
+  window.transcriptionSegments.forEach(seg => {
+    const p = document.createElement("p"); p.className = "karaoke-live-line"; p.textContent = seg.text || ""; container.appendChild(p);
+  });
+}
+
+export function syncKaraokeMonitor(time) {
+  const lines = document.querySelectorAll(".karaoke-live-line");
+  if (!lines.length || !window.transcriptionSegments) return;
+  window.transcriptionSegments.forEach((seg, i) => {
+    const el = lines[i]; if (!el) return;
+    el.classList.remove("active", "past", "upcoming");
+    if (time >= seg.start && time <= seg.end + 0.5) el.classList.add("active");
+    else if (time > seg.end) el.classList.add("past");
+    else el.classList.add("upcoming");
+  });
+}
+
+export function updateKaraokeHighlight(time) {
+  const container = document.getElementById("karaokeLyrics"); if (!container || !window.transcriptionSegments) return;
+  container.innerHTML = "";
+  window.transcriptionSegments.forEach(seg => {
+    const p = document.createElement("p"); p.className = "karaoke-line";
+    if (time >= seg.start && time <= seg.end + 0.5) p.className += " active";
+    p.textContent = seg.text || ""; container.appendChild(p);
+  });
+}
+
+export function reconstruirFraseDesdeWords(segment) {
+  if (!segment) return "";
+  if (Array.isArray(segment.words) && segment.words.length > 0) return segment.words.map(w => w.word).join(" ");
+  return segment.text || "";
+}
+
+export function parseUltrastarTxt(content) {
+  console.log("📝 [karaoke.js] Iniciando parseo de archivo estructurado UltraStar .txt...");
+  const lines = content.split("\n"), metadata = {}, notes = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("#")) {
+      const match = trimmed.match(/^#(\w+):(.*)$/);
+      if (match) metadata[match[1].toUpperCase()] = match[2].trim();
+      continue;
+    }
+    if (trimmed.match(/^[:*F\-]/)) {
+      const parts = trimmed.split(/\s+/), type = parts[0];
+      if (type === "-") continue;
+      if (parts.length >= 4) {
+        notes.push({ type, startBeat: parseInt(parts[1], 10), duration: parseInt(parts[2], 10), pitch: parseInt(parts[3], 10), syllable: parts.slice(4).join(" ") });
+      }
+    }
+  }
+  return { title: metadata.TITLE || "Sin título", artist: metadata.ARTIST || "Desconocido", bpm: parseFloat(metadata.BPM) || 120, gap: parseFloat(metadata.GAP) || 0, notes };
+}
+
+export function safeGetNoteName(midi) {
+  const nombres = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  return `${nombres[midi % 12]}${Math.floor(midi / 12) - 1}`;
+}
+
+export function ultrastarToSegments(parsed) {
+  console.log("📝 [karaoke.js] Despertando transformador lineal de partituras UltraStar Master...");
+  if (!parsed || !parsed.notes || !parsed.notes.length) return [];
+  const bpm = parsed.bpm, gap = parsed.gap / 1000, beatDuration = 60 / bpm / 4;
+  const segments = []; let currentWords = [], lastEndBeat = 0;
+
+  for (let i = 0; i < parsed.notes.length; i++) {
+    const note = parsed.notes[i];
+    const startTime = gap + (note.startBeat * beatDuration), endTime = startTime + (note.duration * beatDuration);
+    let midiNote = 60 + parseInt(note.pitch, 10);
+    if (midiNote < 36) midiNote = 36; if (midiNote > 84) midiNote = 84;
+    if (note.startBeat - lastEndBeat > 8 && currentWords.length > 0) {
+      segments.push({ start: currentWords[0].start, end: currentWords[currentWords.length - 1].end, text: currentWords.map(w => w.word).join(""), words: currentWords, midi: currentWords[0].midi, note: currentWords[0].note });
+      currentWords = [];
+    }
+    currentWords.push({ word: note.syllable || "", start: startTime, end: endTime, midi: midiNote, note: safeGetNoteName(midiNote) });
+    lastEndBeat = note.startBeat + note.duration;
+  }
+  if (currentWords.length > 0) {
+    segments.push({ start: currentWords[0].start, end: currentWords[currentWords.length - 1].end, text: currentWords.map(w => w.word).join(""), words: currentWords, midi: currentWords[0].midi, note: currentWords[0].note });
+  }
+  return segments;
+}
+
+export async function cargarPistaKaraoke(e) {
+  console.log("📥 [karaoke.js] Selección manual de archivos detectada en la pestaña Karaoke...");
+  const archivos = e.target.files; if (!archivos || archivos.length === 0) return;
+  const statusEl = document.getElementById("karaokeStatus"), trackPlayer = document.getElementById("karaokeTrack");
+  const archivoAudio = Array.from(archivos).find(file => file.type.startsWith("audio/")), archivoTxt = Array.from(archivos).find(file => file.name.endsWith(".txt") || file.type === "text/plain");
+
+  try {
+    if (archivoAudio) { if (statusEl) statusEl.textContent = `Estado: Cargando audio instrumental... ⏳`; if (trackPlayer) { trackPlayer.src = URL.createObjectURL(archivoAudio); trackPlayer.dataset.name = archivoAudio.name; } }
+    if (archivoTxt) {
+      if (statusEl) statusEl.textContent = "Estado: Parseando partituras UltraStar... ⏳";
+      const contenidoTxt = await archivoTxt.text(), datosParseados = parseUltrastarTxt(contenidoTxt);
+      window.transcriptionSegments = ultrastarToSegments(datosParseados);
+      cargarLetrasEnMonitor();
+      console.log("🚀 [Karaoke] Letras .txt de UltraStar cargadas, escalonadas y sincronizadas en el Canvas.");
+    }
+    if (statusEl) statusEl.textContent = `Estado: 🎧 Pista lista (${archivoAudio ? archivoAudio.name : "Archivo local"}). Presiona Iniciar para cantar.`;
+  } catch (error) { console.error(error); if (statusEl) statusEl.textContent = "Estado: ❌ Error cargando los archivos locales"; }
+}
