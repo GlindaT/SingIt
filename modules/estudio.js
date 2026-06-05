@@ -324,8 +324,19 @@ export async function transcribeSelectedVoice() {
       const end = Math.min(start + samplesPerChunk, totalSamples);
       status.textContent = `Estado: Transcribiendo con Whisper IA (${Math.floor(start/samplesPerChunk)+1} / ${Math.ceil(totalSamples/samplesPerChunk)})... 🚀`;
 
-      const response = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audioBase64: await blobToBase64(audioBufferToWav(audioBuffer, start, end)) }) });
-      if (!response.ok) throw new Error("Error en servidor");
+      const response = await fetch("/api/transcribe", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ audioBase64: await blobToBase64(audioBufferToWav(audioBuffer, start, end)) }) 
+      });
+
+      // CORRECCIÓN PROTECTORA DE EXTRACCIÓN: Leemos el cuerpo real del fallo del servidor para auditarlo
+      if (!response.ok) {
+        const errorTextoServidor = await response.text().catch(() => "Sin mensaje de texto");
+        console.error(`❌ [estudio.js] El Servidor de Vercel rechazó la petición. Código HTTP: [${response.status}]`);
+        console.error(`📝 [estudio.js] Detalle técnico arrojado por el backend:`, errorTextoServidor);
+        throw new Error(`Fallo en Servidor remoto (Código ${response.status}): ${errorTextoServidor}`);
+      }
       
       const result = await response.json();
       const timeOffset = start / sampleRate;
