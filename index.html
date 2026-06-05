@@ -289,10 +289,11 @@
         <canvas id="karaokeCanvas" width="900" height="300" style="width: 100%; display: block; border-radius: 8px;"></canvas>
       </div>
 
-      <!-- MONITOR DE TEXTO (LETRA EN VIVO ABAJO DEL PENTAGRAMA) -->
+      <!-- MONITOR DE TEXTO (LETRA EN VIVO ABAJO DEL PENTAGRAMA) 
       <div id="karaokeLiveLyrics" class="karaoke-lyrics theme-clasico" style="margin-bottom: 20px;">
         <p class="karaoke-placeholder" style="font-size: 18px; text-align: center;">⚠️ Ve a la pestaña 'Estudio', transcribe una voz y vuelve aquí para ver la letra.</p>
       </div>
+      -->
 
       <!-- DESPLEGABLE 1: CATÁLOGO Y PLAYLISTS DE CANCIONES -->
       <div class="card">
@@ -325,7 +326,7 @@
       <!-- DESPLEGABLE 2: PASO 1 - CARGAR PISTA INSTRUMENTAL MANUAL -->
       <div class="card">
         <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
-          <h3 style="margin: 0;">1. Configurar Pista de Fondo</h3>
+          <h3 style="margin: 0;">1. Cargar una Pista</h3>
           <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
         
@@ -396,17 +397,17 @@
       </div>
 
    
-<!-- CATÁLOGO DE CANCIONES LISTAS -->
+      <!-- CATÁLOGO DE CANCIONES LISTAS 
       <div class="card">
-        <!-- Encabezado interactivo sin onclick -->
+        <!-- Encabezado interactivo sin onclick 
         <div class="encabezado-desplegable" data-target="contenido-catalogo" data-arrow="flecha-catalogo" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
           <h3 style="margin: 0;">🎤 Canciones Listas para Cantar</h3>
           <span id="flecha-catalogo" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
 
-        <!-- Contenido que se va a ocultar -->
+        <!-- Contenido que se va a ocultar 
         <div id="contenido-catalogo" class="contenido-desplegable" style="margin-top: 15px;">
-          <!-- Catálogo pre-cargado -->
+          <!-- Catálogo pre-cargado 
           <div id="catalogSection">
             <h4 style="color: var(--accent); margin-bottom: 10px;">📚 Catálogo de la App</h4>
             <div id="catalogList" style="max-height: 200px; overflow-y: auto;">
@@ -414,7 +415,7 @@
             </div>
           </div>
           
-          <!-- Mis canciones importadas/creadas -->
+          <!-- Mis canciones importadas/creadas 
           <div id="myKaraokeSongs" style="margin-top: 20px;">
             <h4 style="color: #f59e0b; margin-bottom: 10px;">📁 Mis Canciones</h4>
             <div id="myKaraokeList" style="max-height: 200px; overflow-y: auto;">
@@ -422,7 +423,7 @@
             </div>
           </div>
          
-          <!-- Botones de acción -->
+          <!-- Botones de acción 
           <div class="studio-controls" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
             <button id="importUltrastarBtn" type="button" style="background: #8b5cf6;">📥 Importar UltraStar</button>
             <button id="refreshKaraokeCatalogBtn" type="button" style="background: #6b7280;">🔄 Actualizar</button>
@@ -430,7 +431,7 @@
         </div>
       </div>
       
-      <!-- MODAL IMPORTAR ULTRASTAR -->
+      <!-- MODAL IMPORTAR ULTRASTAR 
       <div id="ultrastarModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
         <div style="background: var(--bg-card); padding: 30px; border-radius: 12px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
           <h3 style="margin-top: 0; color: var(--accent);">📥 Importar Canción UltraStar</h3>
@@ -480,17 +481,17 @@
         </div>
       </div>
 
-      <!-- Paso 1: Pista -->
+      <!-- Paso 1: Pista 
       <div class="card">
-        <!-- Encabezado interactivo sin onclick -->
+        <!-- Encabezado interactivo sin onclick 
         <div class="encabezado-desplegable" data-target="contenido-pista" data-arrow="flecha-pista" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
           <h3 style="margin: 0;">1. Cargar Pista (Instrumental)</h3>
           <span id="flecha-pista" class="flecha" style="transition: transform 0.2s ease; font-size: 1.2rem; color: var(--accent);">▶</span>
         </div>
         
-        <!-- Contenido que se va a ocultar -->
+        <!-- Contenido que se va a ocultar
         <div id="contenido-pista" class="contenido-desplegable" style="margin-top: 15px;">
-          <!-- Opción A: Desde la Biblioteca -->
+          <!-- Opción A: Desde la Biblioteca 
           <div class="studio-controls">
             <button id="refreshKaraokeTrackBtn" type="button">🔄 Actualizar lista</button>
           </div>
@@ -501,14 +502,14 @@
             <button id="loadKaraokeTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista de Biblioteca</button>
           </div>
 
-          <!-- Opción B: Desde la PC -->
+          <!-- Opción B: Desde la PC 
           <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu PC:</p>
           <input type="file" id="karaokeTrackFile" accept="audio/*">
           
           <audio id="karaokeTrack" controls style="margin-top: 15px; width: 100%;"></audio>
         </div>
       </div>
-      <!-- Paso 2: Grabación -->
+      <!-- Paso 2: Grabación 
       <div class="card">
         <h3>2. Grabación Sincronizada</h3>
         <p id="karaokeStatus" style="color: var(--text-muted); margin-bottom: 15px;">Estado: Esperando pista...</p>
@@ -537,7 +538,7 @@
         <audio id="karaokeVoicePlayer" controls></audio>
       </div>
 
-      <!-- Paso 3: Mezcla -->
+      <!-- Paso 3: Mezcla 
       <div class="card">
         <h3>3. Mezcla Final</h3>
         <p style="color: var(--text-muted); margin-bottom: 15px;">Une la pista instrumental con tu voz en un solo archivo de audio.</p>
@@ -547,6 +548,7 @@
         </div>
         
         <div id="karaokeMixResult" style="margin-top: 15px;"></div>
+      -->
       </div>
 
     </section>
