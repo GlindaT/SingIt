@@ -1,7 +1,7 @@
 // modules/estudio.js - ENTORNO DE MASTERIZACIÓN, TRANSCRIPCIÓN Y PULSOS RÍTMICOS
 
 import { $ } from '../script.js';
-import { getLibraryItemById, updateLibraryItem, addLibraryItem, getAllLibraryItems } from './biblioteca.js';
+import { getLibraryItemsByType, getLibraryItemById, updateLibraryItem, addLibraryItem, getAllLibraryItems } from './biblioteca.js'; // <-- VERIFICA QUE "getLibraryItemsByType" ESTÉ AQUÍ ADENTRO
 
 let studioChunks = [];
 let studioRecordedBlob = null;
@@ -100,6 +100,41 @@ function audioBufferToWav(buffer, startSample, endSample) {
     offset += 2;
   }
   return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+export function aplicarCadenaDeAudioKaraoke(audioCtx, source) {
+  if (!audioCtx || !source) return null;
+
+  // 1. Filtro Paso Alto: Elimina ruidos graves de fondo por debajo de 60Hz
+  const highPass = audioCtx.createBiquadFilter();
+  highPass.type = "highpass"; 
+  highPass.frequency.value = 60;
+
+  // 2. Compresor Dinámico: Nivela los picos de volumen cuando cantas fuerte
+  const compresor = audioCtx.createDynamicsCompressor();
+  compresor.threshold.setValueAtTime(-24, audioCtx.currentTime);
+  compresor.knee.setValueAtTime(30, audioCtx.currentTime);
+  compresor.ratio.setValueAtTime(4, audioCtx.currentTime);
+  compresor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+  compresor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+  // 3. Ecualizador de Brillo: Resalta las frecuencias altas (4kHz) para darle claridad a la voz
+  const shelfFilter = audioCtx.createBiquadFilter();
+  shelfFilter.type = "highshelf"; 
+  shelfFilter.frequency.value = 4000; 
+  shelfFilter.gain.value = 2.0;
+
+  // 4. Nodo de Ganancia: Control de volumen final amplificado
+  const gainNode = audioCtx.createGain(); 
+  gainNode.gain.value = 1.4; 
+
+  // Conexión en serie de los efectos
+  source.connect(highPass); 
+  highPass.connect(compresor); 
+  compresor.connect(shelfFilter); 
+  shelfFilter.connect(gainNode);
+
+  return gainNode; 
 }
 
 export function cargarAudioEstudio(e) {
