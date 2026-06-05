@@ -297,7 +297,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     toggleMic2Visibility();
 
     console.log("📁 [script.js] Precargando lista visual de la Biblioteca...");
-    await renderLibrary('todos');
+    
+    // CORRECCIÓN PROTECTORA: Forzamos la importación dinámica antes de pintar las carpetas
+    const bibliotecaModulo = await import("./modules/biblioteca.js");
+    if (typeof bibliotecaModulo.renderLibrary === "function") {
+      await bibliotecaModulo.renderLibrary('todos');
+    }
 
     console.log("🚀 ¡SingIt Core inicializado de forma impecable y estable al 100%! All tabs active.");
   } catch (error) {
