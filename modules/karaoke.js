@@ -611,92 +611,129 @@ export function syncKaraokeMonitor(currentTime) {
 }
 
 export async function startKaraokeRecording() {
-  const track = $("karaokeTrack"); 
-  if (!track || !track.src) { alert("⚠️ Primero sube una pista instrumental."); return; }
+  console.log("🎙️ [karaoke.js] Iniciando sesión de grabación sincronizada en Karaoke...");
+  
+  const statusEl = document.getElementById("karaokeStatus");
+  const track = document.getElementById("karaokeTrack");
+
   try {
-    const micCount = $("micCount"), isDuo = micCount && micCount.value === "2";
-    if (window.karaokeStream?.getTracks) window.karaokeStream.getTracks().forEach(t => t.stop());
-    if (window.karaokeStream2?.getTracks) window.karaokeStream2.getTracks().forEach(t => t.stop());
-    karaokeChunks = []; 
-    karaokeRecordedBlob = null; 
-    karaokeDuoAnalyser1 = null; 
-    karaokeDuoAnalyser2 = null;
-    if ($("karaokeVoicePlayer")) $("karaokeVoicePlayer").src = "";
-    karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const dest = karaokeDuoAudioContext.createMediaStreamDestination();
-    const mic1Id = document.getElementById("mic1Select")?.value, mic2Id = document.getElementById("mic2Select")?.value;
-    const stream1 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, sampleRate: 48000 } });
-    window.karaokeStream = stream1;
+    // 1. EXTRAER CONFIGURACIONES DE HARDWARE DESDE EL LOCALSTORAGE
+    const mic1Id = localStorage.getItem("singIt_mic1");
+    const mic2Id = localStorage.getItem("singIt_mic2");
+    const esDuo = localStorage.getItem("singIt_micCount") === "2";
+
+    if (statusEl) statusEl.textContent = "Estado: Abriendo canales de hardware de audio... ⏳";
+
+    // 2. INICIALIZAR EL CONTEXTO DE AUDIO UNIFICADO PARA EL CANVAS
+    window.karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
     
-    const source1 = karaokeDuoAudioContext.createMediaStreamSource(stream1);
-    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source1);
-    const volNode1 = karaokeDuoAudioContext.createGain();
-    const sliderVol1 = $("mic1Volume"); 
-    volNode1.gain.value = sliderVol1 ? parseFloat(sliderVol1.value) : 1.0;
-    mic1Filtrado.connect(volNode1);
-    currentVolNode1 = volNode1; 
-    karaokeDuoAnalyser1 = karaokeDuoAudioContext.createAnalyser();
-    karaokeDuoAnalyser1.fftSize = 2048;
-    volNode1.connect(karaokeDuoAnalyser1);
-    const merger = karaokeDuoAudioContext.createChannelMerger(2);
-    karaokeDuoAnalyser1.connect(merger, 0, 0);
-    if (!isDuo) {
-      karaokeDuoAnalyser1.connect(merger, 0, 1);
-    }
-    if (isDuo && mic2Id) {
-      const stream2 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: mic2Id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, sampleRate: 48000 } });
-      window.karaokeStream2 = stream2;
-      const source2 = karaokeDuoAudioContext.createMediaStreamSource(stream2);
-      const mic2Filtrado = aplicarCadenaDeAudioKaraoke(karaokeDuoAudioContext, source2);
-      const volNode2 = karaokeDuoAudioContext.createGain();
-      const sliderVol2 = $("mic2Volume");
-      volNode2.gain.value = sliderVol2 ? parseFloat(sliderVol2.value) : 1.0;
-      mic2Filtrado.connect(volNode2);
-      currentVolNode2 = volNode2; 
-      karaokeDuoAnalyser2 = karaokeDuoAudioContext.createAnalyser();
-      karaokeDuoAnalyser2.fftSize = 2048;
-      volNode2.connect(karaokeDuoAnalyser2);
-      karaokeDuoAnalyser2.connect(merger, 0, 1);
-      if ($("karaokeDuoIndicator")) $("karaokeDuoIndicator").style.display = "block";
-    }
-    merger.connect(dest);
-    let finalStream = dest.stream;
-    startKaraokeDuoLevelMonitor();
-    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
-    karaokeMediaRecorder = new MediaRecorder(finalStream, options);
-    karaokeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) karaokeChunks.push(e.data); };
-    karaokeMediaRecorder.onstop = () => {
-      karaokeRecordedBlob = new Blob(karaokeChunks, { type: "audio/webm" });
-      if ($("karaokeVoicePlayer")) $("karaokeVoicePlayer").src = URL.createObjectURL(karaokeRecordedBlob);
-      if ($("karaokeStatus")) $("karaokeStatus").textContent = "Estado: Grabación finalizada ✅";
-      stopKaraokeDuoLevelMonitor();
+    // 3. CAPTURAR HARDWARE: Canal 1 (Micrófono Principal Amarillo)
+    const constraintsMic1 = {
+      audio: {
+        deviceId: mic1Id ? { exact: mic1Id } : undefined,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      }
     };
-    karaokeMediaRecorder.start();
-    track.currentTime = 0;
-    track.play();
-    setTimeout(() => {
-        let isRunning = window.isPitchDetectionRunning || false;
-        if (!isRunning) {
-            window.isPitchDetectionRunning = true;
-            startKaraokePitchDetection();
+    
+    console.log("🎤 [karaoke.js] Solicitando acceso al Micrófono Principal...");
+    window.karaokeMicStream1 = await navigator.mediaDevices.getUserMedia(constraintsMic1);
+    
+    const source1 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream1);
+    window.karaokeDuoAnalyser1 = window.karaokeDuoAudioContext.createAnalyser();
+    window.karaokeDuoAnalyser1.fftSize = 2048;
+    
+    // Importamos dinámicamente los efectos profesionales de la pestaña de Estudio para darle brillo a la voz
+    const estudioModulo = await import('./estudio.js');
+    if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
+      const mic1Procesado = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source1);
+      mic1Procesado.connect(window.karaokeDuoAnalyser1);
+    } else {
+      source1.connect(window.karaokeDuoAnalyser1);
+    }
+
+    // 4. CAPTURAR HARDWARE: Canal 2 (Micrófono Secundario Cian - Modo Dúo)
+    if (esDuo && mic2Id) {
+      console.log("🐬 [karaoke.js] Detectado modo Dúo. Solicitando acceso al Micrófono Secundario...");
+      const constraintsMic2 = {
+        audio: {
+          deviceId: { exact: mic2Id },
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
         }
-    }, 300);
-    const status = $("karaokeStatus");
-    if (status) {
-      const mic1Select = $("mic1Select");
-      const mic1Name = mic1Select ? mic1Select.options[mic1Select.selectedIndex]?.text : "Predeterminado";
-      if (isDuo && mic2Id) {
-        const mic2Select = $("mic2Select");
-        const mic2Name = mic2Select ? mic2Select.options[mic2Select.selectedIndex]?.text : "Mic 2";
-        status.textContent = `Estado: 🔴 Grabando DÚO (${mic1Name} + ${mic2Name})...`;
+      };
+      
+      window.karaokeMicStream2 = await navigator.mediaDevices.getUserMedia(constraintsMic2);
+      const source2 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream2);
+      window.karaokeDuoAnalyser2 = window.karaokeDuoAudioContext.createAnalyser();
+      window.karaokeDuoAnalyser2.fftSize = 2048;
+      
+      if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
+        const mic2Procesado = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source2);
+        mic2Procesado.connect(window.karaokeDuoAnalyser2);
       } else {
-        status.textContent = `Estado: 🔴 Grabando con ${mic1Name}...`;
+        source2.connect(window.karaokeDuoAnalyser2);
+      }
+      
+      if (document.getElementById("karaokeDuoIndicator")) {
+        document.getElementById("karaokeDuoIndicator").style.display = "block";
       }
     }
-    if ($("karaokeStartBtn")) $("karaokeStartBtn").disabled = true;
-  } catch (err) {
-    console.error("Error crítico al inicializar la grabación del Karaoke:", err);
-    alert("❌ Error al acceder al micrófono de grabación.");
+
+    // 5. DISPARAR AUDIO DE FONDO Y ENCENDER EL BUSCADOR DE PITCH EN PARALELO
+    if (track && track.src) {
+      track.currentTime = 0;
+      track.play()
+        .then(() => console.log("▶️ [karaoke.js] Pista de fondo iniciada de forma sincronizada."))
+        .catch((e) => console.warn("Autoplay bloqueado:", e));
+    }
+
+    // Encendemos las matemáticas del validador de frecuencias que reparamos con Promise.all
+    await startKaraokePitchDetection();
+    
+    if (statusEl) statusEl.textContent = "Estado: 🔴 Grabando y Analizando Voz en Tiempo Real...";
+    console.log("✅ [karaoke.js] ¡Ecosistema de captura de hardware encendido e interconectado!");
+
+  } catch (error) {
+    console.error("❌ [karaoke.js] Error catastrófico abriendo el hardware de los micrófonos:", error);
+    if (statusEl) statusEl.textContent = "Estado: ❌ Error de hardware (Permite acceso al micrófono)";
+    alert("❌ No se pudo acceder a tus micrófonos seleccionados.\n\nPor favor, ve a la pestaña 'Configuración', verifica los permisos en el candado de tu navegador y dale a 'Actualizar lista'.");
+  }
+}
+
+/**
+ * APAGADOR DE HARDWARE: Libera los recursos del sistema y detiene los hilos de los micrófonos
+ */
+export function stopKaraokeRecording() {
+  console.log("⏹️ [karaoke.js] Deteniendo sesión de grabación...");
+  window.isPitchDetectionRunning = false;
+
+  if (window.karaokeMicStream1) {
+    window.karaokeMicStream1.getTracks().forEach(track => track.stop());
+    window.karaokeMicStream1 = null;
+  }
+  if (window.karaokeMicStream2) {
+    window.karaokeMicStream2.getTracks().forEach(track => track.stop());
+    window.karaokeMicStream2 = null;
+  }
+  if (window.karaokeDuoAudioContext) {
+    window.karaokeDuoAudioContext.close().catch(() => {});
+    window.karaokeDuoAudioContext = null;
+  }
+  
+  window.karaokeDuoAnalyser1 = null;
+  window.karaokeDuoAnalyser2 = null;
+
+  const track = document.getElementById("karaokeTrack");
+  if (track) track.pause();
+
+  if (document.getElementById("karaokeStatus")) {
+    document.getElementById("karaokeStatus").textContent = "Estado: Sesión finalizada de forma segura ✅";
+  }
+  if (document.getElementById("karaokeDuoIndicator")) {
+    document.getElementById("karaokeDuoIndicator").style.display = "none";
   }
 }
 
