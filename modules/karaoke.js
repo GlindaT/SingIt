@@ -400,6 +400,7 @@ export async function startKaraokePitchDetection() {
 
         const { drawKaraokeMonitor } = await import('../script.js');
         if (typeof drawKaraokeMonitor === 'function') {
+            // Enviamos los tres parámetros puros en orden directo a la orquesta central
             drawKaraokeMonitor(currentTime, pitch1, pitch2);
         }
 
