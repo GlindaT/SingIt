@@ -82,9 +82,10 @@ export async function showTab(tabId) {
       await loadVoiceOptionsInStudio();
     }
     else if (tabId === "karaoke") {
-      console.log("🎤 [Lazy Load] Inicializando Canvas y Playlists...");
-      const { applyKaraokeTheme, loadTrackOptionsInKaraoke, cargarLetrasEnMonitor, loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
-      if (typeof applyKaraokeTheme === "function") applyKaraokeTheme();
+      console.log("🎤 [Lazy Load] Inicializando Canvas e Historicos de Canto...");
+      const { applyAppTheme, loadTrackOptionsInKaraoke, cargarLetrasEnMonitor, loadMyKaraokeSongs, loadKaraokeCatalog } = await import("./modules/karaoke.js");
+      const { inicializarEscenarioDesdeMemoria } = await import("./modules/config.js");
+      inicializarEscenarioDesdeMemoria();
       if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
       await loadTrackOptionsInKaraoke();
       await loadMyKaraokeSongs().catch(() => {});
@@ -108,6 +109,12 @@ export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 
     });
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
+  
+  // BITÁCORA DE CONTROL EN CALIENTE PARA AUDITORÍA
+  if (currentFreq > 0) {
+    console.log(`🎵 [script.js] drawKaraokeMonitor -> Mic1: ${currentFreq.toFixed(2)}Hz | Tiempo: ${currentTime.toFixed(2)}s`);
+  }
+  
   // Sincronización exacta de argumentos esperados por el pincel del Canvas
   karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
@@ -131,23 +138,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   try {
-    // 1. IMPORTACIÓN DINÁMICA INICIAL PROTECTORA
     console.log("💾 [Boot] Inicializando Base de Datos IndexDB...");
-    const { initDB, renderLibrary, saveManualFileToLibrary } = await import("./modules/biblioteca.js");
+    const { initDB, renderLibrary } = await import("./modules/biblioteca.js");
     
     console.log("⚙️ [Boot] Cargando configuraciones persistentes del disco duro...");
-    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria, saveSetting } = await import("./modules/config.js");
+    const { initSettings, loadAvailableMics, toggleMic2Visibility, inicializarEscenarioDesdeMemoria, applyAppTheme } = await import("./modules/config.js");
     
-    // Encendemos la base de datos IndexedDB y las configuraciones del usuario
     await initDB();
     initSettings();
+    
+    const temaGuardado = localStorage.getItem("singIt_theme") || "oscuro";
+    applyAppTheme(temaGuardado);
     inicializarEscenarioDesdeMemoria(); 
-
-    // Opciones del selector de fondos de escenario
-    safeAdd("karaokeThemeSelect", "change", (e) => {
-      saveSetting("singIt_stage", e.target);
-      inicializarEscenarioDesdeMemoria();
-    });
 
     // Enlace de clics de la barra de navegación lateral principal (Sidebar)
     safeAdd("btnConfig", "click", () => showTab("config"));
@@ -159,26 +161,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Módulo Afinador Vocal
     safeAdd("recordBtn", "click", async () => {
-      console.log("🎙️ [script.js] Gatillando botón: Iniciar Afinador");
       const { toggleAfinadorRecording } = await import("./modules/afinador.js");
       await toggleAfinadorRecording();
     });
 
     // Módulo Estudio de Grabación y Edición
     safeAdd("audioFile", "change", async (e) => { 
-      console.log("📥 [script.js] Selección de archivo detectada en Pista Instrumental (Estudio)");
       const { cargarAudioEstudio } = await import("./modules/estudio.js"); 
       cargarAudioEstudio(e); 
     });
     
     safeAdd("refreshStudioTrackListBtn", "click", async () => { 
-      console.log("🔄 [script.js] Gatillando botón: Actualizar lista de pistas (Estudio)");
       const { loadTrackOptionsInStudio } = await import("./modules/estudio.js"); 
       await loadTrackOptionsInStudio(); 
     });
     
     safeAdd("loadStudioTrackBtn", "click", async () => { 
-      console.log("📥 [script.js] Gatillando botón: Cargar pista seleccionada (Estudio)");
       const { loadSelectedTrackFromLibraryStudio } = await import("./modules/estudio.js"); 
       await loadSelectedTrackFromLibraryStudio(); 
     });
@@ -188,7 +186,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("stopTrackBtn", "click", async () => { const { stopTrack } = await import("./modules/estudio.js"); stopTrack(); });
     
     safeAdd("startStudioRecBtn", "click", async () => { 
-      console.log("🎙️ [script.js] Gatillando botón: Grabar voz (Estudio)");
       const { startStudioRecording } = await import("./modules/estudio.js"); 
       await startStudioRecording(); 
     });
@@ -197,7 +194,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("redoStudioRecBtn", "click", async () => { const { redoStudioRecording } = await import("./modules/estudio.js"); redoStudioRecording(); });
     
     safeAdd("saveStudioRecBtn", "click", async () => { 
-      console.log("💾 [script.js] Gatillando botón: Guardar grabación de voz (Estudio)");
       const { saveStudioRecording } = await import("./modules/estudio.js"); 
       await saveStudioRecording(); 
     });
@@ -206,7 +202,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     safeAdd("loadSelectedVoiceBtn", "click", async () => { const { loadSelectedVoiceFromLibrary } = await import("./modules/estudio.js"); await loadSelectedVoiceFromLibrary(); });
     
     safeAdd("transcribeVoiceBtn", "click", async () => { 
-      console.log("📝 [script.js] Gatillando botón: Transcribir con Whisper IA");
       const { transcribeSelectedVoice } = await import("./modules/estudio.js"); 
       await transcribeSelectedVoice(); 
     });
@@ -281,8 +276,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     safeAdd("libraryFileInput", "change", (e) => {
       console.log("📂 [script.js] Archivo seleccionado en el input manual de la Biblioteca.");
-      // CORRECCIÓN PROTECTORA: Extraemos de forma elástica el primer objeto de archivo de la lista
-      const file = e.target.files.item ? e.target.files.item(0) : e.target.files[0];
+      const file = e.target.files.item ? e.target.files.item(0) : e.target.files;
       const nameInput = $("libraryFileName");
       if (file && nameInput && !nameInput.value.trim()) {
         nameInput.value = file.name.replace(/\.[^.]+$/, "");
