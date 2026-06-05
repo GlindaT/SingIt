@@ -79,13 +79,19 @@ export class KaraokeCanvasRenderer {
     const pentagramBottom = this.canvas.height - 60;
     const pentagramHeight = pentagramBottom - this.pentagramTop;
 
-    let freqMic1 = typeof currentFreq === 'number' ? currentFreq : -1;
-    let freqMic2 = typeof currentFreq2 === 'number' ? currentFreq2 : -1;
-    let segmentosLetras = transcriptionSegments;
+    // --- ENRUTADOR ELÁSTICO DE HERCIOS CERTIFICADO ---
+    // Si los parámetros llegan movidos, detectamos cuál variable es el número de hercios real
+    let freqMic1 = -1;
+    let freqMic2 = -1;
+    let segmentosLetras = window.transcriptionSegments || transcriptionSegments;
 
-    if (Array.isArray(currentFreq2) && !transcriptionSegments) {
-      segmentosLetras = currentFreq2;
-      freqMic2 = -1;
+    if (typeof currentFreq === 'number') freqMic1 = currentFreq;
+    if (typeof currentFreq2 === 'number') freqMic2 = currentFreq2;
+    
+    // Si el segundo argumento llegó como array, significa que script.js omitió los hercios
+    if (Array.isArray(currentFreq)) {
+      segmentosLetras = currentFreq;
+      freqMic1 = -1;
     }
 
     if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
@@ -410,75 +416,113 @@ export function restartKaraokeRecording() {
 // 🎧 MEZCLADOR MULTIPISTA REAL CON EXPORTADOR DE DESCARGA BINARIA WAV
 // ====================================================================
 export async function mixKaraoke() {
-  console.log("🎧 [karaoke.js] Iniciando mezclador digital multipista en tiempo real...");
+  console.log("🎧 [karaoke.js] Iniciando mezclador digital multipista real offline...");
   const resultBox = document.getElementById("karaokeMixResult");
+  const trackElement = document.getElementById("karaokeTrack");
   
   if (!karaokeRecordedAudioBlob) {
-    alert("⚠️ No se ha detectado ninguna grabación de voz en esta sesión. Canta frente al micrófono antes de mezclar.");
-    if (resultBox) resultBox.innerHTML = "<p style='color: var(--danger); font-weight:bold;'>❌ Error: No hay datos de voz capturados.</p>";
+    alert("⚠️ No se ha detectado ninguna grabación de voz. Canta frente al micrófono antes de mezclar.");
     return;
   }
 
   if (resultBox) {
     resultBox.innerHTML = `
-      <div style="padding: 15px; background: rgba(34, 197, 94, 0.15); border: 1px dashed #22c55e; border-radius: 8px; margin-top: 10px;">
-        <p style='color: #22c55e; font-weight: bold; margin: 0 0 10px 0;'>🎧 Procesando pistas acústicas... Combinando base instrumental + registros vocales.</p>
+      <div style="padding: 15px; background: rgba(168, 85, 247, 0.15); border: 1px dashed #a855f7; border-radius: 8px; margin-top: 10px;">
+        <p style='color: #a855f7; font-weight: bold; margin: 0 0 10px 0;'>🎧 Decodificando canales y sumando frecuencias (Pista + Voz)...</p>
         <div style="width: 100%; background: #334155; height: 6px; border-radius: 3px; overflow:hidden;">
-          <div style="width: 100%; height: 100%; background: #22c55e; animation: mix-progress 1.5s ease-out forwards;"></div>
+          <div style="width: 100%; height: 100%; background: #a855f7; animation: mix-rendering 2.5s linear forwards;"></div>
         </div>
       </div>
-      <style>
-        @keyframes mix-progress { 0% { width: 0%; } 100% { width: 100%; } }
-      </style>
+      <style>@keyframes mix-rendering { 0% { width: 0%; } 100% { width: 100%; } }</style>
     `;
   }
 
-  // Pequeño retardo síncrono para permitir que el hilo del navegador renderice la barra de progreso
-  setTimeout(async () => {
-    try {
-      const trackElement = document.getElementById("karaokeTrack");
-      const trackName = trackElement?.dataset?.name || "Karaoke Master";
+  try {
+    // 1. INICIALIZAR ENTORNO ACÚSTICO DE RENDERIZADO CONCURRENTE
+    const offlineCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const { getAudioController, exportStereoWav } = await import('./audioController.js');
+    const audioCtrl = getAudioController();
 
-      // RESTAURACIÓN DE INTERFAZ: Inyectamos el reproductor nativo HTML5 con controles completos de audio y descarga
-      if (resultBox) {
-        const urlDescargaWav = URL.createObjectURL(karaokeRecordedAudioBlob);
+    // 2. EXTRAER BÚFER BINARIO DE LA VOZ GRABADA
+    const vozArrayBuffer = await karaokeRecordedAudioBlob.arrayBuffer();
+    const vozAudioBuffer = await offlineCtx.decodeAudioData(vozArrayBuffer);
+    const vozFloatArray = vozAudioBuffer.getChannelData(0);
+
+    let instrumentalFloatArray = new Float32Array(vozFloatArray.length);
+
+    // 3. EXTRAER BÚFER BINARIO DE LA PISTA INSTRUMENTAL DE FONDO (SI EXISTE)
+    if (trackElement && trackElement.src) {
+      try {
+        console.log("⏳ [karaoke.js] Descargando buffer de la pista instrumental de fondo...");
+        const resPista = await fetch(trackElement.src);
+        const pistaArrayBuffer = await resPista.arrayBuffer();
+        const pistaAudioBuffer = await offlineCtx.decodeAudioData(pistaArrayBuffer);
+        const pistaData = pistaAudioBuffer.getChannelData(0);
         
-        resultBox.innerHTML = `
-          <div style="padding: 20px; background: var(--bg-main); border: 2px solid #22c55e; border-radius: 10px; margin-top: 15px; animation: fade-in 0.3s ease;">
-            <p style="color: #22c55e; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">✅ ¡Mezcla Acústica Exportada con Éxito!</p>
-            <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 15px 0;">Escucha el resultado de tu audición balanceada o descárgalo directo a tu PC:</p>
-            
-            <audio id="finalMixPlayer" src="${urlDescargaWav}" controls style="width: 100%; margin-bottom: 15px;"></audio>
-            
-            <div class="studio-controls" style="margin-top: 10px;">
-              <a href="${urlDescargaWav}" download="Mezcla_SingIt_${Date.now()}.wav" style="background: #22c55e; color: black; font-weight: bold; padding: 10px 20px; border-radius: 8px; text-decoration: none; display: inline-block; text-align: center;">📥 Descargar WAV a mi PC</a>
-            </div>
-          </div>
-        `;
+        // Copiamos los datos de la pista alineándolos estrictamente al largo de la grabación
+        for (let i = 0; i < Math.min(instrumentalFloatArray.length, pistaData.length); i++) {
+          instrumentalFloatArray[i] = pistaData[i];
+        }
+      } catch (pistaErr) {
+        console.warn("⚠️ No se pudo decodificar la pista de fondo para la mezcla, se exportará la voz sola:", pistaErr);
       }
-
-      // PERSISTENCIA TOTAL AUTOMÁTICA: Insertamos el registro binario en IndexedDB bajo la carpeta "Grabaciones"
-      const { addLibraryItem, renderLibrary } = await import('./biblioteca.js');
-      await addLibraryItem({
-        name: `Mezcla - ${trackName} - ${new Date().toLocaleDateString()}`,
-        type: "grabacion",
-        audioBlob: karaokeRecordedAudioBlob,
-        date: new Date().toLocaleString("es-ES"),
-        metadata: { pesoBytes: karaokeRecordedAudioBlob.size, tipoMime: karaokeRecordedAudioBlob.type, origen: "Karaoke Mix Engine" }
-      });
-
-      console.log("💾 [karaoke.js] ¡Mezcla binaria guardada e importada físicamente en IndexedDB con éxito!");
-      
-      // Si la pestaña de biblioteca está abierta en segundo plano, refrescamos su cuadrícula visual
-      await renderLibrary("todos").catch(() => {});
-
-    } catch (err) {
-      console.error("❌ [karaoke.js] Error crítico empaquetando la mezcla de audio:", err);
-      if (resultBox) resultBox.innerHTML = "<p style='color: var(--danger); font-weight:bold;'>❌ Error procesando el codec final de audio.</p>";
     }
-  }, 1600);
-}
 
+    // 4. DISPARAR MEZCLA BALANCEDADA EN EL WEB WORKER SECUNDARIO
+    console.log("⚙️ [karaoke.js] Enviando matrices numéricas al Web Worker...");
+    // Atenuamos ligeramente la pista (-3dB -> 0.7) y centramos la voz (1.0) para un acabado profesional
+    const matrizMezclada = await audioCtrl.mixAudio([instrumentalFloatArray, vozFloatArray], [0.7, 1.0]);
+
+    // 5. ENCAPSULAR EL RESULTADO EN UN CONTENEDOR AUDIOBUFFER ESTÉREO
+    const renderBuffer = offlineCtx.createBuffer(2, matrizMezclada.length / 2, offlineCtx.sampleRate);
+    const renderL = renderBuffer.getChannelData(0);
+    const renderR = renderBuffer.getChannelData(1);
+
+    // Desentrelazamos los canales devueltos por el Worker para reconstruir el estéreo
+    let idx = 0;
+    for (let i = 0; i < renderBuffer.length; i++) {
+      renderL[i] = matrizMezclada[idx++];
+      renderR[i] = matrizMezclada[idx++];
+    }
+
+    // Codificamos las muestras PCM en un Blob WAV legítimo de 16 Bits
+    const mezclaDefinitivaBlob = exportStereoWav(renderBuffer);
+    const urlFinal = URL.createObjectURL(mezclaDefinitivaBlob);
+    const trackName = trackElement?.dataset?.name || "Cancion Sincronizada";
+
+    // 6. INYECTAR EL REPRODUCTOR MULTIMEDIA VISIBLE CON CONTROLES DE DESCARGA
+    if (resultBox) {
+      resultBox.innerHTML = `
+        <div style="padding: 20px; background: var(--bg-main); border: 2px solid #a855f7; border-radius: 10px; margin-top: 15px;">
+          <p style="color: #a855f7; font-weight: bold; margin: 0 0 12px 0; font-size: 16px;">🎧 ¡Mezcla Multipista Completada!</p>
+          <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 15px 0;">Escucha tu voz combinada con la música de fondo o descárgala a tu PC:</p>
+          
+          <audio id="finalMixPlayer" src="${urlFinal}" controls style="width: 100%; margin-bottom: 15px;"></audio>
+          
+          <div class="studio-controls" style="margin-top: 10px;">
+            <a href="${urlFinal}" download="Mezcla_Karaoke_${trackName.replace(/\s+/g, '_')}.wav" style="background: #a855f7; color: white; font-weight: bold; padding: 12px 25px; border-radius: 8px; text-decoration: none; display: inline-block; text-align: center;">📥 Descargar Mezcla Final (WAV)</a>
+          </div>
+        </div>
+      `;
+    }
+
+    // 7. PERSISTIR EN LA BIBLIOTECA OFFLINE (INDEXEDDB)
+    const { addLibraryItem, renderLibrary } = await import('./biblioteca.js');
+    await addLibraryItem({
+      name: `Mezcla - ${trackName}`,
+      type: "grabacion",
+      audioBlob: mezclaDefinitivaBlob,
+      date: new Date().toLocaleString("es-ES")
+    });
+
+    await renderLibrary("todos").catch(() => {});
+    console.log("💾 [karaoke.js] ¡Mezcla combinada guardada físicamente en IndexedDB de forma exitosa!");
+
+  } catch (error) {
+    console.error("❌ Error en el proceso de mezcla multipista:", error);
+    if (resultBox) resultBox.innerHTML = "<p style='color: var(--danger); font-weight:bold;'>❌ Error procesando el renderizado de la mezcla.</p>";
+  }
+}
 // ====================================================================
 // 4. PASO DE DATOS DESDE LA BIBLIOTECA (PLAYLISTS)
 // ====================================================================
