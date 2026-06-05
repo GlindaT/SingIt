@@ -294,7 +294,7 @@ export async function renderLibrary(filter = 'todos') {
  * lo empaqueta e inyecta de forma física y persistente dentro de IndexedDB.
  */
 export async function saveManualFileToLibrary() {
-  console.log("📁 [biblioteca.js] Disparando proceso de importación manual...");
+  console.log("📥 [biblioteca.js] Disparando proceso de importación manual...");
 
   const fileInput = document.getElementById("libraryFileInput");
   const typeSelect = document.getElementById("libraryFileType");
@@ -305,23 +305,18 @@ export async function saveManualFileToLibrary() {
     return;
   }
 
-  const fileObj = fileInput.files[0];
+  // CORRECCIÓN MAESTRA: Extraemos el primer archivo real (File/Blob) de la lista de entrada
+  const fileObj = fileInput.files[0]; 
   const categoriaSeleccionada = typeSelect ? typeSelect.value : "pista";
   
-  // Si el usuario no ingresó un nombre personalizado, se usa de respaldo el nombre crudo del archivo de su PC
   let nombreFinal = nameInput && nameInput.value.trim() ? nameInput.value.trim() : fileObj.name;
-  
-  // Limpieza estética de extensiones redundantes en el nombre (Ej: .mp3, .wav)
-  nombreFinal = nombreFinal.replace(/\.[^.]+$/, "");
+  nombreFinal = nombreFinal.replace(/\.[^.]+$/, ""); // Remueve extensiones redundantes
 
-  console.log(`⏳ [biblioteca.js] Procesando archivo binario: [${nombreFinal}] - Tipo de destino: [${categoriaSeleccionada.toUpperCase()}]`);
+  console.log(`⏳ [biblioteca.js] Procesando archivo binario legítimo: [${nombreFinal}] - Tipo: [${categoriaSeleccionada.toUpperCase()}]`);
 
   try {
-    // Si la categoría seleccionada es una Letra Estructurada de UltraStar (.txt), se extrae como texto plano plano
     if (categoriaSeleccionada === "ultrastar_txt") {
       const textoPlanoExtraido = await fileObj.text();
-      
-      // Estructuramos el objeto físico para guardarlo en la transacción
       await addLibraryItem({
         name: `UltraStar - ${nombreFinal}`,
         type: "ultrastar_txt",
@@ -330,11 +325,11 @@ export async function saveManualFileToLibrary() {
         date: new Date().toLocaleString("es-ES")
       });
     } else {
-      // Para pistas instrumentales, voces o grabaciones, se almacena el archivo binario intacto (audioBlob)
+      // Guardamos el objeto binario File/Blob puro de forma unificada
       await addLibraryItem({
         name: nombreFinal,
         type: categoriaSeleccionada,
-        audioBlob: fileObj, // Sincronizado unificadamente como Blob binario para el CRUD offline
+        audioBlob: fileObj, 
         date: new Date().toLocaleString("es-ES"),
         metadata: {
           pesoBytes: fileObj.size,
@@ -347,11 +342,11 @@ export async function saveManualFileToLibrary() {
     console.log(`✅ [biblioteca.js] ¡Archivo [${nombreFinal}] inyectado con éxito en IndexedDB de forma persistente!`);
     alert(`🎉 ¡Importación completada con éxito!\n\nEl archivo "${nombreFinal}" ha sido guardado de forma permanente en tu Biblioteca offline. Ya está listo para usarse en la aplicación.`);
 
-    // --- LIMPIEZA DE FORMULARIO DE INTERFAZ ---
+    // Limpieza de campos en el formulario
     if (fileInput) fileInput.value = "";
     if (nameInput) nameInput.value = "";
 
-    // --- RE-RENDERIZADO AUTOMÁTICO DE LA CUADRÍCULA VISUAL ---
+    // Forzamos el re-renderizado visual inmediato de la lista de archivos guardados
     await renderLibrary("todos");
 
   } catch (error) {
