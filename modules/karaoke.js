@@ -215,6 +215,7 @@ export class KaraokeCanvasRenderer {
         this.ctx.arc(this.lineX, userY1, 9, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
       }
 
+      // --- 🐬 TRAZO CONTINUO DEL MICRÓFONO 2 (CIAN EN TIEMPO REAL) ---
       if (window.pitchHistoryMic2 && window.pitchHistoryMic2.length > 0) {
         this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(6, 182, 212, 0.9)"; this.ctx.lineWidth = 5;
         let started2 = false;
@@ -222,3 +223,168 @@ export class KaraokeCanvasRenderer {
           if (freq && freq > 0) {
             const y = this.midiToY(this.frequencyToMidi(freq));
             const x = this.lineX - (window.pitchHistoryMic2.length - i) * 3; 
+            if (x >= 0) {
+              if (!started2) { this.ctx.moveTo(x, y); started2 = true; } else { this.ctx.lineTo(x, y); }
+            }
+          } else { started2 = false; }
+        });
+        this.ctx.stroke();
+      }
+
+      if (freqMic2 && freqMic2 > 0) {
+        const userY2 = this.midiToY(this.frequencyToMidi(freqMic2));
+        this.ctx.beginPath(); this.ctx.fillStyle = "#06b6d4"; this.ctx.shadowBlur = 20; this.ctx.shadowColor = "#06b6d4";
+        this.ctx.arc(this.lineX + 6, userY2, 9, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
+      }
+
+      // --- BANNER DE LETRAS INFERIORES SUB-TÍTULO (RE-CALIBRADO GIGANTE A 90PX) ---
+      const currentIndex = segmentosLetras.findIndex(seg => currentTime >= seg.start && currentTime <= seg.end + 0.5);
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; 
+      this.ctx.fillRect(0, this.canvas.height - 90, this.canvas.width, 90);
+
+      if (currentIndex !== -1) {
+        const currentSegment = segmentosLetras[currentIndex];
+        const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
+        this.ctx.fillStyle = "#ffffff"; this.ctx.font = "bold 32px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "top";
+        this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 80);
+
+        const nextSegment = segmentosLetras[currentIndex + 1];
+        if (nextSegment) {
+          const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; this.ctx.font = "bold 22px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "bottom";
+          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 12);
+        }
+      } else {
+        const upcomingSegment = segmentosLetras.find(seg => seg.start > currentTime);
+        if (upcomingSegment) {
+          const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; this.ctx.font = "bold 24px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
+          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 45);
+        }
+      }
+
+    } else {
+      this.ctx.fillStyle = paleta.etiquetas; this.ctx.font = "20px sans-serif"; this.ctx.textAlign = "center";
+      this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
+    }
+  }
+
+  handleResize() { this.noteYCache.clear(); }
+}
+
+// ====================================================================
+// 2. DISPARADORES DE HARDWARE (CAPTURA REAL DE AUDIO)
+// ====================================================================
+
+export async function startKaraokeRecording() {
+  console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
+  const statusEl = document.getElementById("karaokeStatus"), track = document.getElementById("karaokeTrack");
+  try {
+    const mic1Id = localStorage.getItem("singIt_mic1"), mic2Id = localStorage.getItem("singIt_mic2"), esDuo = localStorage.getItem("singIt_micCount") === "2";
+    if (statusEl) statusEl.textContent = "Estado: Abriendo canales de hardware de audio... ⏳";
+
+    karaokeChunks = [];
+    karaokeRecordedAudioBlob = null;
+
+    window.karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    window.karaokeMicStream1 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const source1 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream1);
+    window.karaokeDuoAnalyser1 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser1.fftSize = 2048;
+
+    const estudioModulo = await import('./estudio.js');
+    let finalNode;
+    if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
+      finalNode = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source1);
+      finalNode.connect(window.karaokeDuoAnalyser1);
+    } else { 
+      source1.connect(window.karaokeDuoAnalyser1); 
+      finalNode = source1;
+    }
+
+    const destGrabacion = window.karaokeDuoAudioContext.createMediaStreamDestination();
+    finalNode.connect(destGrabacion);
+
+    if (esDuo && mic2Id) {
+      window.karaokeMicStream2 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: mic2Id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const source2 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream2);
+      window.karaokeDuoAnalyser2 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser2.fftSize = 2048;
+      
+      if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
+        const mic2Proc = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source2);
+        mic2Proc.connect(window.karaokeDuoAnalyser2);
+        mic2Proc.connect(destGrabacion);
+      } else { 
+        source2.connect(window.karaokeDuoAnalyser2); 
+        source2.connect(destGrabacion);
+      }
+      if (document.getElementById("karaokeDuoIndicator")) document.getElementById("karaokeDuoIndicator").style.display = "block";
+    }
+
+    // --- GRABACIÓN NATIVA REAL DE LA SESIÓN DE CANTO ---
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
+    karaokeMediaRecorder = new MediaRecorder(destGrabacion.stream, options);
+    karaokeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) karaokeChunks.push(e.data); };
+    karaokeMediaRecorder.onstop = () => {
+      karaokeRecordedAudioBlob = new Blob(karaokeChunks, { type: "audio/webm" });
+      const voPlayer = document.getElementById("karaokeVoicePlayer");
+      if (voPlayer) voPlayer.src = URL.createObjectURL(karaokeRecordedAudioBlob);
+    };
+    
+    karaokeMediaRecorder.start();
+
+    if (track?.src) { track.currentTime = 0; track.play().catch(() => {}); }
+    
+    // BLINDAJE ABSOLUTO: Forzamos la bandera true antes de gatillar las animaciones
+    window.isPitchDetectionRunning = true; 
+    await startKaraokePitchDetection();
+    
+    if (statusEl) statusEl.textContent = "Estado: 🔴 Grabando y Analizando Voz en Tiempo Real...";
+  } catch (error) {
+    console.error("❌ Error abriendo hardware:", error);
+    if (statusEl) statusEl.textContent = "Estado: ❌ Error de hardware";
+  }
+}
+
+export function stopKaraokeRecording() {
+  window.isPitchDetectionRunning = false;
+  if (karaokeMediaRecorder && karaokeMediaRecorder.state !== "inactive") karaokeMediaRecorder.stop();
+  if (window.karaokeMicStream1) { window.karaokeMicStream1.getTracks().forEach(t => t.stop()); window.karaokeMicStream1 = null; }
+  if (window.karaokeMicStream2) { window.karaokeMicStream2.getTracks().forEach(t => t.stop()); window.karaokeMicStream2 = null; }
+  if (window.karaokeDuoAudioContext) { window.karaokeDuoAudioContext.close().catch(() => {}); window.karaokeDuoAudioContext = null; }
+  window.karaokeDuoAnalyser1 = null; window.karaokeDuoAnalyser2 = null;
+  document.getElementById("karaokeTrack")?.pause();
+  if (document.getElementById("karaokeStatus")) document.getElementById("karaokeStatus").textContent = "Estado: Grabación de voz finalizada ✅";
+  if (document.getElementById("karaokeDuoIndicator")) document.getElementById("karaokeDuoIndicator").style.display = "none";
+}
+
+// ====================================================================
+// 3. CAPTURA EN PARALELO DE TONOS (PROMISE.ALL CONCURRENTE HACIA EL WORKER)
+// ====================================================================
+export async function startKaraokePitchDetection() {
+  const bufferSize = 2048, staticBufferMic1 = new Float32Array(bufferSize), staticBufferMic2 = new Float32Array(bufferSize);
+  async function loop() {
+    const track = document.getElementById("karaokeTrack");
+    if (!track || track.paused || track.ended || !window.isPitchDetectionRunning) { window.isPitchDetectionRunning = false; return; }
+
+    const currentTime = track.currentTime;
+    const { getAudioController } = await import('./audioController.js');
+    const audioCtrl = getAudioController();
+    const sampleRateSistema = window.karaokeDuoAudioContext?.sampleRate || 48000;
+    let promesas = [];
+
+    if (window.karaokeDuoAnalyser1) {
+      window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
+      let sum = 0; for (let i = 0; i < bufferSize; i++) sum += staticBufferMic1[i] * staticBufferMic1[i];
+      // CALIBRACIÓN DE MÁXIMA SENSIBILIDAD A 0.003
+      if (Math.sqrt(sum / bufferSize) > 0.003) promesas.push(audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema));
+      else promesas.push(Promise.resolve(-1));
+    } else promesas.push(Promise.resolve(-1));
+
+    if (window.karaokeDuoAnalyser2) {
+      window.karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
+      let sum = 0; for (let i = 0; i < bufferSize; i++) sum += staticBufferMic2[i] * staticBufferMic2[i];
+      if (Math.sqrt(sum / bufferSize) > 0.003) promesas.push(audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema));
+      else promesas.push(Promise.resolve(-1));
+    } else promesas.push(Promise.resolve(-1));
+
+    try {
