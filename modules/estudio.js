@@ -193,3 +193,104 @@ export async function loadSelectedTrackFromLibraryStudio() {
   const item = await getLibraryItemById(Number(select.value));
   if (item) { studioSelectedTrackName = item.name; studioSelectedTrackBlob = item.audioBlob; player.src = URL.createObjectURL(item.audioBlob); status.textContent = `Pista cargada: ${item.name}`; }
 }
+export async function loadVoiceOptionsInStudio() {
+  const select = $("voiceLibrarySelect"); if (!select) return;
+  select.innerHTML = `<option value="">Selecciona una voz guardada</option>`;
+  const todos = await getAllLibraryItems();
+  const filtered = todos.filter(i => i.type?.toLowerCase() === "voz" || i.type?.toLowerCase() === "grabacion" || i.type?.toLowerCase() === "grabación");
+  filtered.forEach(v => { const o = document.createElement("option"); o.value = v.id; o.textContent = v.name; select.appendChild(o); });
+}
+
+export async function loadSelectedVoiceFromLibrary() {
+  const select = $("voiceLibrarySelect"), player = $("selectedVoicePlayer"), status = $("selectedVoiceStatus"), text = $("lyricsText");
+  const item = await getLibraryItemById(Number(select.value));
+  if (!item) return;
+
+  selectedVoiceBlob = item.audioBlob || item.audioData; selectedVoiceId = item.id;
+  player.src = URL.createObjectURL(selectedVoiceBlob);
+  status.textContent = `Estado: voz seleccionada -> ${item.name}`;
+  console.log("📥 [Estudio] Voz del cantante cargada:", item.name);
+
+  if (Array.isArray(item.transcription) && item.transcription.length > 0) {
+    console.log("♻️ [Estudio] ¡Reutilizando transcripción existente para evitar re-transcribir con la API!");
+    baseTranscriptionSegments = item.transcription.map(s => buildWordTimingFromSegment(s));
+    transcriptionSegments = baseTranscriptionSegments;
+    
+    const karaokeModulo = await import('./karaoke.js');
+    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+    }
+    if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+      karaokeModulo.cargarLetrasEnMonitor();
+    }
+    if (text) text.value = transcriptionSegments.map(s => s.text || "").join("\n").trim();
+    status.textContent = "Estado: Voz seleccionada (Letras cargadas de memoria ⚡)";
+  } else {
+    baseTranscriptionSegments = [];
+    transcriptionSegments = [];
+    if (text) text.value = "";
+  }
+}
+
+export async function transcribeSelectedVoice() {
+  if (!selectedVoiceBlob) { alert("⚠️ Primero selecciona y carga una voz desde Biblioteca"); return; }
+  const status = $("selectedVoiceStatus"), lyricsText = $("lyricsText");
+  try {
+    status.textContent = "Estado: Preparando audio (cortando en porciones)...";
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuffer = await selectedVoiceBlob.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const CHUNK_SECONDS = 25, sampleRate = audioBuffer.sampleRate, totalSamples = audioBuffer.length, samplesPerChunk = CHUNK_SECONDS * sampleRate;
+    let fullSegments = [];
+
+    for (let start = 0; start < totalSamples; start += samplesPerChunk) {
+      const end = Math.min(start + samplesPerChunk, totalSamples);
+      const chunkNumber = Math.floor(start / samplesPerChunk) + 1;
+      const totalChunks = Math.ceil(totalSamples / samplesPerChunk);
+      status.textContent = `Estado: Transcribiendo parte ${chunkNumber} de ${totalChunks}...`;
+
+      const response = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audioBase64: await blobToBase64(audioBufferToWav(audioBuffer, start, end)) }) });
+      
+      if (!response.ok) {
+        const errorTextoServidor = await response.text().catch(() => "Sin mensaje de texto");
+        console.error(`❌ [estudio.js] El Servidor de Vercel rechazó la petición. Código HTTP: [${response.status}]`);
+        throw new Error(`Fallo en Servidor remoto (Código ${response.status}): ${errorTextoServidor}`);
+      }
+      
+      const result = await response.json();
+      const palabrasProhibidas = ["Amara", "Subtítulos", "subtítulos", "Almorzo", "Suscribete", "comunidad"];
+      const timeOffset = start / sampleRate;
+      
+      (result.segments || []).forEach(seg => {
+        const segText = (seg?.text || "").trim();
+        if (!segText) return;
+        const esFantasma = palabrasProhibidas.some(p => segText.toLowerCase().includes(p.toLowerCase()));
+        if (esFantasma) return;
+        
+        fullSegments.push(buildWordTimingFromSegment({ start: Number(seg.start || 0) + timeOffset, end: Number(seg.end || 0) + timeOffset, text: segText }));
+      });
+    }
+
+    baseTranscriptionSegments = fullSegments;
+    transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
+    
+    const karaokeModulo = await import('./karaoke.js');
+    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+    }
+    if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+      karaokeModulo.cargarLetrasEnMonitor();
+    }
+    
+    if (lyricsText) lyricsText.value = transcriptionSegments.map(l => l.text).join("\n");
+    
+    // Auto-generación y persistencia unificada
+    if (selectedVoiceId) {
+      await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments }).catch(() => {});
+    }
+    status.textContent = "Estado: Transcripción completada y guardada en texto ✅";
+  } catch (err) { 
+    console.error(err); 
+    status.textContent = "Estado: Error en la transcripción ❌"; 
+  }
+}
