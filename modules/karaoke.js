@@ -79,14 +79,13 @@ export class KaraokeCanvasRenderer {
     const pentagramBottom = this.canvas.height - 60;
     const pentagramHeight = pentagramBottom - this.pentagramTop;
 
-    // --- ENRUTADOR ELÁSTICO DE HERCIOS CERTIFICADO ---
     let freqMic1 = -1;
     let freqMic2 = -1;
     let segmentosLetras = window.transcriptionSegments || transcriptionSegments;
 
     if (typeof currentFreq === 'number') freqMic1 = currentFreq;
     if (typeof currentFreq2 === 'number') freqMic2 = currentFreq2;
-    
+
     if (Array.isArray(currentFreq)) {
       segmentosLetras = currentFreq;
       freqMic1 = -1;
@@ -98,13 +97,16 @@ export class KaraokeCanvasRenderer {
     window.pitchHistoryMic1.push(freqMic1 > 0 ? freqMic1 : null);
     window.pitchHistoryMic2.push(freqMic2 > 0 ? freqMic2 : null);
 
-    if (window.pitchHistoryMic1.length > 80) window.pitchHistoryMic1.shift();
-    if (window.pitchHistoryMic2.length > 80) window.pitchHistoryMic2.shift();
+    const maxHistory = 120;
+    if (window.pitchHistoryMic1.length > maxHistory) window.pitchHistoryMic1.shift();
+    if (window.pitchHistoryMic2.length > maxHistory) window.pitchHistoryMic2.shift();
 
+    // Clear canvas
     this.ctx.fillStyle = paleta.fondo;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    this.ctx.strokeStyle = paleta.lineas; 
+    // Draw staff lines
+    this.ctx.strokeStyle = paleta.lineas;
     this.ctx.lineWidth = 1;
     const numLines = 10;
     for (let i = 0; i <= numLines; i++) {
@@ -112,7 +114,8 @@ export class KaraokeCanvasRenderer {
       this.ctx.beginPath(); this.ctx.moveTo(35, y); this.ctx.lineTo(this.canvas.width, y); this.ctx.stroke();
     }
 
-    this.ctx.fillStyle = paleta.etiquetas; 
+    // Draw note labels
+    this.ctx.fillStyle = paleta.etiquetas;
     this.ctx.font = "bold 20px sans-serif"; this.ctx.textAlign = "right";
     const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
     noteLabels.forEach((label, i) => {
@@ -120,23 +123,25 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText(label, 28, y);
     });
 
+    // Draw playhead line
+    this.ctx.strokeStyle = "#ef4444"; this.ctx.lineWidth = 2;
+    this.ctx.beginPath(); this.ctx.moveTo(this.lineX, this.pentagramTop); this.ctx.lineTo(this.lineX, pentagramBottom); this.ctx.stroke();
+
+    // Draw lyrics note bars if segments exist
     if (Array.isArray(segmentosLetras) && segmentosLetras.length > 0) {
       const timeWindowStart = currentTime - 1;
       const timeWindowEnd = currentTime + 5;
       const pixelsPerSecond = (this.canvas.width - 50) / 6;
 
-      this.ctx.strokeStyle = "#ef4444"; this.ctx.lineWidth = 2;
-      this.ctx.beginPath(); this.ctx.moveTo(this.lineX, this.pentagramTop); this.ctx.lineTo(this.lineX, pentagramBottom); this.ctx.stroke();
-
       segmentosLetras.forEach((segment, segmentIdx) => {
         const words = Array.isArray(segment.words) ? segment.words : [];
         words.forEach((word, wordIdx) => {
           if (word.end < timeWindowStart || word.start > timeWindowEnd) return;
-          
+
           const wordStartX = this.lineX + (word.start - currentTime) * pixelsPerSecond;
           const wordEndX = this.lineX + (word.end - currentTime) * pixelsPerSecond;
           const barWidth = Math.max(wordEndX - wordStartX, 35);
-          
+
           let midi = word.midi || segment.midi || 60;
           if (midi === 60) {
             const factorOndulacion = Math.sin((segmentIdx * 2) + (wordIdx * 1.5));
@@ -145,101 +150,90 @@ export class KaraokeCanvasRenderer {
 
           const barY = this.midiToY(midi);
           const barHeight = 20;
-          
+
           const isActive = currentTime >= word.start && currentTime <= word.end;
           const isPast = currentTime > word.end;
-          
+
           let isCorrect = false;
           if (isActive) {
-            if (freqMic1 && freqMic1 > 0) {
-              const userMidi1 = this.frequencyToMidi(freqMic1);
-              if (Math.abs(userMidi1 - midi) <= 2) isCorrect = true; 
+            if (freqMic1 > 0) {
+              if (Math.abs(this.frequencyToMidi(freqMic1) - midi) <= 2) isCorrect = true;
             }
-            if (freqMic2 && freqMic2 > 0) {
-              const userMidi2 = this.frequencyToMidi(freqMic2);
-              if (Math.abs(userMidi2 - midi) <= 2) isCorrect = true;
+            if (freqMic2 > 0) {
+              if (Math.abs(this.frequencyToMidi(freqMic2) - midi) <= 2) isCorrect = true;
             }
           }
-          
+
           let barColor, textColor, borderColor;
           if (isPast) {
             barColor = "#4b5563"; textColor = "#9ca3af"; borderColor = "#6b7280";
           } else if (isActive) {
-            if (isCorrect) {
-              barColor = "#22c55e"; textColor = "#ffffff"; borderColor = "#4ade80";
-            } else {
-              barColor = "#3b82f6"; textColor = "#ffffff"; borderColor = "#60a5fa";
-            }
+            barColor = isCorrect ? "#22c55e" : "#3b82f6";
+            textColor = "#ffffff";
+            borderColor = isCorrect ? "#4ade80" : "#60a5fa";
           } else {
             barColor = paleta.barraFutura; textColor = "rgba(255, 255, 255, 0.7)"; borderColor = paleta.bordeFuturo;
           }
-          
+
           this.ctx.fillStyle = barColor;
           this.ctx.strokeStyle = borderColor;
           this.ctx.lineWidth = isActive ? 2 : 1;
 
           try {
             this.ctx.beginPath();
-            this.ctx.roundRect(wordStartX, barY - barHeight/2, barWidth, barHeight, 6); 
+            this.ctx.roundRect(wordStartX, barY - barHeight / 2, barWidth, barHeight, 6);
             this.ctx.fill(); this.ctx.stroke();
           } catch (e) {
-            this.ctx.fillRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
-            this.ctx.strokeRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
+            this.ctx.fillRect(wordStartX, barY - barHeight / 2, barWidth, barHeight);
+            this.ctx.strokeRect(wordStartX, barY - barHeight / 2, barWidth, barHeight);
           }
-          
+
           this.ctx.fillStyle = textColor; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
-          let displayWord = word.word || word.text || "";
-          if (displayWord.length > 8) {
-            this.ctx.font = isActive ? "bold 22px sans-serif" : "20px sans-serif";
-          } else {
-            this.ctx.font = isActive ? "bold 26px sans-serif" : "24px sans-serif";
-          }
-          this.ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
+          const displayWord = word.word || word.text || "";
+          this.ctx.font = (isActive ? "bold " : "") + (displayWord.length > 8 ? "22" : "26") + "px sans-serif";
+          this.ctx.fillText(displayWord, wordStartX + barWidth / 2, barY);
         });
       });
-
-      if (window.pitchHistoryMic1 && window.pitchHistoryMic1.length > 0) {
-        this.ctx.beginPath();
-        this.ctx.strokeStyle = "rgba(250, 204, 21, 0.9)";
-        this.ctx.lineWidth = 5;
-        let started1 = false;
-        window.pitchHistoryMic1.forEach((freq, i) => {
-          if (freq && freq > 0) {
-            const y = this.midiToY(this.frequencyToMidi(freq));
-            const x = this.lineX - (window.pitchHistoryMic1.length - i) * 3;
-            if (x >= 0) {
-              if (!started1) { this.ctx.moveTo(x, y); started1 = true; } else { this.ctx.lineTo(x, y); }
-            }
-          }
-        });
-        this.ctx.stroke();
-      }
-
-      if (window.pitchHistoryMic2 && window.pitchHistoryMic2.length > 0) {
-        this.ctx.beginPath();
-        this.ctx.strokeStyle = "rgba(6, 182, 212, 0.9)";
-        this.ctx.lineWidth = 5;
-        let started2 = false;
-        window.pitchHistoryMic2.forEach((freq, i) => {
-          if (freq && freq > 0) {
-            const y = this.midiToY(this.frequencyToMidi(freq));
-            const x = this.lineX - (window.pitchHistoryMic2.length - i) * 3;
-            if (x >= 0) {
-              if (!started2) { this.ctx.moveTo(x, y); started2 = true; } else { this.ctx.lineTo(x, y); }
-            }
-          }
-        });
-        this.ctx.stroke();
-      }
-
     } else {
       this.ctx.fillStyle = paleta.etiquetas;
       this.ctx.font = "20px sans-serif";
       this.ctx.textAlign = "center";
+      this.ctx.textBaseline = "alphabetic";
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
 
+    // Draw pitch trace for Mic 1 (yellow) — always drawn regardless of segments
+    this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 0.95)", 4);
+
+    // Draw pitch trace for Mic 2 (cyan) — always drawn regardless of segments
+    this._drawPitchTrace(window.pitchHistoryMic2, "rgba(6, 182, 212, 0.95)", 4);
+
   } // <-- AQUÍ CIERRA EL MÉTODO RENDER()
+
+  _drawPitchTrace(history, color, lineWidth) {
+    if (!history || history.length === 0) return;
+    const totalSlots = history.length;
+    // Spread trace across the left portion of the canvas (from edge to playhead)
+    const traceWidth = this.lineX - 40;
+    const slotWidth = traceWidth / totalSlots;
+
+    this.ctx.beginPath();
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = lineWidth;
+    let started = false;
+    history.forEach((freq, i) => {
+      if (freq && freq > 0) {
+        const y = this.midiToY(this.frequencyToMidi(freq));
+        // i=0 is oldest (leftmost), i=totalSlots-1 is newest (at playhead)
+        const x = 40 + i * slotWidth;
+        if (!started) { this.ctx.moveTo(x, y); started = true; } else { this.ctx.lineTo(x, y); }
+      } else {
+        // Gap in signal — start a new sub-path next time
+        if (started) { this.ctx.stroke(); this.ctx.beginPath(); started = false; }
+      }
+    });
+    if (started) this.ctx.stroke();
+  }
 
   handleResize() { this.noteYCache.clear(); }
 } // <-- AQUÍ CIERRA DEFINITIVAMENTE LA CLASE KaraokeCanvasRenderer
@@ -253,6 +247,8 @@ export async function startKaraokeRecording() {
 
           karaokeChunks = [];
           karaokeRecordedAudioBlob = null;
+          window.pitchHistoryMic1 = [];
+          window.pitchHistoryMic2 = [];
 
           window.karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
           window.karaokeMicStream1 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
@@ -322,40 +318,56 @@ export function stopKaraokeRecording() {
 }
 
 export async function startKaraokePitchDetection() {
-  const bufferSize = 2048, staticBufferMic1 = new Float32Array(bufferSize), staticBufferMic2 = new Float32Array(bufferSize);
-  async function loop() {
-    const track = document.getElementById("karaokeTrack");
-    if (!track || track.paused || track.ended || !window.isPitchDetectionRunning) { window.isPitchDetectionRunning = false; return; }
+  const bufferSize = 2048;
+  const staticBufferMic1 = new Float32Array(bufferSize);
+  const staticBufferMic2 = new Float32Array(bufferSize);
 
-    const currentTime = track.currentTime;
+  async function loop() {
+    if (!window.isPitchDetectionRunning) return;
+
+    const track = document.getElementById("karaokeTrack");
+    const currentTime = track ? track.currentTime : 0;
+
     const { getAudioController } = await import('./audioController.js');
     const audioCtrl = getAudioController();
     const sampleRateSistema = window.karaokeDuoAudioContext?.sampleRate || 48000;
-    let promesas = [];
+    const promesas = [];
 
     if (window.karaokeDuoAnalyser1) {
       window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
-      let sum = 0; for (let i = 0; i < bufferSize; i++) sum += staticBufferMic1[i] * staticBufferMic1[i];
-      if (Math.sqrt(sum / bufferSize) > 0.003) promesas.push(audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema));
-      else promesas.push(Promise.resolve(-1));
-    } else promesas.push(Promise.resolve(-1));
+      let sum = 0;
+      for (let i = 0; i < bufferSize; i++) sum += staticBufferMic1[i] * staticBufferMic1[i];
+      promesas.push(Math.sqrt(sum / bufferSize) > 0.003
+        ? audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema)
+        : Promise.resolve(-1));
+    } else {
+      promesas.push(Promise.resolve(-1));
+    }
 
     if (window.karaokeDuoAnalyser2) {
       window.karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
-      let sum = 0; for (let i = 0; i < bufferSize; i++) sum += staticBufferMic2[i] * staticBufferMic2[i];
-      if (Math.sqrt(sum / bufferSize) > 0.003) promesas.push(audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema));
-      else promesas.push(Promise.resolve(-1));
-    } else promesas.push(Promise.resolve(-1));
+      let sum = 0;
+      for (let i = 0; i < bufferSize; i++) sum += staticBufferMic2[i] * staticBufferMic2[i];
+      promesas.push(Math.sqrt(sum / bufferSize) > 0.003
+        ? audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema)
+        : Promise.resolve(-1));
+    } else {
+      promesas.push(Promise.resolve(-1));
+    }
 
     try {
       const [p1, p2] = await Promise.all(promesas);
       const { drawKaraokeMonitor } = await import('../script.js');
       if (typeof drawKaraokeMonitor === 'function') drawKaraokeMonitor(currentTime, p1, p2);
-    } catch (err) { console.warn(err); }
+    } catch (err) {
+      console.warn(err);
+    }
 
     if (window.isPitchDetectionRunning) requestAnimationFrame(loop);
   }
-  window.isPitchDetectionRunning = true; loop();
+
+  window.isPitchDetectionRunning = true;
+  loop();
 }
 export function restartKaraokeRecording() {
   stopKaraokeRecording();
