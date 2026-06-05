@@ -766,41 +766,6 @@ export function stopKaraokeDuoLevelMonitor() {
   if (level2) level2.style.width = "0%";
 }
 
-export function stopKaraokeRecording() {
-  if (karaokeMediaRecorder && karaokeMediaRecorder.state !== "inactive") {
-    karaokeMediaRecorder.stop();
-  }
-
-  if (window.karaokeStream?.getTracks) {
-    window.karaokeStream.getTracks().forEach(t => t.stop());
-  }
-  if (window.karaokeStream2?.getTracks) { 
-    window.karaokeStream2.getTracks().forEach(t => t.stop()); 
-    window.karaokeStream2 = null; 
-  }
-
-  if (karaokeDuoAudioContext) {
-    karaokeDuoAudioContext.close().catch(() => {});
-    karaokeDuoAudioContext = null;
-  }
-
-  karaokeDuoAnalyser1 = null; 
-  karaokeDuoAnalyser2 = null; 
-  window.isPitchDetectionRunning = false;
-
-  stopKaraokeDuoLevelMonitor();
-
-  if (document.getElementById("karaokeDuoIndicator")) {
-    document.getElementById("karaokeDuoIndicator").style.display = "none";
-  }
-  if (document.getElementById("karaokeTrack")) {
-    document.getElementById("karaokeTrack").pause();
-  }
-  if (document.getElementById("karaokeStartBtn")) {
-    document.getElementById("karaokeStartBtn").disabled = false;
-  }
-}
-
 /**
  * Resetea por completo los buffers locales para vaciar la toma actual y reintentar
  */
