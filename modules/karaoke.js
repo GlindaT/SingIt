@@ -199,24 +199,47 @@ export class KaraokeCanvasRenderer {
       });
 
       if (window.pitchHistoryMic1 && window.pitchHistoryMic1.length > 0) {
-        this.ctx.beginPath(); this.ctx.strokeStyle = "rgba(250, 204, 21, 0.9)"; this.ctx.lineWidth = 5;
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = "rgba(250, 204, 21, 0.9)";
+        this.ctx.lineWidth = 5;
         let started1 = false;
         window.pitchHistoryMic1.forEach((freq, i) => {
           if (freq && freq > 0) {
             const y = this.midiToY(this.frequencyToMidi(freq));
-            const x = this.lineX - (window.pitchHistoryMic1.length - i) * 3; 
+            const x = this.lineX - (window.pitchHistoryMic1.length - i) * 3;
             if (x >= 0) {
               if (!started1) { this.ctx.moveTo(x, y); started1 = true; } else { this.ctx.lineTo(x, y); }
             }
-          } else {
-            this.ctx.fillStyle = paleta.etiquetas; this.ctx.font = "20px sans-serif"; this.ctx.textAlign = "center";
-            this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
           }
-        }
-                                        
-                        }
-      
-    } // <-- AQUÍ CIERRA EL MÉTODO RENDER()
+        });
+        this.ctx.stroke();
+      }
+
+      if (window.pitchHistoryMic2 && window.pitchHistoryMic2.length > 0) {
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = "rgba(6, 182, 212, 0.9)";
+        this.ctx.lineWidth = 5;
+        let started2 = false;
+        window.pitchHistoryMic2.forEach((freq, i) => {
+          if (freq && freq > 0) {
+            const y = this.midiToY(this.frequencyToMidi(freq));
+            const x = this.lineX - (window.pitchHistoryMic2.length - i) * 3;
+            if (x >= 0) {
+              if (!started2) { this.ctx.moveTo(x, y); started2 = true; } else { this.ctx.lineTo(x, y); }
+            }
+          }
+        });
+        this.ctx.stroke();
+      }
+
+    } else {
+      this.ctx.fillStyle = paleta.etiquetas;
+      this.ctx.font = "20px sans-serif";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
+    }
+
+  } // <-- AQUÍ CIERRA EL MÉTODO RENDER()
 
   handleResize() { this.noteYCache.clear(); }
 } // <-- AQUÍ CIERRA DEFINITIVAMENTE LA CLASE KaraokeCanvasRenderer

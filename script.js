@@ -110,11 +110,6 @@ export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
   
-  // BITÁCORA DE CONTROL EN CALIENTE PARA AUDITORÍA
-  if (currentFreq > 0) {
-    console.log(`🎵 [script.js] drawKaraokeMonitor -> Mic1: ${currentFreq.toFixed(2)}Hz | Tiempo: ${currentTime.toFixed(2)}s`);
-  }
-  
   // Sincronización exacta de argumentos esperados por el pincel del Canvas
   karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
