@@ -810,15 +810,58 @@ export async function loadMyKaraokeSongs() {
     });
     container.querySelectorAll(".load-karaoke-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
-        const item = await getLibraryItemById(Number(btn.dataset.id));
-        if (item?.audioBlob) {
-          const track = $("karaokeTrack");
-          if (track) {
-            track.src = URL.createObjectURL(item.audioBlob);
-            window.transcriptionSegments = item.transcription || [];
+        const selectedId = Number(btn.dataset.id);
+        const statusEl = document.getElementById("karaokeStatus");
+        
+        if (statusEl) statusEl.textContent = "Estado: ⏳ Leyendo audio y calculando notas musicales...";
+        
+        try {
+          const item = await getLibraryItemById(selectedId);
+          if (item) {
+            const track = document.getElementById("karaokeTrack");
+            const audioSourceBlob = item.audioBlob || item.audioData;
+
+            // 1. EXTRAER SEGMENTOS BASE
+            let segmentosAProcesar = item.transcription || [];
+
+            // 2. INYECTOR POLIMÓRFICO: Si las notas vienen en 0 (planas), forzamos un análisis de pitch offline rápido
+            const necesitaAnalizarPitch = segmentosAProcesar.some(seg => !seg.midi || seg.midi === 60 || seg.pitch === 0);
+            
+            if (necesitaAnalizarPitch && audioSourceBlob) {
+              console.log("🎵 Detectadas notas planas. Despertando analizador armónico offline...");
+              try {
+                // Importamos de forma dinámica el analizador matemático encapsulado en la pestaña de Estudio
+                const estudioModulo = await import('./estudio.js');
+                if (typeof estudioModulo.analyzePitchForSegments === "function") {
+                  segmentosAProcesar = await estudioModulo.analyzePitchForSegments(audioSourceBlob, segmentosAProcesar);
+                }
+              } catch (pitchErr) {
+                console.warn("No se pudo procesar el pitch de forma cruzada, usando rejilla plana:", pitchErr);
+              }
+            }
+
+            // 3. TRANSFERENCIA A LA MEMORIA COMPARTIDA DEL CANVAS
+            window.transcriptionSegments = segmentosAProcesar;
+            
+            // 4. REFRESCO DE MONITORES VISUALES
             cargarLetrasEnMonitor();
-            track.play().then(() => startKaraokePitchDetection()).catch(() => {});
+            
+            // 5. DISPARADOR MULTIMEDIA NATIVO
+            if (track && audioSourceBlob) {
+              track.src = URL.createObjectURL(audioSourceBlob);
+              track.play()
+                .then(() => startKaraokePitchDetection())
+                .catch(() => console.warn("Autoplay bloqueado. Presiona iniciar de forma manual."));
+            } else {
+              startKaraokePitchDetection();
+            }
+            
+            if (statusEl) statusEl.textContent = `Estado: 🎤 Cantando -> ${item.name} (¡Notas sincronizadas! 🎯)`;
+            document.getElementById("karaokeCanvas")?.scrollIntoView({ behavior: "smooth", block: "center" });
           }
+        } catch (e) {
+          console.error("Error cargando y analizando canción en el Karaoke:", e);
+          if (statusEl) statusEl.textContent = "Estado: ❌ Error al inicializar el pentagrama";
         }
       });
     });
