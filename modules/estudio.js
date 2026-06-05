@@ -434,9 +434,16 @@ export async function applyTapSync() {
     console.warn("⚠️ [estudio.js] Alerta: No se detectó ninguna pista de fondo activa en el reproductor. El proyecto se guardará sin base instrumental.");
   }
 
-  const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-  renderKaraokeLyrics(transcriptionSegments); 
-  cargarLetrasEnMonitor();
+  const karaokeModulo = await import('./karaoke.js');
+  if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+    karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+  } else {
+    console.log("📝 [estudio.js] Partitura acoplada a la memoria compartida del Canvas.");
+  }
+  
+  if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+    karaokeModulo.cargarLetrasEnMonitor();
+  }
 
   if (selectedVoiceId) {
     await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments }).catch(() => {});
