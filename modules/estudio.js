@@ -223,12 +223,22 @@ export async function transcribeSelectedVoice() {
         fullSegments.push(buildWordTimingFromSegment({ start: Number(seg.start || 0) + timeOffset, end: Number(seg.end || 0) + timeOffset, text: seg.text.trim(), words: seg.words ? seg.words.map(w => ({ ...w, start: w.start + timeOffset, end: w.end + timeOffset })) : null }));
       });
     }
-
+    
     baseTranscriptionSegments = fullSegments;
     transcriptionSegments = splitSegmentsIntoKaraokeLines(baseTranscriptionSegments, 6);
     
-    const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-    renderKaraokeLyrics(transcriptionSegments); cargarLetrasEnMonitor();
+    // CORRECCIÓN ASÍNCRONA BLINDADA: Importación perezosa protegida contra herencia de clases
+    const karaokeModulo = await import('./karaoke.js');
+    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+    } else {
+      console.log("📝 [estudio.js] Transcripción acoplada a la memoria del motor gráfico.");
+    }
+    
+    if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+      karaokeModulo.cargarLetrasEnMonitor();
+    }
+    
     if ($("lyricsText")) $("lyricsText").value = transcriptionSegments.map(l => l.text).join("\n");
     
     console.log("estudio.js:753 ✅ Archivo de texto UltraStar TXT creado con éxito en la Biblioteca");
