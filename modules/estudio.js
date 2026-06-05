@@ -393,25 +393,59 @@ export async function transcribeSelectedVoice() {
 // ==========================================
 
 export async function applyCorrectedLyrics() {
-  const text = $("lyricsText"); if (!text || !text.value.trim()) return;
+  const text = $("lyricsText"); 
+  if (!text || !text.value.trim()) return;
+  
   const lines = text.value.split("\n").map(l => l.trim()).filter(Boolean);
-  let palabraIndex = 0, todasLasPalabras = [];
-  baseTranscriptionSegments.forEach(s => { if (s.words) todasLasPalabras.push(...s.words); });
+  let palabraIndex = 0;
+  let todasLasPalabras = [];
+  
+  if (Array.isArray(baseTranscriptionSegments)) {
+    baseTranscriptionSegments.forEach(s => { 
+      if (s.words) todasLasPalabras.push(...s.words); 
+    });
+  }
 
   const rebuilt = lines.map(line => {
     const words = line.split(/\s+/).filter(Boolean);
     const timed = words.map(w => {
       const base = todasLasPalabras[palabraIndex] || todasLasPalabras[todasLasPalabras.length - 1];
       palabraIndex++;
-      return { word: w, start: base ? base.start : 0, end: base ? base.end : 1, pitch: base ? base.pitch : 0, note: base ? base.note : "C4" };
+      return { 
+        word: w, 
+        start: base ? base.start : 0, 
+        end: base ? base.end : 1, 
+        pitch: base ? base.pitch : 0, 
+        note: base ? base.note : "C4" 
+      };
     });
-    return { start: timed.length ? timed.start : 0, end: timed.length ? timed[timed.length-1].end : 0, text: line, words: timed };
+    return { 
+      start: timed.length ? timed[0].start : 0, 
+      end: timed.length ? timed[timed.length - 1].end : 0, 
+      text: line, 
+      words: timed 
+    };
   });
 
-  baseTranscriptionSegments = rebuilt; transcriptionSegments = rebuilt;
-  const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-  renderKaraokeLyrics(transcriptionSegments); cargarLetrasEnMonitor();
-  if (selectedVoiceId) await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
+  baseTranscriptionSegments = rebuilt; 
+  transcriptionSegments = rebuilt;
+
+  // CORRECCIÓN ASÍNCRONA BLINDADA: Importación perezosa protegida contra errores de herencia
+  const karaokeModulo = await import('./karaoke.js');
+  if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+    karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+  }
+  if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+    karaokeModulo.cargarLetrasEnMonitor();
+  }
+
+  if (selectedVoiceId) {
+    try {
+      await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
+    } catch (e) {
+      console.warn("No se pudo persistir la corrección en la base de datos local:", e);
+    }
+  }
 }
 
 export function startTapSync() {
