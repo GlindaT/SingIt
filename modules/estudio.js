@@ -105,3 +105,91 @@ export function cargarAudioEstudio(e) {
 export function playTrack() { const player = $("player"); if (player && player.src) player.play(); else alert("⚠️ Primero sube o carga una pista instrumental."); }
 export function pauseTrack() { const player = $("player"); if (player) player.pause(); }
 export function stopTrack() { const player = $("player"); if (player) { player.pause(); player.currentTime = 0; } }
+export async function startStudioRecording() {
+  try {
+    const player = $("player"); const isDuo = $("micCount")?.value === "2";
+    studioChunks = []; studioRecordedBlob = null;
+    if ($("voicePlayer")) $("voicePlayer").src = "";
+
+    duoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const destination = duoAudioContext.createMediaStreamDestination();
+    const mic1Id = document.getElementById("mic1Select")?.value, mic2Id = document.getElementById("mic2Select")?.value;
+
+    studioStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, sampleRate: 48000 } });
+    const mic1Filtrado = aplicarCadenaDeAudioKaraoke(duoAudioContext, duoAudioContext.createMediaStreamSource(studioStream));
+    const volNode1 = duoAudioContext.createGain(); volNode1.gain.value = 0.75; mic1Filtrado.connect(volNode1);
+    duoAnalyser1 = duoAudioContext.createAnalyser(); duoAnalyser1.fftSize = 2048; volNode1.connect(duoAnalyser1);
+
+    const merger = duoAudioContext.createChannelMerger(2);
+    duoAnalyser1.connect(merger, 0, 0);
+    if (!isDuo) duoAnalyser1.connect(merger, 0, 1);
+
+    if (isDuo && mic2Id) {
+      studioStream2 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: mic2Id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1, sampleRate: 48000 } });
+      const mic2Filtrado = aplicarCadenaDeAudioKaraoke(duoAudioContext, duoAudioContext.createMediaStreamSource(studioStream2));
+      const volNode2 = duoAudioContext.createGain(); volNode2.gain.value = 0.75; mic2Filtrado.connect(volNode2);
+      duoAnalyser2 = duoAudioContext.createAnalyser(); duoAnalyser2.fftSize = 2048; volNode2.connect(duoAnalyser2);
+      duoAnalyser2.connect(merger, 0, 1);
+      if ($("duoIndicator")) $("duoIndicator").style.display = "block";
+    }
+
+    merger.connect(destination);
+    startDuoLevelMonitor();
+
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
+    studioMediaRecorder = new MediaRecorder(destination.stream, options);
+    studioMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) studioChunks.push(e.data); };
+    studioMediaRecorder.onstop = () => {
+      studioRecordedBlob = new Blob(studioChunks, { type: "audio/webm" });
+      if ($("voicePlayer")) $("voicePlayer").src = URL.createObjectURL(studioRecordedBlob);
+      if ($("studioStatus")) $("studioStatus").textContent = "Estado: grabación de voz lista";
+      stopDuoLevelMonitor();
+    };
+
+    studioMediaRecorder.start();
+    if (player?.src) { player.currentTime = 0; player.play(); }
+    if ($("studioStatus")) $("studioStatus").textContent = "Estado: 🔴 Grabando voz...";
+  } catch (err) { console.error(err); }
+}
+
+export function startDuoLevelMonitor() {
+  const l1 = $("duoMic1Level"), l2 = $("duoMic2Level");
+  function update() {
+    if (duoAnalyser1 && l1) { const d1 = new Uint8Array(duoAnalyser1.frequencyBinCount); duoAnalyser1.getByteFrequencyData(d1); l1.style.width = Math.min(100, (d1.reduce((a,b)=>a+b,0)/d1.length/128)*100) + "%"; }
+    if (duoAnalyser2 && l2) { const d2 = new Uint8Array(duoAnalyser2.frequencyBinCount); duoAnalyser2.getByteFrequencyData(d2); l2.style.width = Math.min(100, (d2.reduce((a,b)=>a+b,0)/d2.length/128)*100) + "%"; }
+    if (studioMediaRecorder?.state === "recording") duoAnimationId = requestAnimationFrame(update);
+  }
+  update();
+}
+
+export function stopDuoLevelMonitor() { if (duoAnimationId) cancelAnimationFrame(duoAnimationId); if ($("duoMic1Level")) $("duoMic1Level").style.width = "0%"; if ($("duoMic2Level")) $("duoMic2Level").style.width = "0%"; }
+
+export function stopStudioRecording() {
+  if (studioMediaRecorder?.state !== "inactive") studioMediaRecorder.stop();
+  if (studioStream) studioStream.getTracks().forEach(t => t.stop());
+  if (studioStream2) { studioStream2.getTracks().forEach(t => t.stop()); studioStream2 = null; }
+  if (duoAudioContext) { duoAudioContext.close(); duoAudioContext = null; }
+  if ($("duoIndicator")) $("duoIndicator").style.display = "none";
+  if ($("player")) $("player").pause();
+}
+
+export function redoStudioRecording() { studioChunks = []; studioRecordedBlob = null; if ($("voicePlayer")) $("voicePlayer").src = ""; if ($("studioStatus")) $("studioStatus").textContent = "Estado: grabación eliminada."; }
+
+export async function saveStudioRecording() {
+  if (!studioRecordedBlob) { alert("⚠️ No hay grabación"); return; }
+  await addLibraryItem({ name: studioTrackFileName ? `Voz - ${studioTrackFileName}` : "Grabación de voz", type: "voz", date: new Date().toISOString(), audioBlob: studioRecordedBlob });
+  alert("🚀 ¡Grabación guardada!");
+}
+
+export async function loadTrackOptionsInStudio() {
+  const select = $("studioTrackSelect"); if (!select) return;
+  select.innerHTML = `<option value="">Selecciona una pista desde Biblioteca</option>`;
+  const tracks = await getLibraryItemsByType("pista");
+  tracks.forEach(t => { const o = document.createElement("option"); o.value = t.id; o.textContent = t.name; select.appendChild(o); });
+}
+
+export async function loadSelectedTrackFromLibraryStudio() {
+  const select = $("studioTrackSelect"), player = $("player"), status = $("studioStatus");
+  const item = await getLibraryItemById(Number(select.value));
+  if (item) { studioSelectedTrackName = item.name; studioSelectedTrackBlob = item.audioBlob; player.src = URL.createObjectURL(item.audioBlob); status.textContent = `Pista cargada: ${item.name}`; }
+}
