@@ -303,10 +303,14 @@ export class KaraokeCanvasRenderer {
         this.ctx.arc(this.lineX + 6, userY2, 8, 0, Math.PI * 2); this.ctx.fill(); this.ctx.shadowBlur = 0;
       }
 
-      // --- BANNER DE LETRAS INFERIORES SUB-TÍTULO ---
-      const currentIndex = segmentosLetras.findIndex(seg => currentTime >= seg.start && currentTime <= seg.end + 0.5);
-      
-      // Duplicamos el alto de la franja negra de subtítulos a 90px para contener las nuevas fuentes gigantes
+      // ==========================================
+      // BANNER DE LETRAS INFERIORES SUB-TÍTULO (RE-CALIBRADO GIGANTE)
+      // ==========================================
+      const currentIndex = segmentosLetras.findIndex(seg => 
+        currentTime >= seg.start && currentTime <= seg.end + 0.5
+      );
+
+      // Duplicamos el alto de la franja negra a 90px para contener las fuentes grandes
       this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; 
       this.ctx.fillRect(0, this.canvas.height - 90, this.canvas.width, 90);
 
@@ -314,9 +318,9 @@ export class KaraokeCanvasRenderer {
         const currentSegment = segmentosLetras[currentIndex];
         const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
         
-        // Letra de la estrofa actual en canto (Grande y Centrada)
+        // Letra de la estrofa actual en canto (Grande, Nítida y Centrada)
         this.ctx.fillStyle = "#ffffff"; 
-        this.ctx.font = "bold 32px sans-serif"; // Ampliado de 16px a 32px
+        this.ctx.font = "bold 32px sans-serif"; 
         this.ctx.textAlign = "center"; 
         this.ctx.textBaseline = "top";
         this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 80);
@@ -325,9 +329,9 @@ export class KaraokeCanvasRenderer {
         if (nextSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
           
-          // Texto de la estrofa de aviso "Próximo"
+          // Texto de aviso de la próxima estrofa
           this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
-          this.ctx.font = "bold 22px sans-serif"; // Ampliado de 12px a 22px
+          this.ctx.font = "bold 22px sans-serif"; 
           this.ctx.textAlign = "center"; 
           this.ctx.textBaseline = "bottom";
           this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 12);
@@ -337,7 +341,7 @@ export class KaraokeCanvasRenderer {
         if (upcomingSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
           this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
-          this.ctx.font = "bold 24px sans-serif"; // Ampliado de 14px a 24px
+          this.ctx.font = "bold 24px sans-serif"; 
           this.ctx.textAlign = "center"; 
           this.ctx.textBaseline = "middle";
           this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 45);
@@ -346,7 +350,7 @@ export class KaraokeCanvasRenderer {
 
     } else {
       this.ctx.fillStyle = paleta.etiquetas; 
-      this.ctx.font = "15px sans-serif"; 
+      this.ctx.font = "20px sans-serif"; 
       this.ctx.textAlign = "center";
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
@@ -357,130 +361,213 @@ export class KaraokeCanvasRenderer {
   }
 }
 
-/**
- * MOTOR DE CAPTURA ASÍNCRONO DÚO: Lee los datos del analizador y delega el cálculo matemático al Worker
- */
+// ====================================================================
+// 🎙️ DETECCIÓN DE PITCH PARA KARAOKE EN TIEMPO REAL (VERSION MODULAR CERTIFICADA)
+// ====================================================================
 export async function startKaraokePitchDetection() {
-    async function loop() {
-        const track = $("karaokeTrack");
-        
-        if (!track || track.paused || track.ended || !window.isPitchDetectionRunning) {
-            window.isPitchDetectionRunning = false;
-            return;
-        }
+  console.log("🎙️ [karaoke.js] Despertando el motor de captura armónica en tiempo real...");
+  
+  const bufferSize = 2048;
+  const staticBufferMic1 = new Float32Array(bufferSize);
+  const staticBufferMic2 = new Float32Array(bufferSize);
 
-        const currentTime = track.currentTime;
-        const { getAudioController } = await import('./audioController.js');
-        const audioCtrl = getAudioController();
-        const sampleRateSistema = window.karaokeDuoAudioContext?.sampleRate || 48000;
-
-        let pitch1 = -1;
-        if (window.karaokeDuoAnalyser1) {
-            window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
-            let sum1 = 0;
-            for (let i = 0; i < staticBufferMic1.length; i++) sum1 += staticBufferMic1[i] * staticBufferMic1[i];
-            const rms1 = Math.sqrt(sum1 / staticBufferMic1.length);
-            
-            if (rms1 > 0.015) {
-                pitch1 = await audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema);
-            }
-        }
-
-        let pitch2 = -1; 
-        if (window.karaokeDuoAnalyser2) {
-            window.karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
-            let sum2 = 0;
-            for (let i = 0; i < staticBufferMic2.length; i++) sum2 += staticBufferMic2[i] * staticBufferMic2[i];
-            const rms2 = Math.sqrt(sum2 / staticBufferMic2.length);
-
-            if (rms2 > 0.015) {
-                pitch2 = await audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema);
-            }
-        }
-
-        const { drawKaraokeMonitor } = await import('../script.js');
-        if (typeof drawKaraokeMonitor === 'function') {
-            // Enviamos los tres parámetros puros en orden directo a la orquesta central
-            drawKaraokeMonitor(currentTime, pitch1, pitch2);
-        }
-
-        if (window.isPitchDetectionRunning) {
-            requestAnimationFrame(loop);
-        }
+  async function loop() {
+    const track = document.getElementById("karaokeTrack");
+    
+    // El bucle elástico se mantiene encendido mientras dure la canción y esté la bandera activa
+    if (!track || track.paused || track.ended || !window.isPitchDetectionRunning) {
+      console.log("⏹️ [karaoke.js] Deteniendo loop de renderizado gráfico de Pitch.");
+      window.isPitchDetectionRunning = false;
+      return;
     }
 
-    window.isPitchDetectionRunning = true;
-    loop();
+    const currentTime = track.currentTime;
+    const { getAudioController } = await import('./audioController.js');
+    const audioCtrl = getAudioController();
+    const sampleRateSistema = window.karaokeDuoAudioContext?.sampleRate || 48000;
+
+    let promesasDeFrecuencia = [];
+
+    // --- PROCESAMIENTO CANAL 1 (MICRÓFONO PRINCIPAL AMARILLO) ---
+    if (window.karaokeDuoAnalyser1) {
+      window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
+      
+      let sum1 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        sum1 += staticBufferMic1[i] * staticBufferMic1[i];
+      }
+      const rms1 = Math.sqrt(sum1 / bufferSize);
+      
+      if (rms1 > 0.012) {
+        // Redirigimos la muestra directo a tu Web Worker asíncronico balanceado
+        promesasDeFrecuencia.push(audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema));
+      } else {
+        promesasDeFrecuencia.push(Promise.resolve(-1));
+      }
+    } else {
+      promesasDeFrecuencia.push(Promise.resolve(-1));
+    }
+
+    // --- PROCESAMIENTO CANAL 2 (MICRÓFONO SECUNDARIO CIAN) ---
+    if (window.karaokeDuoAnalyser2) {
+      window.karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
+      
+      let sum2 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        sum2 += staticBufferMic2[i] * staticBufferMic2[i];
+      }
+      const rms2 = Math.sqrt(sum2 / bufferSize);
+      
+      if (rms2 > 0.012) {
+        promesasDeFrecuencia.push(audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema));
+      } else {
+        promesasDeFrecuencia.push(Promise.resolve(-1));
+      }
+    } else {
+      promesasDeFrecuencia.push(Promise.resolve(-1));
+    }
+
+    // --- CONCURRENCIA MATEMÁTICA PROTECTORA DE RED ---
+    try {
+      const [pitch1, pitch2] = await Promise.all(promesasDeFrecuencia);
+
+      // Enviamos las frecuencias reales limpias calculadas por el Worker al director central
+      const { drawKaraokeMonitor } = await import('../script.js');
+      if (typeof drawKaraokeMonitor === 'function') {
+        drawKaraokeMonitor(currentTime, pitch1, pitch2);
+      }
+    } catch (err) {
+      console.warn("⚠️ [karaoke.js] Error en la cola de cálculo de hercios:", err);
+    }
+
+    if (window.isPitchDetectionRunning) {
+      requestAnimationFrame(loop);
+    }
+  }
+
+  window.isPitchDetectionRunning = true;
+  loop();
 }
+
 // ====================================================================
 // 📝 PARSEADORES DE MARCAS DE TIEMPO ULTRASTAR (.TXT)
 // ====================================================================
-function parseUltrastarTxt(content) {
-  const lines = content.split('\n');
+export function parseUltrastarTxt(content) {
+  console.log("📝 [karaoke.js] Iniciando parseo de archivo estructurado UltraStar .txt...");
+  const lines = content.split("\n");
   const metadata = {};
   const notes = [];
   
-  lines.forEach(line => {
-    line = line.trim();
-    if (line.startsWith('#')) {
-      const match = line.match(/^#([^:]+):(.*)$/);
-      if (match) metadata[match[1].toUpperCase()] = match[2].trim();
-    } else if (line.startsWith(':') || line.startsWith('*') || line.startsWith('F')) {
-      const parts = line.split(/\s+/);
-      if (parts.length >= 5) {
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Metadatos (líneas que empiezan con #)
+    if (trimmed.startsWith("#")) {
+      const match = trimmed.match(/^#(\w+):(.*)$/);
+      if (match) {
+        const key = match[1].toUpperCase();
+        const value = match[2].trim();
+        metadata[key] = value;
+      }
+      continue;
+    }
+    
+    // Notas (líneas que empiezan con :, *, F, o -)
+    if (trimmed.match(/^[:*F\-]/)) {
+      const parts = trimmed.split(/\s+/);
+      const type = parts[0]; 
+      
+      if (type === "-") {
+        notes.push({ type: "line_break", startBeat: parseInt(parts[1], 10) || 0 });
+        continue;
+      }
+      
+      if (parts.length >= 4) {
+        const startBeat = parseInt(parts[1], 10);
+        const duration = parseInt(parts[2], 10);
+        const pitch = parseInt(parts[3], 10);
+        const syllable = parts.slice(4).join(" ");
+        
         notes.push({
-          type: parts[0],
-          start: parseInt(parts[1], 10),
-          length: parseInt(parts[2], 10),
-          pitch: parseInt(parts[3], 10),
-          word: parts.slice(4).join(' ')
+          type: type,
+          startBeat: startBeat,
+          duration: duration,
+          pitch: pitch, 
+          syllable: syllable
         });
       }
-    } else if (line.startsWith('-')) {
-      const parts = line.split(/\s+/);
-      notes.push({ type: '-', start: parseInt(parts[1] || '0', 10) });
     }
-  });
-  return { metadata, notes };
-}
+  }
+  
+  // --- NÚCLEO MATEMÁTICO: CONVERSIÓN DE BEATS A SEGUNDOS REALES COMPATIBLES ---
+  const bpm = parseFloat(metadata.BPM) || 120;
+  const gap = parseFloat(metadata.GAP) || 0; // Desfase inicial en milisegundos
+  
+  // En UltraStar un pulso (Beat) equivale a un cuarto de un tiempo del metrónomo
+  const beatsPorMinutoReal = bpm * 4;
+  const duracionUnBeatEnSegundos = 60 / beatsPorMinutoReal;
+  const tiempoGapEnSegundos = gap / 1000;
 
-function ultrastarToSegments(parsed) {
-  const bpm = parseFloat(parsed.metadata.BPM || '120');
-  const gap = parseFloat(parsed.metadata.GAP || '0') / 1000; 
-  const beatDuration = 60 / (bpm * 4); 
+  console.log(`🎵 [parse] Configurando Canción: BPM [${bpm}] | GAP [${gap}ms]. Convirtiendo sílabas...`);
 
-  let currentSegment = { start: null, end: null, text: "", words: [] };
-  const segments = [];
+  let currentLineWords = [];
+  let segmentsFinales = [];
 
-  parsed.notes.forEach(note => {
-    if (note.type === '-') {
-      if (currentSegment.words.length > 0) {
-        currentSegment.text = currentSegment.words.map(w => w.word).join(" ").trim();
-        segments.push(currentSegment);
-        currentSegment = { start: null, end: null, text: "", words: [] };
+  notes.forEach((note) => {
+    if (note.type === "line_break") {
+      if (currentLineWords.length > 0) {
+        // Empaquetamos la línea completa en la estructura estándar que espera el monitor
+        segmentsFinales.push({
+          start: currentLineWords[0].start,
+          end: currentLineWords[currentLineWords.length - 1].end,
+          text: currentLineWords.map(w => w.word.trim()).join(" "),
+          words: currentLineWords
+        });
+        currentLineWords = []; // Limpiamos para el próximo renglón
       }
       return;
     }
 
-    const noteStartSec = gap + (note.start * beatDuration);
-    const noteEndSec = noteStartSec + (note.length * beatDuration);
+    // Calcular el segundo exacto de inicio y final en la línea de tiempo del reproductor
+    const segundoInicio = tiempoGapEnSegundos + (note.startBeat * duracionUnBeatEnSegundos);
+    const segundoFinal = segundoInicio + (note.duration * duracionUnBeatEnSegundos);
 
-    if (currentSegment.start === null) currentSegment.start = noteStartSec;
-    currentSegment.end = noteEndSec;
+    // CONVERSIÓN ARMÓNICA: UltraStar usa la octava base 3 (Midi 60 = C4). 
+    // Si los tonos vienen desfasados relacionales, los adaptamos a la escala estándar MIDI
+    let midiReal = 60 + note.pitch;
+    if (midiReal < 36) midiReal = 36; // Límite elástico inferior que pusimos en tu Canvas
+    if (midiReal > 84) midiReal = 84; // Límite elástico superior
 
-    currentSegment.words.push({
-      word: note.word,
-      start: noteStartSec,
-      end: noteEndSec,
-      midi: note.pitch + 60 
+    currentLineWords.push({
+      word: note.syllable || "",
+      start: segundoInicio,
+      end: segundoFinal,
+      midi: midiReal, // Inyectada la nota real escalonada para que rompa la línea recta plana
+      note: "C4",
+      pitch: note.pitch
     });
   });
 
-  if (currentSegment.words.length > 0) {
-    currentSegment.text = currentSegment.words.map(w => w.word).join(" ").trim();
-    segments.push(currentSegment);
+  // Empaquetar la última línea sobrante si el archivo no terminaba en un salto "-"
+  if (currentLineWords.length > 0) {
+    segmentsFinales.push({
+      start: currentLineWords[0].start,
+      end: currentLineWords[currentLineWords.length - 1].end,
+      text: currentLineWords.map(w => w.word.trim()).join(" "),
+      words: currentLineWords
+    });
   }
-  return segments;
+
+  console.log(`✅ [parse] Conversor completado. Generadas [${segmentsFinales.length}] líneas estructuradas con alturas MIDI.`);
+
+  return {
+    title: metadata.TITLE || "Sin título",
+    artist: metadata.ARTIST || "Desconocido",
+    bpm: bpm,
+    gap: gap,
+    genre: metadata.GENRE || "",
+    transcription: segmentsFinales // <-- COMPATIBILIDAD INTEGRADA: Reemplaza "notes" por el formato nativo de la app
+  };
 }
 
 // ====================================================================
@@ -991,4 +1078,90 @@ export async function loadKaraokeCatalog() {
     console.error(error);
     container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);"><p>📚 No se pudo cargar el catálogo.</p></div>`;
   }
+}
+// ====================================================================
+// 📝 CONVERSOR ULTRASTAR MAESTRO: TRADUCTOR DE BEATS A SEGUNDOS REALES
+// ====================================================================
+
+export function safeGetNoteName(midi) {
+  const nombres = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const octava = Math.floor(midi / 12) - 1;
+  const nota = nombres[midi % 12];
+  return `${nota}${octava}`;
+}
+
+export function ultrastarToSegments(parsed) {
+  console.log("📝 [karaoke.js] Despertando transformador lineal de partituras UltraStar Master...");
+  
+  if (!parsed || !parsed.notes || !parsed.notes.length) {
+    console.warn("⚠️ [ultrastarToSegments] El archivo parseado llegó vacío o no contiene notas.");
+    return [];
+  }
+  
+  const bpm = parsed.bpm;
+  const gap = parsed.gap / 1000; // Conversión precisa a segundos del metrónomo
+  const beatDuration = 60 / bpm / 4; // UltraStar subdivide cada tiempo en 4 beats reales
+  
+  console.log(`⏳ [ultrastarToSegments] Procesando melodía a ritmo de BPM: [${bpm}] | GAP Inicial: [${gap.toFixed(3)}s]`);
+
+  const segments = [];
+  let currentWords = [];
+  let lastEndBeat = 0;
+
+  for (let i = 0; i < parsed.notes.length; i++) {
+    const note = parsed.notes[i];
+    
+    // Cálculo de la estampa de tiempo real en la barra de reproducción
+    const startTime = gap + (note.startBeat * beatDuration);
+    const endTime = startTime + (note.duration * beatDuration);
+    
+    // CONVERSIÓN ARMÓNICA: Rescatamos la afinación original sumando el desfase relativo a la base C4 (60)
+    let midiNote = 60 + parseInt(note.pitch, 10);
+    
+    // Clamping de seguridad para mantener las cajas dentro de la rejilla elástica visible de tu Canvas (36 a 84)
+    if (midiNote < 36) midiNote = 36;
+    if (midiNote > 84) midiNote = 84;
+    
+    // Detector inteligente de salto de renglón / fin de frase
+    const gapFromLast = note.startBeat - lastEndBeat;
+    
+    if (gapFromLast > 8 && currentWords.length > 0) {
+      // Empaquetamos el renglón anterior en la estructura nativa que exige el Canvas
+      segments.push({
+        start: currentWords[0].start,
+        end: currentWords[currentWords.length - 1].end,
+        text: currentWords.map(w => w.word).join(""),
+        words: currentWords,
+        midi: currentWords[0].midi, // Altura guía del segmento
+        note: currentWords[0].note
+      });
+      currentWords = [];
+    }
+    
+    // Agregar la sílaba inyectando de forma estricta la propiedad .midi requerida por el renderizador
+    currentWords.push({
+      word: note.syllable || "",
+      start: startTime,
+      end: endTime,
+      midi: midiNote, // <-- CERTIFICADO: Esquinas escalonadas sin líneas planas
+      note: safeGetNoteName(midiNote)
+    });
+    
+    lastEndBeat = note.startBeat + note.duration;
+  }
+  
+  // Capturar el último renglón suelto al final absoluto del archivo
+  if (currentWords.length > 0) {
+    segments.push({
+      start: currentWords[0].start,
+      end: currentWords[currentWords.length - 1].end,
+      text: currentWords.map(w => w.word).join(""),
+      words: currentWords,
+      midi: currentWords[0].midi,
+      note: currentWords[0].note
+    });
+  }
+  
+  console.log(`✅ [ultrastarToSegments] Mapeador completado con éxito. Generadas [${segments.length}] líneas armónicas.`);
+  return segments;
 }
