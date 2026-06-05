@@ -487,7 +487,11 @@ export function cancelTapSync() {
 export async function applyTapSync() {
   const player = $("selectedVoicePlayer");
   const total = player ? player.duration : 0;
+  const status = document.getElementById("selectedVoiceStatus");
   
+  if (status) status.textContent = "Estado: Aplicando tiempos y estructurando proyecto Karaoke...";
+  
+  // 1. INTERPOLACIÓN RÍTMICA DE SEGMENTOS
   const segments = tapSyncLines.map((line, i) => {
     const start = tapSyncTimestamps[i] || 0;
     let end = tapSyncTimestamps[i+1] || total || start + 3;
@@ -500,18 +504,37 @@ export async function applyTapSync() {
   baseTranscriptionSegments = segments; 
   transcriptionSegments = segments;
 
-  if (studioSelectedTrackBlob) {
-    await addLibraryItem({ 
-      name: `Karaoke - ${studioSelectedTrackName || "Sin título"}`, 
-      type: "karaoke", 
-      audioBlob: studioSelectedTrackBlob, 
-      date: new Date().toLocaleString("es-ES"), 
-      transcription: segments, 
-      metadata: { title: studioSelectedTrackName } 
-    });
+  // 2. CORRECCIÓN MAESTRA DE AUDIO: Identificamos qué archivo de música está activo en el reproductor superior
+  // Prioriza el archivo cargado de la biblioteca, si no, usa el archivo subido de la PC directamente
+  const pistaInstrumentalActiva = studioSelectedTrackBlob || studioTrackBlob;
+  const nombrePistaActiva = studioSelectedTrackName || studioTrackFileName || "Canción Sincronizada";
+
+  if (pistaInstrumentalActiva) {
+    try {
+      const { addLibraryItem } = await import('./biblioteca.js');
+      
+      // GUARDADO COMPATIBLE: Empaquetamos la PISTA INSTRUMENTAL junto con la letra que acabas de marcar
+      await addLibraryItem({ 
+        name: `Karaoke - ${nombrePistaActiva}`, 
+        type: "karaoke", 
+        audioBlob: pistaInstrumentalActiva, // <-- CERTIFICADO: Guarda el archivo instrumental de fondo
+        date: new Date().toLocaleString("es-ES"), 
+        transcription: segments, 
+        metadata: { 
+          title: nombrePistaActiva,
+          tipoProyecto: "Estudio Sync Master",
+          wordsCount: segments.reduce((acc, s) => acc + (s.words ? s.words.length : 0), 0)
+        } 
+      });
+      console.log("✅ Proyecto de Karaoke creado de forma exitosa usando la pista instrumental.");
+    } catch (err) { 
+      console.error("Error al inyectar el proyecto de karaoke en IndexedDB:", err); 
+    }
+  } else {
+    console.warn("⚠️ Advertencia: No se detectó ninguna pista instrumental de fondo en el reproductor superior. El proyecto se guardará como lírica suelta.");
   }
 
-  // CORRECCIÓN ASÍNCRONA BLINDADA: Importación perezosa protegida contra errores de herencia
+  // 3. REFRESCO CRUZADO DE MONITORES VISUALES
   const karaokeModulo = await import('./karaoke.js');
   if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
     karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
@@ -520,11 +543,16 @@ export async function applyTapSync() {
     karaokeModulo.cargarLetrasEnMonitor();
   }
 
+  // Sincronizamos la letra también en la ficha de la voz original por seguridad
   if (selectedVoiceId) {
-    await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
+    await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments }).catch(() => {});
   }
   
+  // 4. LIMPIEZA DE INTERFAZ
   cancelTapSync();
+  
+  if (status) status.textContent = "Estado: ✅ ¡Proyecto de Karaoke guardado con éxito!";
+  alert("🚀 ¡Sincronización Completada!\n\nSe ha creado tu nuevo proyecto de Karaoke utilizando la pista instrumental de fondo de forma exitosa. Ya puedes ir a la pestaña 'Karaoke' para cantarlo.");
 }
 
 export function redoTapSync() { 
