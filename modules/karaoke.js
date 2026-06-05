@@ -159,10 +159,11 @@ export class KaraokeCanvasRenderer {
 
     // Dibujar etiquetas de las notas de guía a la izquierda
     this.ctx.fillStyle = paleta.etiquetas; 
-    this.ctx.font = "11px sans-serif"; this.ctx.textAlign = "right";
+    this.ctx.font = "bold 20px sans-serif"; // Ampliado de 11px a 20px en negrita
+    this.ctx.textAlign = "right";
     const noteLabels = ["A4", "G4", "F4", "E4", "D4", "C4", "B3", "A3", "G3", "F3"];
     noteLabels.forEach((label, i) => {
-      const y = this.pentagramTop + (pentagramHeight / numLines) * i + 4;
+      const y = this.pentagramTop + (pentagramHeight / numLines) * i + 6; // Ajustado el desfase a +6 para centrar la fuente grande
       this.ctx.fillText(label, 28, y);
     });
 
@@ -243,12 +244,18 @@ export class KaraokeCanvasRenderer {
             this.ctx.strokeRect(wordStartX, barY - barHeight/2, barWidth, barHeight);
           }
           
-          this.ctx.fillStyle = textColor; this.ctx.textAlign = "center"; this.ctx.textBaseline = "middle";
-          let displayWord = word.word || word.text || "";
-          if (displayWord.length > 8) this.ctx.font = isActive ? "bold 11px sans-serif" : "10px sans-serif";
-          else this.ctx.font = isActive ? "bold 13px sans-serif" : "12px sans-serif";
+          this.ctx.fillStyle = textColor; 
+          this.ctx.textAlign = "center"; 
+          this.ctx.textBaseline = "middle";
           
-          this.ctx.fillText(displayWord, wordStartX + barWidth/2, barY);
+          let displayWord = word.word || word.text || "";
+          if (displayWord.length > 8) {
+            this.ctx.font = isActive ? "bold 22px sans-serif" : "20px sans-serif"; // Ampliado de 11px a 22px/20px
+          } else {
+            this.ctx.font = isActive ? "bold 26px sans-serif" : "24px sans-serif"; // Ampliado de 13px a 26px/24px
+          }
+          
+          this.ctx.fillText(displayWord, wordStartX + barWidth / 2, barY);
         });
       });
 
@@ -298,30 +305,42 @@ export class KaraokeCanvasRenderer {
 
       // --- BANNER DE LETRAS INFERIORES SUB-TÍTULO ---
       const currentIndex = segmentosLetras.findIndex(seg => currentTime >= seg.start && currentTime <= seg.end + 0.5);
+      
+      // Duplicamos el alto de la franja negra de subtítulos a 90px para contener las nuevas fuentes gigantes
       this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; 
-      this.ctx.fillRect(0, this.canvas.height - 50, this.canvas.width, 50);
+      this.ctx.fillRect(0, this.canvas.height - 90, this.canvas.width, 90);
 
       if (currentIndex !== -1) {
         const currentSegment = segmentosLetras[currentIndex];
         const textoActualLimpio = reconstruirFraseDesdeWords(currentSegment);
-        this.ctx.fillStyle = "#ffffff"; this.ctx.font = "bold 16px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "top";
-        this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 42);
+        
+        // Letra de la estrofa actual en canto (Grande y Centrada)
+        this.ctx.fillStyle = "#ffffff"; 
+        this.ctx.font = "bold 32px sans-serif"; // Ampliado de 16px a 32px
+        this.ctx.textAlign = "center"; 
+        this.ctx.textBaseline = "top";
+        this.ctx.fillText(textoActualLimpio, this.canvas.width / 2, this.canvas.height - 80);
 
         const nextSegment = segmentosLetras[currentIndex + 1];
         if (nextSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(nextSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; this.ctx.font = "12px sans-serif"; this.ctx.textAlign = "center"; this.ctx.textBaseline = "bottom";
-          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 6);
+          
+          // Texto de la estrofa de aviso "Próximo"
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
+          this.ctx.font = "bold 22px sans-serif"; // Ampliado de 12px a 22px
+          this.ctx.textAlign = "center"; 
+          this.ctx.textBaseline = "bottom";
+          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 12);
         }
       } else {
         const upcomingSegment = segmentosLetras.find(seg => seg.start > currentTime);
         if (upcomingSegment) {
           const textoProximoLimpio = reconstruirFraseDesdeWords(upcomingSegment);
-          this.ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; 
-          this.ctx.font = "14px sans-serif"; 
+          this.ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; 
+          this.ctx.font = "bold 24px sans-serif"; // Ampliado de 14px a 24px
           this.ctx.textAlign = "center"; 
           this.ctx.textBaseline = "middle";
-          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 25);
+          this.ctx.fillText("Próximo: " + textoProximoLimpio, this.canvas.width / 2, this.canvas.height - 45);
         }
       }
 
