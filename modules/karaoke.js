@@ -50,9 +50,11 @@ export class KaraokeCanvasRenderer {
     this.frameInterval = 1000 / this.options.maxFrameRate;
     this.noteYCache = new Map();
     
-    this.pentagramTop = 30;
-    this.midiMin = 48; // C3
-    this.midiMax = 84; // C6
+    this.pentagramTop = 20;
+    
+    // AMPLIACIÓN MASIVA DE RANGO: Expandimos el rango para capturar desde notas graves (C2/Midi 36) hasta agudas (C6/Midi 84)
+    this.midiMin = 36; // Corregido: baja de 48 a 36 (Acepta tonos graves profundos masculinos)
+    this.midiMax = 84; // Mantiene el límite agudo limpio
     this.midiRange = this.midiMax - this.midiMin;
     this.lineX = 50; 
 
@@ -71,10 +73,13 @@ export class KaraokeCanvasRenderer {
   midiToY(midi) {
     let m = midi || 60;
     if (this.noteYCache.has(m)) return this.noteYCache.get(m);
+    
+    // Forzamos límites estrictos para mantener el pincel dentro del lienzo visible
     if (m < this.midiMin) m = this.midiMin;
     if (m > this.midiMax) m = this.midiMax;
 
-    const pentagramHeight = this.canvas.height - 90;
+    // Ajuste proporcional dinámico del alto del Canvas
+    const pentagramHeight = this.canvas.height - 70; // Margen optimizado para el banner de subtítulos
     const normalized = (this.midiMax - m) / this.midiRange;
     const y = this.pentagramTop + normalized * pentagramHeight;
 
