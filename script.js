@@ -95,9 +95,10 @@ export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
   
-  // CORRECCIÓN PROTECTORA: Pasamos los argumentos en el estricto orden matemático que espera el Canvas
+  // ALINEACIÓN MATEMÁTICA: Pasamos los argumentos en el orden exacto que espera el método render()
   karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
+
 
 // ==========================================
 // INIT - ENTRADA PRINCIPAL DE LA APP 
