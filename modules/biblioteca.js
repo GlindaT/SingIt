@@ -332,3 +332,77 @@ export async function saveManualFileToLibrary() {
     alert("❌ Ocurrió un error al procesar y guardar tu archivo.");
   }
 }
+// ====================================================================
+// 📥 SUBIDA MANUAL DE RECURSOS EXTERNOS (PC A BASE DE DATOS OFFLINE)
+// ====================================================================
+
+/**
+ * Captura el archivo binario seleccionado por el usuario en el formulario del DOM,
+ * lo empaqueta e inyecta de forma física y persistente dentro de IndexedDB.
+ */
+export async function saveManualFileToLibrary() {
+  console.log("📁 [biblioteca.js] Disparando proceso de importación manual...");
+
+  const fileInput = document.getElementById("libraryFileInput");
+  const typeSelect = document.getElementById("libraryFileType");
+  const nameInput = document.getElementById("libraryFileName");
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    alert("⚠️ Por favor, selecciona primero un archivo de tu computadora (.mp3, .wav, .txt, etc.) antes de intentar guardarlo.");
+    return;
+  }
+
+  const fileObj = fileInput.files[0];
+  const categoriaSeleccionada = typeSelect ? typeSelect.value : "pista";
+  
+  // Si el usuario no ingresó un nombre personalizado, se usa de respaldo el nombre crudo del archivo de su PC
+  let nombreFinal = nameInput && nameInput.value.trim() ? nameInput.value.trim() : fileObj.name;
+  
+  // Limpieza estética de extensiones redundantes en el nombre (Ej: .mp3, .wav)
+  nombreFinal = nombreFinal.replace(/\.[^.]+$/, "");
+
+  console.log(`⏳ [biblioteca.js] Procesando archivo binario: [${nombreFinal}] - Tipo de destino: [${categoriaSeleccionada.toUpperCase()}]`);
+
+  try {
+    // Si la categoría seleccionada es una Letra Estructurada de UltraStar (.txt), se extrae como texto plano plano
+    if (categoriaSeleccionada === "ultrastar_txt") {
+      const textoPlanoExtraido = await fileObj.text();
+      
+      // Estructuramos el objeto físico para guardarlo en la transacción
+      await addLibraryItem({
+        name: `UltraStar - ${nombreFinal}`,
+        type: "ultrastar_txt",
+        audioBlob: null,
+        textoPlano: textoPlanoExtraido,
+        date: new Date().toLocaleString("es-ES")
+      });
+    } else {
+      // Para pistas instrumentales, voces o grabaciones, se almacena el archivo binario intacto (audioBlob)
+      await addLibraryItem({
+        name: nombreFinal,
+        type: categoriaSeleccionada,
+        audioBlob: fileObj, // Sincronizado unificadamente como Blob binario para el CRUD offline
+        date: new Date().toLocaleString("es-ES"),
+        metadata: {
+          pesoBytes: fileObj.size,
+          mimeType: fileObj.type,
+          generadoPor: "Importador Manual SingIt"
+        }
+      });
+    }
+
+    console.log(`✅ [biblioteca.js] ¡Archivo [${nombreFinal}] inyectado con éxito en IndexedDB de forma persistente!`);
+    alert(`🎉 ¡Importación completada con éxito!\n\nEl archivo "${nombreFinal}" ha sido guardado de forma permanente en tu Biblioteca offline. Ya está listo para usarse en la aplicación.`);
+
+    // --- LIMPIEZA DE FORMULARIO DE INTERFAZ ---
+    if (fileInput) fileInput.value = "";
+    if (nameInput) nameInput.value = "";
+
+    // --- RE-RENDERIZADO AUTOMÁTICO DE LA CUADRÍCULA VISUAL ---
+    await renderLibrary("todos");
+
+  } catch (error) {
+    console.error("❌ [biblioteca.js] Error crítico durante la subida manual de archivos a IndexedDB:", error);
+    alert("❌ Hubo un error al intentar guardar el archivo en la base de datos local.");
+  }
+}
