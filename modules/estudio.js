@@ -109,34 +109,43 @@ function audioBufferToWav(buffer, startSample, endSample) {
   const arrayBuffer = new ArrayBuffer(bufferLength);
   const view = new DataView(arrayBuffer);
   
-  view.setUint32(0, 0x46464952, true); 
+  // 1. ESCRITURA DE LA CABECERA RIFF/WAVE UNIVERSAL EN EL DATAVIEW
+  view.setUint32(0, 0x46464952, true); // "RIFF"
   view.setUint32(4, bufferLength - 8, true);
-  view.setUint32(8, 0x45564157, true); 
-  view.setUint32(12, 0x20746d66, true); 
-  view.setUint32(16, 16, true); 
-  view.setUint16(20, 1, true);        
-  view.setUint16(22, 1, true); // MONO COMPACTO PARA WHISPER IA       
-  view.setUint32(24, targetSampleRate, true);
-  view.setUint32(28, targetSampleRate * 2, true); 
-  view.setUint16(32, 2, true);        
-  view.setUint16(34, 16, true);       
-  view.setUint32(36, 0x61746164, true); 
-  view.setUint32(40, targetLength * 2, true);
+  view.setUint32(8, 0x45564157, true); // "WAVE"
+  view.setUint32(12, 0x20746d66, true); // "fmt "
+  view.setUint32(16, 16, true); // Tamaño del sub-chunk (PCM lineal)
+  view.setUint16(20, 1, true); // Formato de audio (1 = PCM)
+  view.setUint16(22, 1, true); // Canales (1 = MONO)
+  view.setUint32(24, targetSampleRate, true); // Frecuencia de muestreo (16000Hz)
+  view.setUint32(28, targetSampleRate * 2, true); // ByteRate (Muestras * Canales * Bits/8)
+  view.setUint16(32, 2, true); // BlockAlign (Canales * Bits/8)
+  view.setUint16(34, 16, true); // Bits por Muestra (16 Bits)
+  view.setUint32(36, 0x61746164, true); // "data"
+  view.setUint32(40, targetLength * 2, true); // Tamaño del chunk de datos de audio
 
+  // 2. BUCLE MAESTRO DE REMUESTREO Y EXTRACCIÓN DE DATOS DE AUDIO
   let offset = 44;
   for (let i = 0; i < targetLength; i++) {
     const originalTime = i / targetSampleRate;
     const originalSampleIndex = startSample + Math.floor(originalTime * originalSampleRate);
     if (originalSampleIndex >= endSample) break;
     
+    // Si la pista original viene en Estéreo, promediamos ambos canales de forma limpia hacia Mono
     let sample = chanData0[originalSampleIndex];
-    if (chanData1) sample = (sample + chanData1[originalSampleIndex]) / 2; 
+    if (chanData1) {
+      sample = (sample + chanData1[originalSampleIndex]) / 2;
+    }
     
-    sample = Math.max(-1, Math.min(1, sample)); 
+    // Contención estricta de picos (Soft Clipping) para evitar distorsiones digitales
+    sample = Math.max(-1, Math.min(1, sample));
+    
+    // Conversión a enteros PCM de 16 Bits con signo
     view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
     offset += 2;
   }
-  return new Blob([buffer], { type: "audio/wav" });
+  
+  return new Blob([arrayBuffer], { type: "audio/wav" });
 }
 
 export function aplicarCadenaDeAudioKaraoke(audioCtx, source) {
