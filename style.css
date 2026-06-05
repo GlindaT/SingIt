@@ -1,89 +1,5 @@
-/* TEMA CLARO */
-html[data-theme="claro"] {
-  --bg-main: #f1f5f9;
-  --bg-sidebar: #e2e8f0;
-  --bg-card: #ffffff;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --border: #cbd5e1;
-}
-html[data-theme="claro"] .sidebar button { color: #475569; }
-html[data-theme="claro"] .sidebar button:hover, 
-html[data-theme="claro"] .sidebar button.active { background: #cbd5e1 !important; color: #1e293b; }
-
-/* TEMA ROCK */
-html[data-theme="rock"] {
-  --bg-main: #1c1917;
-  --bg-sidebar: #292524;
-  --bg-card: #292524;
-  --text-main: #fafaf9;
-  --text-muted: #a8a29e;
-  --accent: #dc2626;
-  --accent-hover: #b91c1c;
-  --danger: #f97316;
-  --border: #44403c;
-}
-html[data-theme="rock"] .sidebar h2 { color: #dc2626; }
-html[data-theme="rock"] button { background: #dc2626; color: white; }
-html[data-theme="rock"] button:hover { background: #b91c1c; }
-
-/* TEMA POP */
-html[data-theme="pop"] {
-  --bg-main: #fdf2f8;
-  --bg-sidebar: #fbcfe8;
-  --bg-card: #fce7f3;
-  --text-main: #831843;
-  --text-muted: #9d174d;
-  --accent: #ec4899;
-  --accent-hover: #db2777;
-  --danger: #f43f5e;
-  --border: #f9a8d4;
-}
-html[data-theme="pop"] .sidebar h2 { color: #be185d; }
-html[data-theme="pop"] .sidebar button { color: #9d174d; }
-html[data-theme="pop"] .sidebar button:hover, 
-html[data-theme="pop"] .sidebar button.active { background: #f9a8d4 !important; color: #831843; }
-html[data-theme="pop"] button { background: #ec4899; color: white; }
-html[data-theme="pop"] button:hover { background: #db2777; }
-
-/* TEMA NEÓN */
-html[data-theme="neon"] {
-  --bg-main: #0a0a0a;
-  --bg-sidebar: #18181b;
-  --bg-card: #18181b;
-  --text-main: #e4e4e7;
-  --text-muted: #a1a1aa;
-  --accent: #a855f7;
-  --accent-hover: #9333ea;
-  --danger: #f43f5e;
-  --border: #3f3f46;
-}
-html[data-theme="neon"] .sidebar h2 { color: #a855f7; text-shadow: 0 0 10px #a855f7; }
-html[data-theme="neon"] button { background: #a855f7; color: white; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
-html[data-theme="neon"] button:hover { background: #9333ea; box-shadow: 0 0 20px rgba(168, 85, 247, 0.8); }
-html[data-theme="neon"] .card { border: 1px solid #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
-
-/* TEMA NATURALEZA */
-html[data-theme="naturaleza"] {
-  --bg-main: #14532d;
-  --bg-sidebar: #166534;
-  --bg-card: #15803d;
-  --text-main: #f0fdf4;
-  --text-muted: #bbf7d0;
-  --accent: #84cc16;
-  --accent-hover: #65a30d;
-  --danger: #f97316;
-  --border: #22c55e;
-}
-html[data-theme="naturaleza"] .sidebar h2 { color: #84cc16; }
-html[data-theme="naturaleza"] button { background: #84cc16; color: #14532d; }
-html[data-theme="naturaleza"] button:hover { background: #65a30d; }
-html[data-theme="naturaleza"] .sidebar button { color: #bbf7d0; }
-html[data-theme="naturaleza"] .sidebar button:hover, 
-html[data-theme="naturaleza"] .sidebar button.active { background: #22c55e !important; color: #14532d; }
-
 /* ==========================================
-   VARIABLES (ESCALABLE)
+   1. VARIABLES BASE (PREDETERMINADO OSCURO)
 ========================================== */
 :root {
   --bg-main: #0f172a;
@@ -101,7 +17,7 @@ html[data-theme="naturaleza"] .sidebar button.active { background: #22c55e !impo
 }
 
 /* ==========================================
-   RESET BÁSICO
+   2. RESET REGLAMENTARIO DE MAQUETACIÓN
 ========================================== */
 * {
   box-sizing: border-box;
@@ -115,7 +31,7 @@ body {
 }
 
 /* ==========================================
-   LAYOUT
+   3. ESTRUCTURA Y COMPONENTES DEL TEMPLATE
 ========================================== */
 .app {
   display: flex;
@@ -135,9 +51,6 @@ body {
   margin-bottom: 20px;
 }
 
-/* ==========================================
-   BOTONES SIDEBAR
-========================================== */
 .sidebar button {
   background: none !important;
   border: none;
@@ -156,9 +69,6 @@ body {
   color: var(--text-main);
 }
 
-/* ==========================================
-   CONTENIDO
-========================================== */
 .content {
   flex: 1;
   padding: clamp(16px, 4vw, 40px);
@@ -173,9 +83,6 @@ body {
   display: block;
 }
 
-/* ==========================================
-   TARJETAS
-========================================== */
 .card {
   background: var(--bg-card);
   border-radius: 12px;
@@ -184,7 +91,7 @@ body {
 }
 
 /* ==========================================
-   BOTONES GENERALES (UNIFICADOS)
+   4. BOTONES Y COMPONENTES INTERACTIVOS
 ========================================== */
 button {
   border: none;
@@ -201,7 +108,6 @@ button:hover {
   background: var(--accent-hover);
 }
 
-/* Botón peligro */
 .btn-danger {
   background: var(--danger);
   color: white;
@@ -211,9 +117,6 @@ button:hover {
   background: #dc2626;
 }
 
-/* ==========================================
-   INPUTS Y SELECTORES
-========================================== */
 input[type="file"],
 input[type="password"],
 select,
@@ -243,16 +146,13 @@ textarea {
   font-family: Arial, sans-serif;
 }
 
-/* ==========================================
-   AUDIO PLAYER
-========================================== */
 audio {
   width: 100%;
   margin-top: 10px;
 }
 
 /* ==========================================
-   AFINADOR
+   5. INTERFAZ GRÁFICA DEL AFINADOR MATEMÁTICO
 ========================================== */
 .afinador-container {
   display: flex;
@@ -295,7 +195,7 @@ audio {
 }
 
 /* ==========================================
-   ESTUDIO Y MONITOR DE COMPRESIÓN
+   6. MONITORES RÍTMICOS DE LA PESTAÑA ESTUDIO
 ========================================== */
 .studio-controls {
   display: flex;
@@ -322,15 +222,15 @@ audio {
 .mic-level-fill {
   width: 0%;
   height: 100%;
-  background: #22c55e;
-  transition: width 0.08s ease;
+  background: linear-gradient(90deg, #22c55e, #84cc16, #facc15, #f97316, #ef4444);
+  border-radius: 6px;
+  transition: width 0.05s ease-out;
 }
 
 .mic-level-fill.active {
   box-shadow: 0 0 10px #4ade80;
 }
 
-/* 🔥 ANIMACIÓN DE RENDERIZADO INTERACTIVO DE TOQUES (TAPS) */
 .tap-active {
   animation: pulse-glow 0.15s ease-out;
 }
@@ -342,7 +242,7 @@ audio {
 }
 
 /* ==========================================
-   BIBLIOTECA
+   7. SECCIÓN BIBLIOTECA (CARPETAS)
 ========================================== */
 #libraryList div.library-item {
   background: var(--bg-card);
@@ -356,20 +256,37 @@ audio {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .folder-btn {
+  padding: 10px 20px;
   background: #334155;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.folder-btn:hover, .folder-btn.active {
+  background: #3b82f6;
   color: white;
 }
 
-.folder-btn.active {
-  background: #3b82f6;
+/* ==========================================
+   8. MONITOR DE ESCENARIOS Y CANVAS DEL KARAOKE
+========================================== */
+#karaokeCanvas {
+  background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
+  display: block;
+  width: 100%;
+  height: 300px;
+  border-radius: 8px;
+  border: 2px solid #3b82f6;
 }
 
-/* ==========================================
-   KARAOKE EN VIVO Y ESCENARIOS (CON RETROWAVE)
-========================================== */
 .karaoke-lyrics {
   margin-top: 20px;
   padding: 20px;
@@ -381,123 +298,181 @@ audio {
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-/* REFORZADOS: Aseguramos que el escenario gane la prioridad visual sobre el fondo del tema base */
 div.karaoke-lyrics.theme-clasico   { background: #0f172a !important; border-color: #334155 !important; }
-div.karaoke-lyrics.theme-moderno   { background: #082f49 !important; border-color: #06b6d4 !important; }
+div.karaoke-lyrics.theme-moderno   { background: #082f49 !important; border: 2px solid #06b6d4 !important; }
 div.karaoke-lyrics.theme-disco     { background: linear-gradient(45deg, #4c1d95, #be185d) !important; border-color: #db2777 !important; }
-div.karaoke-lyrics.theme-acustico   { background: #451a03 !important; border-color: #b45309 !important; }
+div.karaoke-lyrics.theme-acustico   { background: #451a03 !important; border: 2px solid #78350f !important; }
 div.karaoke-lyrics.theme-fiesta     { animation: luces-fiesta 3s infinite alternate !important; border-color: #ff007f !important; }
-div.karaoke-lyrics.theme-retrowave  { background: #130624 !important; border-color: #ff007f !important; box-shadow: inset 0 0 20px rgba(255, 0, 127, 0.4) !important; }
+div.karaoke-lyrics.theme-retrowave  { background: #130624 !important; border: 2px solid #ff007f !important; box-shadow: inset 0 0 20px rgba(255, 0, 127, 0.4) !important; }
+
+@keyframes luces-fiesta {
+  0% { box-shadow: inset 0 0 40px #ff007f; background: #1c1917; }
+  50% { box-shadow: inset 0 0 40px #00f0ff; background: #181c24; }
+  100% { box-shadow: inset 0 0 40px #b700ff; background: #201428; }
+}
 
 .karaoke-placeholder {
   color: var(--text-muted);
   margin: 0;
 }
 
-.karaoke-line {
-  font-size: 22px;
+.karaoke-line, .karaoke-live-line {
+  font-size: 24px;
   line-height: 1.6;
   margin: 14px 0;
   text-align: center;
-  color: var(--text-muted);
+  color: #475569;
   transition: all 0.25s ease;
+  opacity: 0.5;
 }
 
-.karaoke-line.past { color: #64748b; }
-.karaoke-line.upcoming { color: var(--text-muted); }
-.karaoke-line.active { color: #22c55e; font-weight: bold; transform: scale(1.05); }
+.karaoke-line.past, .karaoke-live-line.past { color: #ffffff; opacity: 0.8; font-size: 24px; }
+.karaoke-line.upcoming, .karaoke-live-line.upcoming { color: var(--text-muted); }
 
-/* RESALTADO SÍLABA POR SÍLABA */
-.karaoke-word,
-.karaoke-live-word {
+.karaoke-line.active, .karaoke-live-line.active {
+  color: #22c55e !important;
+  font-size: 32px;
+  font-weight: 900;
+  opacity: 1;
+  text-shadow: 0 0 15px #22c55e;
+  transform: scale(1.05);
+}
+
+.karaoke-lyrics.theme-moderno .karaoke-live-line.active { color: #06b6d4 !important; text-shadow: 0 0 15px #06b6d4; }
+.karaoke-lyrics.theme-disco .karaoke-live-line.active { color: #facc15 !important; text-shadow: 0 0 10px #facc15; font-size: 36px; }
+.karaoke-lyrics.theme-acustico .karaoke-live-line.active { color: #fcd34d !important; text-shadow: none; font-style: italic; }
+.karaoke-lyrics.theme-fiesta .karaoke-live-line.active { color: #ff007f !important; text-shadow: 0 0 20px #ff007f; }
+.karaoke-lyrics.theme-retrowave .karaoke-live-line.active { color: #38bdf8 !important; text-shadow: 0 0 15px #ff007f; }
+
+.karaoke-word, .karaoke-live-word {
   display: inline-block;
   color: inherit;
   transition: color 0.12s ease, transform 0.12s ease, text-shadow 0.12s ease;
   white-space: pre-wrap;
 }
 
-.karaoke-word.active-word,
-.karaoke-live-word.active-word {
-  color: #facc15;
+.karaoke-word.active-word, .karaoke-live-word.active-word {
+  color: #facc15 !important;
   font-weight: 800;
   text-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
   transform: scale(1.08);
 }
 
-.karaoke-word.past-word,
-.karaoke-live-word.past-word {
+.karaoke-word.past-word, .karaoke-live-word.past-word {
   color: #22c55e;
 }
 
-/* LIENZO DE TEXTO K-LIVE-MONITOR */
-.karaoke-live-line {
-  font-size: 26px;
-  color: #475569;
-  margin: 10px 0;
-  text-align: center;
-  transition: all 0.2s ease;
-  opacity: 0.5;
-}
-
-.karaoke-live-line.active {
-  color: #22c55e;
-  font-size: 34px;
-  font-weight: 900;
-  opacity: 1;
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
-  transform: scale(1.1);
-}
-
-.karaoke-live-line.past {
-  color: #ffffff;
-  opacity: 0.8;
-  font-size: 26px;
-}
-
-/* ==========================================
-   DESPLEGABLES Y BUBBLES
-========================================== */
-.contenido-desplegable.oculto {
-  display: none !important;
-}
-
-.flecha.rotada {
-  transform: rotate(90deg);
-}
-
-.settings-group {
-  margin-bottom: 20px;
+.catalog-item, .my-karaoke-item {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
 }
 
-.settings-group label {
+.catalog-item:hover, .my-karaoke-item:hover {
+  border-color: var(--accent);
+  transform: translateX(5px);
+}
+
+.catalog-item-info, .my-karaoke-item-info {
+  flex: 1;
+}
+
+.catalog-item-title, .my-karaoke-item-title {
   font-weight: bold;
-  margin-bottom: 10px;
   color: var(--text-main);
-  font-size: 16px;
+  margin: 0 0 4px 0;
 }
 
-.save-notification {
-  color: var(--accent);
-  font-weight: bold;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  margin-top: 15px;
-  font-size: 14px;
+.catalog-item-artist, .my-karaoke-item-artist {
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
-.save-notification.show {
-  opacity: 1;
-}
+.contenido-desplegable.oculto { display: none !important; }
+.flecha.rotada { transform: rotate(90deg); }
+
+.settings-group { margin-bottom: 20px; display: flex; flex-direction: column; }
+.settings-group label { font-weight: bold; margin-bottom: 10px; color: var(--text-main); font-size: 16px; }
+
+.save-notification { color: var(--accent); font-weight: bold; opacity: 0; transition: opacity 0.3s ease; margin-top: 15px; font-size: 14px; }
+.save-notification.show { opacity: 1; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
 /* ==========================================
-   SCROLLBAR GLOBAL
+   9. SISTEMA DE TEMAS GLOBALES (AL FINAL DE LA CASCADA)
 ========================================== */
-::-webkit-scrollbar {
-  width: 8px;
+html[data-theme="claro"] {
+  --bg-main: #f1f5f9; --bg-sidebar: #e2e8f0; --bg-card: #ffffff;
+  --text-main: #1e293b; --text-muted: #64748b; --border: #cbd5e1;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
+html[data-theme="claro"] .sidebar button { color: #475569; }
+html[data-theme="claro"] .sidebar button:hover, 
+html[data-theme="claro"] .sidebar button.active { background: #cbd5e1 !important; color: #1e293b; }
+
+html[data-theme="rock"] {
+  --bg-main: #1c1917; --bg-sidebar: #292524; --bg-card: #292524;
+  --text-main: #fafaf9; --text-muted: #a8a29e; --accent: #dc2626; --accent-hover: #b91c1c; --danger: #f97316; --border: #44403c;
+}
+html[data-theme="rock"] .sidebar h2 { color: #dc2626; }
+html[data-theme="rock"] button { background: #dc2626; color: white; }
+html[data-theme="rock"] button:hover { background: #b91c1c; }
+
+html[data-theme="pop"] {
+  --bg-main: #fdf2f8; --bg-sidebar: #fbcfe8; --bg-card: #fce7f3;
+  --text-main: #831843; --text-muted: #9d174d; --accent: #ec4899; --accent-hover: #db2777; --danger: #f43f5e; --border: #f9a8d4;
+}
+html[data-theme="pop"] .sidebar h2 { color: #be185d; }
+html[data-theme="pop"] .sidebar button { color: #9d174d; }
+html[data-theme="pop"] .sidebar button:hover, 
+html[data-theme="pop"] .sidebar button.active { background: #f9a8d4 !important; color: #831843; }
+html[data-theme="pop"] button { background: #ec4899; color: white; }
+html[data-theme="pop"] button:hover { background: #db2777; }
+
+html[data-theme="neon"] {
+  --bg-main: #0a0a0a; --bg-sidebar: #18181b; --bg-card: #18181b;
+  --text-main: #e4e4e7; --text-muted: #a1a1aa; --accent: #a855f7; --accent-hover: #9333ea; --danger: #f43f5e; --border: #3f3f46;
+}
+html[data-theme="neon"] .sidebar h2 { color: #a855f7; text-shadow: 0 0 10px #a855f7; }
+html[data-theme="neon"] button { background: #a855f7; color: white; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
+html[data-theme="neon"] button:hover { background: #9333ea; box-shadow: 0 0 20px rgba(168, 85, 247, 0.8); }
+html[data-theme="neon"] .card { border: 1px solid #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
+
+html[data-theme="naturaleza"] {
+  --bg-main: #14532d; --bg-sidebar: #166534; --bg-card: #15803d;
+  --text-main: #f0fdf4; --text-muted: #bbf7d0; --accent: #84cc16; --accent-hover: #65a30d; --danger: #f97316; --border: #22c55e;
+}
+html[data-theme="naturaleza"] .sidebar h2 { color: #84cc16; }
+html[data-theme="naturaleza"] button { background: #84cc16; color: #14532d; }
+html[data-theme="naturaleza"] button:hover { background: #65a30d; }
+html[data-theme="naturaleza"] .sidebar button { color: #bbf7d0; }
+html[data-theme="naturaleza"] .sidebar button:hover, 
+html[data-theme="naturaleza"] .sidebar button.active { background: #22c55e !important; color: #14532d; }
+
+/* ==========================================
+   10. MODO ADAPTIVO ELÁSTICO (PC Y MÓVIL)
+========================================== */
+@media (max-width: 768px) {
+  .app {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+  .sidebar {
+    width: 100%; height: auto; padding: 10px;
+    flex-direction: row; justify-content: flex-start; align-items: center;
+    border-bottom: 1px solid var(--border); overflow-x: auto; white-space: nowrap; gap: 8px;
+  }
+  .sidebar h2 { display: none; }
+  .sidebar button { text-align: center; padding: 10px 15px; font-size: 14px; flex: none; display: inline-block; }
+  .content { height: auto; padding: 20px 15px; overflow-y: visible; }
+  #noteDisplay { font-size: 80px; }
 }
