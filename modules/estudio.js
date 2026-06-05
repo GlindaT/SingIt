@@ -71,6 +71,8 @@ function audioBufferToWav(audioBuffer, startSample, endSample) {
 
   return new Blob([arrayBuffer], { type: 'audio/wav' });
 }
+
+function buildWordTimingFromSegment(seg) {
   if (!seg.words || seg.words.length === 0) {
     const wordsArr = (seg.text || "").split(" ").filter(Boolean);
     const duration = (seg.end || 0) - (seg.start || 0);
