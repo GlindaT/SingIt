@@ -294,3 +294,122 @@ export async function transcribeSelectedVoice() {
     status.textContent = "Estado: Error en la transcripción ❌"; 
   }
 }
+export async function applyCorrectedLyrics() {
+  const text = $("lyricsText"); if (!text || !text.value.trim()) return;
+  const lines = text.value.split("\n").map(l => l.trim()).filter(Boolean);
+  let palabraIndex = 0, todasLasPalabras = [];
+  baseTranscriptionSegments.forEach(s => { if (s.words) todasLasPalabras.push(...s.words); });
+
+  const rebuilt = lines.map(line => {
+    const words = line.split(/\s+/).filter(Boolean);
+    const timed = words.map(w => {
+      const base = todasLasPalabras[palabraIndex] || todasLasPalabras[todasLasPalabras.length - 1];
+      palabraIndex++;
+      return { word: w, start: base ? base.start : 0, end: base ? base.end : 1, pitch: base ? base.pitch : 0, note: base ? base.note : "C4" };
+    });
+    return { start: timed.length ? timed[0].start : 0, end: timed.length ? timed[timed.length-1].end : 0, text: line, words: timed };
+  });
+
+  baseTranscriptionSegments = rebuilt; transcriptionSegments = rebuilt;
+  
+  const karaokeModulo = await import('./karaoke.js');
+  if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+    karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+  }
+  if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+    karaokeModulo.cargarLetrasEnMonitor();
+  }
+  if (selectedVoiceId) {
+    await updateLibraryItem(selectedVoiceId, { transcription: baseTranscriptionSegments });
+    console.log("💾 [estudio.js] ¡Cambios de texto guardados en IndexedDB!");
+  }
+  alert("📝 ¡Letra corregida aplicada con éxito!");
+}
+
+export function startTapSync() {
+  const text = $("lyricsText"), player = $("selectedVoicePlayer");
+  if (!text?.value.trim() || !player?.src) { alert("⚠️ Carga voz y letra primero"); return; }
+  tapSyncLines = text.value.split("\n").map(l => l.trim()).filter(Boolean);
+  tapSyncTimestamps = []; tapSyncCurrentIndex = 0; tapSyncMode = true;
+  $("startTapSyncBtn").style.style.display = "none"; $("cancelTapSyncBtn").style.display = "inline-block"; $("tapSyncActive").style.display = "block"; $("tapSyncResult").style.display = "none";
+  updateTapSyncDisplay(); player.currentTime = 0; player.play();
+  document.removeEventListener("keydown", handleTapSyncKeypress); document.addEventListener("keydown", handleTapSyncKeypress);
+}
+
+function handleTapSyncKeypress(e) { if (tapSyncMode && (e.code === "Space" || e.key === " ")) { e.preventDefault(); recordTap(); } }
+
+export function recordTap() {
+  const player = $("selectedVoicePlayer"); if (!tapSyncMode || !player) return;
+  tapSyncTimestamps.push(player.currentTime);
+  console.log(`🎵 [estudio.js] TAP REGISTRADO -> Línea ${tapSyncCurrentIndex + 1}: "${tapSyncLines[tapSyncCurrentIndex]}" a los ${player.currentTime.toFixed(2)}s`);
+  tapSyncCurrentIndex++;
+  
+  if (tapSyncCurrentIndex >= tapSyncLines.length) {
+    tapSyncMode = false; player.pause(); document.removeEventListener("keydown", handleTapSyncKeypress);
+    $("tapSyncActive").style.display = "none"; $("tapSyncResult").style.display = "block"; $("cancelTapSyncBtn").style.display = "none";
+  } else updateTapSyncDisplay();
+}
+
+export function updateTapSyncDisplay() { if ($("tapCurrentLine")) $("tapCurrentLine").textContent = tapSyncLines[tapSyncCurrentIndex]; if ($("tapProgress")) $("tapProgress").textContent = `${tapSyncCurrentIndex} / ${tapSyncLines.length} líneas`; }
+export function cancelTapSync() { tapSyncMode = false; $("selectedVoicePlayer")?.pause(); document.removeEventListener("keydown", handleTapSyncKeypress); $("startTapSyncBtn").style.display = "inline-block"; $("cancelTapSyncBtn").style.display = "none"; $("tapSyncActive").style.display = "none"; $("tapSyncResult").style.display = "none"; }
+
+export async function applyTapSync() {
+  const player = $("selectedVoicePlayer"), total = player ? player.duration : 0;
+  const segments = tapSyncLines.map((line, i) => {
+    const start = tapSyncTimestamps[i] || 0;
+    let end = tapSyncTimestamps[i+1] || total || start + 3;
+    if (end - start > 1.2) end = start + Math.min(end - start, line.split(/\s+/).length * 0.45);
+    return buildWordTimingFromSegment({ start, end, text: line });
+  });
+  
+  baseTranscriptionSegments = segments; 
+  transcriptionSegments = segments;
+  window.transcriptionSegments = segments; // Inyección inmediata en la memoria caché global
+
+  const pistaInstrumentalActiva = studioSelectedTrackBlob || studioTrackBlob;
+  const nombrePistaActiva = studioSelectedTrackName || studioTrackFileName || "Canción Sincronizada";
+
+  if (pistaInstrumentalActiva) {
+    try {
+      console.log(`💾 [estudio.js] Guardando proyecto unificado: "Karaoke - ${nombrePistaActiva}" con base instrumental pura.`);
+      await addLibraryItem({ 
+        name: `Karaoke - ${nombrePistaActiva}`, 
+        type: "karaoke", 
+        audioBlob: pistaInstrumentalActiva, 
+        date: new Date().toLocaleString("es-ES"), 
+        transcription: segments, 
+        metadata: { title: nombrePistaActiva, origen: "Estudio Sync Master" } 
+      });
+    } catch (err) { console.error("❌ Error guardando karaoke en BD:", err); }
+  }
+
+  // --- EXCLUSIVO: REDIRECCIÓN AUTOMÁTICA MAESTRA AL MONITOR DE KARAOKE ---
+  cancelTapSync();
+  alert("🎉 ¡Sincronización manual completada con éxito!\n\nSe ha creado tu proyecto unificado de Karaoke. La aplicación te redirigirá automáticamente a la pestaña de Karaoke y activará las partituras en pantalla de inmediato para empezar a cantar.");
+
+  const { showTab } = await import('../script.js');
+  const karaokeModulo = await import('./karaoke.js');
+
+  if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+    karaokeModulo.cargarLetrasEnMonitor();
+  }
+  
+  // Cambiamos al usuario de entorno visual
+  if (typeof showTab === "function") {
+    await showTab("karaoke");
+  }
+
+  // Forzamos el acople del reproductor de sonido en la nueva pestaña de forma inmediata
+  const kTrack = document.getElementById("karaokeTrack");
+  if (kTrack && pistaInstrumentalActiva) {
+    kTrack.src = URL.createObjectURL(pistaInstrumentalActiva);
+    kTrack.dataset.name = nombrePistaActiva;
+    document.getElementById("karaokeStatus").textContent = `Estado: Proyecto "${nombrePistaActiva}" listo. ¡Inicia grabación!`;
+  }
+  
+  if (typeof karaokeModulo.loadMyKaraokeSongs === "function") {
+    await karaokeModulo.loadMyKaraokeSongs().catch(() => {});
+  }
+}
+
+export function redoTapSync() { $("tapSyncResult").style.display = "none"; startTapSync(); }
