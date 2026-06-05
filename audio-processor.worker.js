@@ -50,46 +50,82 @@ class AudioProcessor {
   detectPitch(buffer, sampleRate) {
     if (!buffer || buffer.length < 256) return -1;
 
-    // Calculate RMS
-    let rms = 0;
-    for (let i = 0; i < buffer.length; i++) {
-      rms += buffer[i] * buffer[i];
+    // 1. CALCULO DE ENERGÍA (RMS) DE ENTRADA
+    let sum = 0;
+    const len = buffer.length;
+    for (let i = 0; i < len; i++) {
+      sum += buffer[i] * buffer[i];
     }
-    rms = Math.sqrt(rms / buffer.length);
+    const rms = Math.sqrt(sum / len);
 
-    // Silence threshold
-    if (rms < 0.01) return -1;
+    // Umbral de silencio tolerante optimizado para micrófonos ambientales y de audífonos
+    if (rms < 0.008) return -1;
 
-    // Autocorrelation
-    const bufferSize = Math.min(2048, buffer.length);
+    // 2. RECORTAR RUIDO PERIFÉRICO (Center Clipping al 30% para limpiar la señal armónica)
+    const clippedBuffer = new Float32Array(len);
+    let maxVal = 0;
+    for (let i = 0; i < len; i++) {
+      const absVal = Math.abs(buffer[i]);
+      if (absVal > maxVal) maxVal = absVal;
+    }
+    const clipThreshold = maxVal * 0.3;
+    for (let i = 0; i < len; i++) {
+      if (Math.abs(buffer[i]) > clipThreshold) {
+        clippedBuffer[i] = buffer[i] > 0 ? buffer[i] - clipThreshold : buffer[i] + clipThreshold;
+      } else {
+        clippedBuffer[i] = 0;
+      }
+    }
+
+    // 3. AUTOCORRELACIÓN MATEMÁTICA REAL POR PRODUCTO CRUZADO
+    const bufferSize = Math.min(2048, len);
     let bestOffset = -1;
-    let bestCorrelation = 0;
+    let bestCorrelation = -1;
 
-    for (let offset = 8; offset < bufferSize / 2; offset++) {
+    // Definición de límites físicos de frecuencia para la voz humana (60Hz a 1000Hz)
+    const minOffset = Math.floor(sampleRate / 1000); // Equivale a notas súper agudas
+    const maxOffset = Math.ceil(sampleRate / 60);    // Equivale a notas súper graves masculinas
+
+    for (let offset = minOffset; offset < Math.min(maxOffset, bufferSize / 2); offset++) {
       let correlation = 0;
 
+      // Multiplicación armónica cruzada (Fórmula PCM real)
       for (let i = 0; i < bufferSize - offset; i++) {
-        correlation += Math.abs(buffer[i] - buffer[i + offset]);
+        correlation += clippedBuffer[i] * clippedBuffer[i + offset];
       }
 
-      correlation = 1 - (correlation / (bufferSize - offset));
-
+      // Evaluamos buscando de forma legítima el pico máximo de coincidencia
       if (correlation > bestCorrelation) {
         bestCorrelation = correlation;
         bestOffset = offset;
       }
     }
 
-    if (bestCorrelation < 0.8 || bestOffset === -1) return -1;
+    // Validación matemática de claridad armónica
+    if (bestOffset === -1 || bestCorrelation <= 0) return -1;
 
-    const frequency = sampleRate / bestOffset;
+    // 4. INTERPOLACIÓN PARABÓLICA REFORZADA (Para precisión milimétrica de cents)
+    let finalOffset = bestOffset;
+    if (bestOffset > 0 && bestOffset < bufferSize - 1) {
+      let cMinus = 0, cPlus = 0;
+      for (let i = 0; i < bufferSize - bestOffset; i++) {
+        cMinus += clippedBuffer[i] * clippedBuffer[i + (bestOffset - 1)];
+        cPlus += clippedBuffer[i] * clippedBuffer[i + (bestOffset + 1)];
+      }
+      const divisor = (2 * bestCorrelation - cMinus - cPlus);
+      if (divisor !== 0) {
+        finalOffset = bestOffset + (cMinus - cPlus) / divisor;
+      }
+    }
 
-    // Filter unrealistic frequencies for human voice
-    if (frequency < 60 || frequency > 1200) return -1;
+    const frequency = sampleRate / finalOffset;
+
+    // Filtro protector final de rangos de canto humanos
+    if (frequency < 55 || frequency > 1100) return -1;
 
     return frequency;
   }
-
+  
   /**
    * Process audio in chunks to avoid memory issues
    */
