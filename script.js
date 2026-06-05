@@ -92,11 +92,12 @@ export async function showTab(tabId) {
   }
 }
 
-// --- 4. CONTROLADOR DEL MONITOR DE KARAOKE CANVA RENDER ---
+// ====================================================================
+// 🧠 RECEPTOR DE AFINACIÓN UNIFICADO: ALINEACIÓN COMPATIBLE DE CANALES
+// ====================================================================
 let karaokeRenderer = null;
 export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 = 0) {
   if (!karaokeRenderer) {
-    console.log("🎨 [Canvas] Creando nueva instancia del renderizador gráfico unificado...");
     const { KaraokeCanvasRenderer } = await import('./modules/karaoke.js');
     karaokeRenderer = new KaraokeCanvasRenderer('karaokeCanvas', {
       maxFrameRate: 30,
@@ -105,7 +106,9 @@ export async function drawKaraokeMonitor(currentTime, currentFreq, currentFreq2 
     });
     window.addEventListener('resize', () => { if (karaokeRenderer) karaokeRenderer.handleResize(); });
   }
-  // Pasamos de forma exacta los tonos binarios al motor de dibujo
+  
+  // CORRECCIÓN MATEMÁTICA PROTECTORA: Pasamos las variables en el orden exacto que espera el método render()
+  // 1. currentTime, 2. Mic 1 (Amarillo), 3. Mic 2 (Cian), 4. Bloques de texto UltraStar
   karaokeRenderer.render(currentTime, currentFreq, currentFreq2, window.transcriptionSegments);
 }
 
