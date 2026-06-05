@@ -191,8 +191,17 @@ export async function loadSelectedVoiceFromLibrary() {
     baseTranscriptionSegments = item.transcription.map(s => buildWordTimingFromSegment(s));
     transcriptionSegments = baseTranscriptionSegments;
     
-    const { renderKaraokeLyrics, cargarLetrasEnMonitor } = await import('./karaoke.js');
-    renderKaraokeLyrics(transcriptionSegments); cargarLetrasEnMonitor();
+    const karaokeModulo = await import('./karaoke.js');
+    if (typeof karaokeModulo.renderKaraokeLyrics === "function") {
+      karaokeModulo.renderKaraokeLyrics(transcriptionSegments);
+    } else {
+      console.log("📝 [estudio.js] Partitura acoplada a la memoria del monitor gráfico.");
+    }
+    
+    if (typeof karaokeModulo.cargarLetrasEnMonitor === "function") {
+      karaokeModulo.cargarLetrasEnMonitor();
+    }
+    
     if ($("lyricsText")) $("lyricsText").value = transcriptionSegments.map(s => s.text || "").join("\n");
     $("selectedVoiceStatus").textContent = `Estado: Voz cargada (Letras recicladas de memoria ⚡)`;
   } else {
