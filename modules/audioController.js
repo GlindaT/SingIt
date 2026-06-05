@@ -128,3 +128,64 @@ export function getAudioController() {
   }
   return audioController;
 }
+
+// ====================================================================
+// 🎧 ENCODER MATEMÁTICO: CONVERSOR A ARCHIVOS WAV PCM BINARIOS (INYECTADO)
+// ====================================================================
+
+export function interleave(inputL, inputR) {
+  const length = inputL.length + inputR.length;
+  const result = new Float32Array(length);
+  let index = 0;
+  let inputIndex = 0;
+  while (index < length) {
+    result[index++] = inputL[inputIndex];
+    result[index++] = inputR[inputIndex];
+    inputIndex++;
+  }
+  return result;
+}
+
+export function exportStereoWav(audioBuffer) {
+  if (!audioBuffer) return null;
+  const numOfChan = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const format = 1; // PCM Lineal
+  const bitDepth = 16;
+  
+  let result;
+  if (numOfChan === 2) {
+    result = interleave(audioBuffer.getChannelData(0), audioBuffer.getChannelData(1));
+  } else {
+    result = audioBuffer.getChannelData(0);
+  }
+  
+  const buffer = new ArrayBuffer(44 + result.length * 2);
+  const view = new DataView(buffer);
+  
+  const writeString = (viewObj, offset, string) => {
+    for (let i = 0; i < string.length; i++) viewObj.setUint8(offset + i, string.charCodeAt(i));
+  };
+  
+  writeString(view, 0, 'RIFF');
+  view.setUint32(4, 36 + result.length * 2, true);
+  writeString(view, 8, 'WAVE');
+  writeString(view, 12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numOfChan, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * numOfChan * (bitDepth / 8), true);
+  view.setUint16(32, numOfChan * (bitDepth / 8), true);
+  view.setUint16(34, bitDepth, true);
+  writeString(view, 36, 'data');
+  view.setUint32(40, result.length * 2, true);
+  
+  let offset = 44;
+  for (let i = 0; i < result.length; i++) {
+    let sample = Math.max(-1, Math.min(1, result[i]));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    offset += 2;
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+}
