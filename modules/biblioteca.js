@@ -300,16 +300,22 @@ export async function saveManualFileToLibrary() {
   const typeSelect = document.getElementById("libraryFileType");
   const nameInput = document.getElementById("libraryFileName");
 
-  // Validación de seguridad de la existencia del archivo
+  // Validación de seguridad de la existencia del archivo en el input
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     alert("⚠️ Por favor, selecciona primero un archivo de tu computadora (.mp3, .wav, .txt, etc.) antes de intentar guardarlo.");
     return;
   }
 
-  // CORRECCIÓN MATEMÁTICA PROTECTORA: Extraemos de forma estricta el primer archivo REAL [0] de la lista
-  const fileObj = fileInput.files[0]; 
+  // CORRECCIÓN DE FUERZA BRUTA INTERPOLADA: Extraemos el primer archivo usando .item(0) 
+  // Esto previene que los filtros de texto del chat borren los corchetes tradicionales
+  const fileObj = fileInput.files.item(0); 
   const categoriaSeleccionada = typeSelect ? typeSelect.value : "pista";
   
+  if (!fileObj) {
+    alert("⚠️ Error al leer el archivo seleccionado. Intenta cargarlo de nuevo.");
+    return;
+  }
+
   // Extraemos el nombre: si está vacío el input, usamos el nombre original del archivo físico de tu PC
   let nombreFinal = nameInput && nameInput.value.trim() ? nameInput.value.trim() : fileObj.name;
   nombreFinal = nombreFinal.replace(/\.[^.]+$/, ""); // Remueve extensiones duplicadas (.wav, .mp3)
