@@ -34,8 +34,12 @@ body {
    3. ESTRUCTURA Y COMPONENTES DEL TEMPLATE
 ========================================== */
 .app {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important; /* Fuerza de forma estricta el orden de izquierda a derecha */
+  width: 100vw;
+  height: 100vh;
   min-height: 100vh;
+  overflow: hidden !important; /* Evita que la pantalla completa se estire hacia abajo */
 }
 
 .sidebar {
@@ -45,6 +49,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  flex-shrink: 0; /* Impide que el menú se aplaste */
 }
 
 .sidebar h2 {
@@ -72,7 +77,9 @@ body {
 .content {
   flex: 1;
   padding: clamp(16px, 4vw, 40px);
-  overflow-y: auto;
+  overflow-y: auto !important; /* ACTIVA EL SCROLL AQUÍ: Permite bajar a ver las tarjetas si no caben */
+  height: 100vh;
+  background: var(--bg-main);
 }
 
 .tab {
