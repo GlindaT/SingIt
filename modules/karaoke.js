@@ -22,7 +22,7 @@ export class KaraokeCanvasRenderer {
     this.midiMin = 36;      // Rango elástico extendido para notas graves masculinas
     this.midiMax = 84;      // Rango agudo limpio
     this.midiRange = this.midiMax - this.midiMin;
-    this.lineX = 80;        // Aguja vertical roja desplazada a la derecha
+    this.lineX = 0;         // se recalcula en cada render según canvas.width (~22%)
 
     if (!window.pitchHistoryMic1) window.pitchHistoryMic1 = [];
     if (!window.pitchHistoryMic2) window.pitchHistoryMic2 = [];
@@ -78,6 +78,10 @@ export class KaraokeCanvasRenderer {
     const paleta = this.obtenerPaletaTema();
     const pentagramBottom = this.canvas.height - 60;
     const pentagramHeight = pentagramBottom - this.pentagramTop;
+
+    // Recalcular posición del playhead dinámicamente para que el rastro de pitch
+    // sea visible (~22% desde la izquierda → trail amplio + bars futuras a la derecha)
+    this.lineX = Math.max(80, Math.floor(this.canvas.width * 0.22));
 
     let freqMic1 = -1;
     let freqMic2 = -1;
@@ -350,7 +354,7 @@ export async function startKaraokePitchDetection() {
       window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
       let sum = 0;
       for (let i = 0; i < bufferSize; i++) sum += staticBufferMic1[i] * staticBufferMic1[i];
-      promesas.push(Math.sqrt(sum / bufferSize) > 0.003
+      promesas.push(Math.sqrt(sum / bufferSize) > 0.0015
         ? audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema)
         : Promise.resolve(-1));
     } else {
@@ -361,7 +365,7 @@ export async function startKaraokePitchDetection() {
       window.karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
       let sum = 0;
       for (let i = 0; i < bufferSize; i++) sum += staticBufferMic2[i] * staticBufferMic2[i];
-      promesas.push(Math.sqrt(sum / bufferSize) > 0.003
+      promesas.push(Math.sqrt(sum / bufferSize) > 0.0015
         ? audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema)
         : Promise.resolve(-1));
     } else {
@@ -446,14 +450,15 @@ export async function mixKaraoke() {
       console.log("⚙️ [karaoke.js] Transfiriendo matrices numéricas síncronas hacia el Worker...");
       const matrizMezclada = await audioCtrl.mixAudio([instrumentalFloatArray, vozFloatArray], [0.7, 1.0]);
 
-      const renderBuffer = offlineCtx.createBuffer(2, matrizMezclada.length / 2, TASA_MUESTREO_SISTEMA);
+      // FIX: matrizMezclada es MONO (N samples temporales). Lo duplicamos en ambos canales
+      // del buffer estéreo manteniendo la duración original (evita audio 2x acelerado).
+      const renderBuffer = offlineCtx.createBuffer(2, matrizMezclada.length, TASA_MUESTREO_SISTEMA);
       const renderL = renderBuffer.getChannelData(0);
       const renderR = renderBuffer.getChannelData(1);
 
-      let idx = 0;
-      for (let i = 0; i < renderBuffer.length; i++) {
-        renderL[i] = matrizMezclada[idx++];
-        renderR[i] = matrizMezclada[idx++];
+      for (let i = 0; i < matrizMezclada.length; i++) {
+        renderL[i] = matrizMezclada[i];
+        renderR[i] = matrizMezclada[i];
       }
 
       const mezclaDefinitivaBlob = exportStereoWav(renderBuffer);
