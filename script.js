@@ -14,9 +14,9 @@ export function safeAdd(id, event, handler) {
   if (el) {
     el.addEventListener(event, handler);
     //console.log(`🔌 [DOM Link] Evento '${event}' enlazado con éxito al elemento ID: [${id}]`);
-  //} else {
-    //console.warn(`⚠️ [DOM Link Warning] No se encontró el elemento con ID: [${id}] en el HTML.`);
-  /*}*/
+  } else {
+    console.warn(`⚠️ [DOM Link Warning] No se encontró el elemento con ID: [${id}] en el HTML.`);
+  }
 }
 
 // --- 2. ESTADOS GLOBALES DE LA APLICACIÓN ---
