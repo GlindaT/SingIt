@@ -88,7 +88,7 @@ export async function showTab(tabId) {
       inicializarEscenarioDesdeMemoria();
       if (typeof cargarLetrasEnMonitor === "function") cargarLetrasEnMonitor();
       await loadTrackOptionsInKaraoke();
-      await loadMyKaraokeSongs().catch(() => {});
+      await loadMyKaraokeSongs(); /*.catch(() => {});*/
       await loadKaraokeCatalog().catch(() => {});
     }
     console.log(`✅ [Navegación] Pestaña [${tabId.toUpperCase()}] cargada y visualizada.`);
