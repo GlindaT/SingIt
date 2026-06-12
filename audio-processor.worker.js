@@ -60,7 +60,7 @@ class AudioProcessor {
 
     // Umbral de silencio tolerante optimizado para micrófonos ambientales y de audífonos
     // (bajado a 0.0015 para detectar voces suaves y micrófonos de portátil)
-    if (rms < 0.0015) return -1;
+    if (rms < 0.015) return -1;
 
     // 2. RECORTAR RUIDO PERIFÉRICO (Center Clipping al 30% para limpiar la señal armónica)
     const clippedBuffer = new Float32Array(len);
