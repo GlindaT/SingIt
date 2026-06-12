@@ -101,7 +101,7 @@ export class KaraokeCanvasRenderer {
     window.pitchHistoryMic1.push(freqMic1 > 0 ? freqMic1 : null);
     window.pitchHistoryMic2.push(freqMic2 > 0 ? freqMic2 : null);
 
-    const maxHistory = 120;
+    const maxHistory = 90; // ~3s a 30fps — el rastro se desvanece naturalmente
     if (window.pitchHistoryMic1.length > maxHistory) window.pitchHistoryMic1.shift();
     if (window.pitchHistoryMic2.length > maxHistory) window.pitchHistoryMic2.shift();
 
@@ -206,9 +206,9 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
 
-    // 4. RASTROS DE PITCH DE MIC 1 Y MIC 2 (Trayectorias del usuario) - GRUESO Y BRILLANTE
-    this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 1)", 6);
-    this._drawPitchTrace(window.pitchHistoryMic2, "rgba(6, 182, 212, 1)", 6);
+    // 4. RASTROS SUAVES DE PITCH (fading trail) - GRUESOS Y BRILLANTES, a la altura del pentagrama
+    this._drawPitchTrace(window.pitchHistoryMic1, "250, 204, 21", 6);
+    this._drawPitchTrace(window.pitchHistoryMic2, "6, 182, 212", 6);
 
     // 5. PUNTO BRILLANTE EN LA POSICIÓN ACTUAL DEL USUARIO (Mic 1 amarillo / Mic 2 cyan)
     if (typeof freqMic1 === 'number' && isFinite(freqMic1) && freqMic1 > 0) {
@@ -257,26 +257,42 @@ export class KaraokeCanvasRenderer {
     }
   } // <-- CIERRA EL MÉTODO render()
 
-  _drawPitchTrace(history, color, lineWidth) {
+  _drawPitchTrace(history, rgbStr, lineWidth) {
+    // history: arreglo cronológico (0/null = silencio). rgbStr: "r,g,b" sin alpha.
+    // ✨ Rastro SUAVE: solo dibuja los últimos ~2.5s y aplica fade individual por tramo.
     if (!history || history.length === 0) return;
-    const totalSlots = history.length;
-    const traceWidth = this.lineX - 40;
-    const slotWidth = traceWidth / totalSlots;
 
-    this.ctx.beginPath();
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = lineWidth;
-    let started = false;
-    history.forEach((freq, i) => {
-      if (freq && freq > 0) {
-        const y = this.midiToY(this.frequencyToMidi(freq));
-        const x = 40 + i * slotWidth;
-        if (!started) { this.ctx.moveTo(x, y); started = true; } else { this.ctx.lineTo(x, y); }
-      } else {
-        if (started) { this.ctx.stroke(); this.ctx.beginPath(); started = false; }
+    const VISIBLE_SAMPLES = 75;
+    const start = Math.max(0, history.length - VISIBLE_SAMPLES);
+    const visible = history.slice(start);
+    const totalSlots = visible.length;
+    if (totalSlots < 2) return;
+
+    const traceWidth = this.lineX - 40;
+    const slotWidth = traceWidth / VISIBLE_SAMPLES;
+
+    this.ctx.lineCap = "round";
+    this.ctx.lineJoin = "round";
+
+    let prevX = null, prevY = null;
+    for (let i = 0; i < totalSlots; i++) {
+      const freq = visible[i];
+      if (!freq || freq <= 0) { prevX = null; prevY = null; continue; }
+      // ↓ Usa la misma escala del pentagrama (midiToY) - el rastro está a la altura de las notas
+      const y = this.midiToY(this.frequencyToMidi(freq));
+      const x = 40 + (i + (VISIBLE_SAMPLES - totalSlots)) * slotWidth;
+      if (prevX !== null) {
+        // Alpha = edad del tramo: 0 (viejo) → 1 (nuevo). Curva pow(t, 1.6) para fade suave.
+        const alpha = Math.pow(i / (totalSlots - 1), 1.6);
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = `rgba(${rgbStr}, ${alpha.toFixed(3)})`;
+        this.ctx.lineWidth = lineWidth;
+        this.ctx.moveTo(prevX, prevY);
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
       }
-    });
-    if (started) this.ctx.stroke();
+      prevX = x; prevY = y;
+    }
   }
 
   handleResize() { this.noteYCache.clear(); }
