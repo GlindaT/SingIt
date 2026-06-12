@@ -22,9 +22,10 @@ let selectedVoiceBlob = null;
 let selectedVoiceId = null;
 
 let tapSyncMode = false;
-let tapSyncLines = [];
+let tapSyncLines = [];          // En modo "linea" guarda líneas; en modo "palabra" guarda palabras
 let tapSyncTimestamps = [];
 let tapSyncCurrentIndex = 0;
+let tapSyncSplitMode = "linea"; // "linea" o "palabra" - leído del selector al iniciar
 
 let studioMediaRecorder = null;
 let baseTranscriptionSegments = [];
@@ -371,7 +372,19 @@ export async function applyCorrectedLyrics() {
 export function startTapSync() {
   const text = $("lyricsText"), player = $("selectedVoicePlayer");
   if (!text?.value.trim() || !player?.src) { alert("⚠️ Carga voz y letra primero"); return; }
-  tapSyncLines = text.value.split("\n").map(l => l.trim()).filter(Boolean);
+
+  // Leer el modo seleccionado por el usuario (línea o palabra)
+  tapSyncSplitMode = $("tapSyncMethodSelect")?.value === "palabra" ? "palabra" : "linea";
+
+  if (tapSyncSplitMode === "palabra") {
+    // Modo palabra: divide TODO el texto en palabras individuales (a través de líneas)
+    tapSyncLines = text.value.split(/\s+/).map(w => w.trim()).filter(Boolean);
+  } else {
+    // Modo línea: divide solo por saltos de línea
+    tapSyncLines = text.value.split("\n").map(l => l.trim()).filter(Boolean);
+  }
+  console.log(`🎯 [estudio.js] Tap Sync iniciado en modo "${tapSyncSplitMode}" - ${tapSyncLines.length} elementos a sincronizar`);
+
   tapSyncTimestamps = []; tapSyncCurrentIndex = 0; tapSyncMode = true;
   $("startTapSyncBtn").style.display = "none"; $("cancelTapSyncBtn").style.display = "inline-block"; $("tapSyncActive").style.display = "block"; $("tapSyncResult").style.display = "none";
   updateTapSyncDisplay(); player.currentTime = 0; player.play();
@@ -392,15 +405,25 @@ export function recordTap() {
   } else updateTapSyncDisplay();
 }
 
-export function updateTapSyncDisplay() { if ($("tapCurrentLine")) $("tapCurrentLine").textContent = tapSyncLines[tapSyncCurrentIndex]; if ($("tapProgress")) $("tapProgress").textContent = `${tapSyncCurrentIndex} / ${tapSyncLines.length} líneas`; }
+export function updateTapSyncDisplay() {
+  const unidad = tapSyncSplitMode === "palabra" ? "palabras" : "líneas";
+  if ($("tapCurrentLine")) $("tapCurrentLine").textContent = tapSyncLines[tapSyncCurrentIndex] || "";
+  if ($("tapProgress")) $("tapProgress").textContent = `${tapSyncCurrentIndex} / ${tapSyncLines.length} ${unidad}`;
+}
 export function cancelTapSync() { tapSyncMode = false; $("selectedVoicePlayer")?.pause(); document.removeEventListener("keydown", handleTapSyncKeypress); $("startTapSyncBtn").style.display = "inline-block"; $("cancelTapSyncBtn").style.display = "none"; $("tapSyncActive").style.display = "none"; $("tapSyncResult").style.display = "none"; }
 
 export async function applyTapSync() {
   const player = $("selectedVoicePlayer"), total = player ? player.duration : 0;
   const segments = tapSyncLines.map((line, i) => {
     const start = tapSyncTimestamps[i] || 0;
-    let end = tapSyncTimestamps[i+1] || total || start + 3;
-    if (end - start > 1.2) end = start + Math.min(end - start, line.split(/\s+/).length * 0.45);
+    let end = tapSyncTimestamps[i+1] || total || start + (tapSyncSplitMode === "palabra" ? 0.6 : 3);
+    // Heurística por modo
+    const numPalabras = line.split(/\s+/).filter(Boolean).length;
+    if (tapSyncSplitMode === "linea" && end - start > 1.2) {
+      end = start + Math.min(end - start, numPalabras * 0.45);
+    } else if (tapSyncSplitMode === "palabra" && end - start > 0.8) {
+      end = start + 0.8;
+    }
     return buildWordTimingFromSegment({ start, end, text: line });
   });
   
