@@ -101,7 +101,7 @@ export class KaraokeCanvasRenderer {
     window.pitchHistoryMic1.push(freqMic1 > 0 ? freqMic1 : null);
     window.pitchHistoryMic2.push(freqMic2 > 0 ? freqMic2 : null);
 
-    const maxHistory = 120;
+    const maxHistory = 90; // ~3s a 30fps — el rastro se desvanece naturalmente
     if (window.pitchHistoryMic1.length > maxHistory) window.pitchHistoryMic1.shift();
     if (window.pitchHistoryMic2.length > maxHistory) window.pitchHistoryMic2.shift();
 
@@ -206,33 +206,32 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
 
-    // 4. RASTROS DE PITCH DE MIC 1 Y MIC 2 (Trayectorias del usuario) - GRUESO Y BRILLANTE
-    this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 1)", 6);
-    this._drawPitchTrace(window.pitchHistoryMic2, "rgba(6, 182, 212, 1)", 6);
+    // 4. RASTROS SUAVES (fading trail) DE MIC 1 + MIC 2, en la mitad inferior del monitor
+    this._drawPitchTrace(window.pitchHistoryMic1, "250, 204, 21", 6);
+    this._drawPitchTrace(window.pitchHistoryMic2, "6, 182, 212", 6);
 
-    // 5. PUNTO BRILLANTE EN LA POSICIÓN ACTUAL DEL USUARIO (Mic 1 amarillo / Mic 2 cyan)
-    if (typeof freqMic1 === 'number' && isFinite(freqMic1) && freqMic1 > 0) {
-      const userY = this.midiToY(this.frequencyToMidi(freqMic1));
+    // 5. "VOZ QUE SUBE" — columna degradada desde abajo + punto brillante en el playhead
+    const baseY = this.canvas.height - 30;
+    const drawRisingVoice = (freq, fillHex, rgbStr) => {
+      if (!(typeof freq === 'number' && isFinite(freq) && freq > 0)) return;
+      const userY = this.pitchToBottomY(freq);
+      const grad = this.ctx.createLinearGradient(0, baseY, 0, userY);
+      grad.addColorStop(0,    `rgba(${rgbStr}, 0)`);
+      grad.addColorStop(0.5,  `rgba(${rgbStr}, 0.25)`);
+      grad.addColorStop(1,    `rgba(${rgbStr}, 0.7)`);
+      this.ctx.fillStyle = grad;
+      this.ctx.fillRect(this.lineX - 6, userY, 12, baseY - userY);
       this.ctx.beginPath();
-      this.ctx.fillStyle = "#facc15";
-      this.ctx.shadowColor = "#facc15"; this.ctx.shadowBlur = 25;
-      this.ctx.arc(this.lineX, userY, 14, 0, Math.PI * 2);
+      this.ctx.fillStyle = fillHex;
+      this.ctx.shadowColor = fillHex; this.ctx.shadowBlur = 25;
+      this.ctx.arc(this.lineX, userY, 12, 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.shadowBlur = 0;
       this.ctx.strokeStyle = "white"; this.ctx.lineWidth = 3;
       this.ctx.stroke();
-    }
-    if (typeof freqMic2 === 'number' && isFinite(freqMic2) && freqMic2 > 0) {
-      const userY = this.midiToY(this.frequencyToMidi(freqMic2));
-      this.ctx.beginPath();
-      this.ctx.fillStyle = "#06b6d4";
-      this.ctx.shadowColor = "#06b6d4"; this.ctx.shadowBlur = 25;
-      this.ctx.arc(this.lineX, userY, 14, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.shadowBlur = 0;
-      this.ctx.strokeStyle = "white"; this.ctx.lineWidth = 3;
-      this.ctx.stroke();
-    }
+    };
+    drawRisingVoice(freqMic1, "#facc15", "250, 204, 21");
+    drawRisingVoice(freqMic2, "#06b6d4", "6, 182, 212");
 
     // 6. TELEPROMPTER DOBLE LÍNEA (línea actual + siguiente, abajo del pentagrama)
     const datos = Array.isArray(segmentosLetras) ? segmentosLetras : [];
@@ -257,26 +256,52 @@ export class KaraokeCanvasRenderer {
     }
   } // <-- CIERRA EL MÉTODO render()
 
-  _drawPitchTrace(history, color, lineWidth) {
+  _drawPitchTrace(history, rgbStr, lineWidth) {
+    // history: arreglo cronológico (0/null = silencio). rgbStr: "r,g,b" sin alpha.
     if (!history || history.length === 0) return;
-    const totalSlots = history.length;
-    const traceWidth = this.lineX - 40;
-    const slotWidth = traceWidth / totalSlots;
 
-    this.ctx.beginPath();
-    this.ctx.strokeStyle = color;
-    this.ctx.lineWidth = lineWidth;
-    let started = false;
-    history.forEach((freq, i) => {
-      if (freq && freq > 0) {
-        const y = this.midiToY(this.frequencyToMidi(freq));
-        const x = 40 + i * slotWidth;
-        if (!started) { this.ctx.moveTo(x, y); started = true; } else { this.ctx.lineTo(x, y); }
-      } else {
-        if (started) { this.ctx.stroke(); this.ctx.beginPath(); started = false; }
+    // Sólo dibujamos los últimos N samples (~2.5s a 30fps) para evitar el "manchón".
+    const VISIBLE_SAMPLES = 75;
+    const start = Math.max(0, history.length - VISIBLE_SAMPLES);
+    const visible = history.slice(start);
+    const totalSlots = visible.length;
+    if (totalSlots < 2) return;
+
+    const traceWidth = this.lineX - 40;
+    const slotWidth = traceWidth / VISIBLE_SAMPLES;
+
+    this.ctx.lineCap = "round";
+    this.ctx.lineJoin = "round";
+
+    // Pintamos por tramos individuales con alpha proporcional a su edad (fade gradual).
+    let prevX = null, prevY = null;
+    for (let i = 0; i < totalSlots; i++) {
+      const freq = visible[i];
+      if (!freq || freq <= 0) { prevX = null; prevY = null; continue; }
+      const y = this.pitchToBottomY(freq);
+      const x = 40 + (i + (VISIBLE_SAMPLES - totalSlots)) * slotWidth;
+      if (prevX !== null) {
+        const alpha = Math.pow(i / (totalSlots - 1), 1.6); // 0 (viejo) → 1 (nuevo)
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = `rgba(${rgbStr}, ${alpha.toFixed(3)})`;
+        this.ctx.lineWidth = lineWidth;
+        this.ctx.moveTo(prevX, prevY);
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
       }
-    });
-    if (started) this.ctx.stroke();
+      prevX = x; prevY = y;
+    }
+  }
+
+  // Mapea la frecuencia a una Y en la MITAD INFERIOR del canvas → la voz sube desde abajo
+  pitchToBottomY(freq) {
+    if (!freq || !isFinite(freq) || freq <= 0) return this.canvas.height - 30;
+    const minF = 80, maxF = 800;
+    const f = Math.max(minF, Math.min(maxF, freq));
+    const norm = Math.log2(f / minF) / Math.log2(maxF / minF); // 0..1
+    const bottom = this.canvas.height - 30;
+    const top    = this.canvas.height * 0.45;
+    return bottom - norm * (bottom - top);
   }
 
   handleResize() { this.noteYCache.clear(); }
