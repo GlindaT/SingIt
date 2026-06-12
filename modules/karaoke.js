@@ -202,6 +202,53 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
 
+    // 4. TELEPROMPTER DOBLE LÍNEA (Abajo)
+    const idx = words.findIndex(s => currentTime >= (s.start || 0) && currentTime <= (s.end || (s.start + 1)));
+    if (idx !== -1) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+      
+      ctx.textAlign = "center";
+      ctx.fillStyle = "white";
+      ctx.font = "bold 24px Arial";
+      ctx.fillText(datos[idx].text || "", canvas.width / 2, canvas.height - 65);
+      
+      if (datos[idx + 1]) {
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "italic 18px Arial";
+        ctx.fillText(datos[idx + 1].text || "", canvas.width / 2, canvas.height - 25);
+      }
+    }
+
+     // 5. VOZ DEL USUARIO (Rastro y Punto)
+  if (currentFreq > 0) {
+    const userMidi = Math.round(12 * Math.log2(currentFreq / 440) + 69);
+    const userY = midiToY(userMidi);
+    
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
+    ctx.lineWidth = 4;
+    let started = false;
+    pitchHistory.forEach((f, i) => {
+      if (f) {
+        const x = lineX - (pitchHistory.length - i) * 3;
+        const yPos = midiToY(Math.round(12 * Math.log2(f / 440) + 69));
+        if (x < 0) return;
+        if (!started) { ctx.moveTo(x, yPos); started = true; } else { ctx.lineTo(x, yPos); }
+      }
+    });
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.fillStyle = "#facc15";
+    ctx.arc(lineX, userY, 9, 0, Math.PI * 2); 
+    ctx.fill();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+    /*
     // Draw pitch trace for Mic 1 (yellow) — always drawn regardless of segments
     this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 0.95)", 4);
 
@@ -237,6 +284,7 @@ export class KaraokeCanvasRenderer {
 
   handleResize() { this.noteYCache.clear(); }
 } // <-- AQUÍ CIERRA DEFINITIVAMENTE LA CLASE KaraokeCanvasRenderer
+*/
 
 export async function startKaraokeRecording() {
         console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
