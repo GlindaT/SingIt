@@ -16,9 +16,11 @@ window.pitchHistoryMic2 = [];
  * UTILERÍA LOCAL: Convierte una frecuencia analítica (Hz) a una etiqueta de nota musical (ej. C4, A5)
  */
 export function getNoteFromFrequency(frequency) {
+  if (typeof frequency !== 'number' || !isFinite(frequency) || frequency <= 0) return "--";
   const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const midi = Math.round(12 * Math.log2(frequency / 440) + 69);
-  const noteIndex = (midi % 12 + 12) % 12;
+  if (!isFinite(midi)) return "--";
+  const noteIndex = ((midi % 12) + 12) % 12;
   const octave = Math.floor(midi / 12) - 1;
   return noteNames[noteIndex] + octave;
 }
@@ -156,7 +158,8 @@ async function ejecutarCicloDeteccion() {
     const targetNote = targetNoteEl ? targetNoteEl.value : "E2";
 
     if (display && guide) {
-      if (pitch !== -1) {
+      // Validación robusta: rechaza -1, 0, NaN, Infinity y números negativos
+      if (typeof pitch === 'number' && isFinite(pitch) && pitch > 0) {
         const noteFull = getNoteFromFrequency(pitch);
         const targetFreq = getNoteFrequency(targetNote);
         const cents = 1200 * Math.log2(pitch / targetFreq);
