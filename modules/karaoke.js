@@ -289,7 +289,7 @@ export class KaraokeCanvasRenderer {
 */
 
 export async function startKaraokeRecording() {
-  //console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
+  console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
   const statusEl = document.getElementById("karaokeStatus"), track = document.getElementById("karaokeTrack");
   try {
     const mic1Id = localStorage.getItem("singIt_mic1"), mic2Id = localStorage.getItem("singIt_mic2"), esDuo = localStorage.getItem("singIt_micCount") === "2";
