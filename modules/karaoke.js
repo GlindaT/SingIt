@@ -202,67 +202,36 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
 
-    // 4. TELEPROMPTER DOBLE LÍNEA (Abajo)
-    const idx = words.findIndex(s => currentTime >= (s.start || 0) && currentTime <= (s.end || (s.start + 1)));
-    if (idx !== -1) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-      ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
-      
-      ctx.textAlign = "center";
-      ctx.fillStyle = "white";
-      ctx.font = "bold 24px Arial";
-      ctx.fillText(datos[idx].text || "", canvas.width / 2, canvas.height - 65);
-      
-      if (datos[idx + 1]) {
-        ctx.fillStyle = "#94a3b8";
-        ctx.font = "italic 18px Arial";
-        ctx.fillText(datos[idx + 1].text || "", canvas.width / 2, canvas.height - 25);
-      }
-    }
-    
-    // 5. VOZ DEL USUARIO (Rastro y Punto)
-    if (currentFreq > 0) {
-      const userMidi = Math.round(12 * Math.log2(currentFreq / 440) + 69);
-      const userY = midiToY(userMidi);
-      
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
-      ctx.lineWidth = 4;
-      let started = false;
-      pitchHistory.forEach((f, i) => {
-        if (f) {
-          const x = lineX - (pitchHistory.length - i) * 3;
-          const yPos = midiToY(Math.round(12 * Math.log2(f / 440) + 69));
-    
-          if (x < 0) return;
-          if (!started) { ctx.moveTo(x, yPos); started = true; } else { ctx.lineTo(x, yPos); }
-        }
-      });
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.fillStyle = "#facc15";
-      ctx.arc(lineX, userY, 9, 0, Math.PI * 2); 
-      ctx.fill();
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-  }
-
-    /*
-    // Draw pitch trace for Mic 1 (yellow) — always drawn regardless of segments
+    // 4. RASTROS DE PITCH DE MIC 1 Y MIC 2 (Trayectorias del usuario)
     this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 0.95)", 4);
-
-    // Draw pitch trace for Mic 2 (cyan) — always drawn regardless of segments
     this._drawPitchTrace(window.pitchHistoryMic2, "rgba(6, 182, 212, 0.95)", 4);
 
-  } // <-- AQUÍ CIERRA EL MÉTODO RENDER()
+    // 5. PUNTO BRILLANTE EN LA POSICIÓN ACTUAL DEL USUARIO (Mic 1)
+    if (freqMic1 > 0) {
+      const userY = this.midiToY(this.frequencyToMidi(freqMic1));
+      this.ctx.beginPath();
+      this.ctx.fillStyle = "#facc15";
+      this.ctx.arc(this.lineX, userY, 9, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.strokeStyle = "white";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+    }
+    if (freqMic2 > 0) {
+      const userY = this.midiToY(this.frequencyToMidi(freqMic2));
+      this.ctx.beginPath();
+      this.ctx.fillStyle = "#06b6d4";
+      this.ctx.arc(this.lineX, userY, 9, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.strokeStyle = "white";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+    }
+  } // <-- CIERRA EL MÉTODO render()
 
   _drawPitchTrace(history, color, lineWidth) {
     if (!history || history.length === 0) return;
     const totalSlots = history.length;
-    // Spread trace across the left portion of the canvas (from edge to playhead)
     const traceWidth = this.lineX - 40;
     const slotWidth = traceWidth / totalSlots;
 
@@ -273,11 +242,9 @@ export class KaraokeCanvasRenderer {
     history.forEach((freq, i) => {
       if (freq && freq > 0) {
         const y = this.midiToY(this.frequencyToMidi(freq));
-        // i=0 is oldest (leftmost), i=totalSlots-1 is newest (at playhead)
         const x = 40 + i * slotWidth;
         if (!started) { this.ctx.moveTo(x, y); started = true; } else { this.ctx.lineTo(x, y); }
       } else {
-        // Gap in signal — start a new sub-path next time
         if (started) { this.ctx.stroke(); this.ctx.beginPath(); started = false; }
       }
     });
@@ -285,8 +252,7 @@ export class KaraokeCanvasRenderer {
   }
 
   handleResize() { this.noteYCache.clear(); }
-} // <-- AQUÍ CIERRA DEFINITIVAMENTE LA CLASE KaraokeCanvasRenderer
-*/
+} // <-- CIERRA LA CLASE KaraokeCanvasRenderer
 
 export async function startKaraokeRecording() {
   console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
@@ -341,7 +307,7 @@ export async function startKaraokeRecording() {
       if (voPlayer) voPlayer.src = URL.createObjectURL(karaokeRecordedAudioBlob);
     };
     karaokeMediaRecorder.start();
-    if (track?.src) { track.currentTime = 0; /*track.play().catch(() => {});*/ }
+    if (track?.src) { track.currentTime = 0; try { await track.play(); } catch (playErr) { console.warn("⚠️ track.play() bloqueado por el navegador:", playErr); } }
     
     window.isPitchDetectionRunning = true; 
     await startKaraokePitchDetection();
@@ -563,7 +529,7 @@ export async function loadMyKaraokeSongs() {
         window.transcriptionSegments = item.transcription || [];
         cargarLetrasEnMonitor();
         const track = document.getElementById("karaokeTrack");
-        if (track && item.audioBlob) { track.src = URL.createObjectURL(item.audioBlob); track.dataset.name = item.name; /*track.play().catch(() => {});*/ }
+        if (track && item.audioBlob) { track.src = URL.createObjectURL(item.audioBlob); track.dataset.name = item.name; }
         document.getElementById("karaokeStatus").textContent = `Estado: Karaoke seleccionado -> ${item.name}`;
       }
     });
