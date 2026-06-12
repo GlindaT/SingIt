@@ -342,7 +342,7 @@ export async function startKaraokeRecording() {
             if (voPlayer) voPlayer.src = URL.createObjectURL(karaokeRecordedAudioBlob);
           };
           karaokeMediaRecorder.start();
-          if (track?.src) { track.currentTime = 0; track.play().catch(() => {}); }
+          if (track?.src) { track.currentTime = 0; /*track.play().catch(() => {});*/ }
     
           window.isPitchDetectionRunning = true; 
           await startKaraokePitchDetection();
