@@ -309,9 +309,27 @@ export async function startKaraokeRecording() {
     karaokeRecordedAudioBlob = null;
     window.pitchHistoryMic1 = [];
     window.pitchHistoryMic2 = [];
-    
+
     window.karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-    window.karaokeMicStream1 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+
+    // Helper: abre el mic con el deviceId guardado; si falla por OverconstrainedError
+    // (deviceId huérfano), reintenta con el mic por defecto del sistema.
+    const abrirMic = async (deviceId, etiqueta) => {
+      const baseConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          audio: deviceId ? { deviceId: { exact: deviceId }, ...baseConstraints } : baseConstraints
+        });
+      } catch (err) {
+        if (err && (err.name === "OverconstrainedError" || err.name === "NotFoundError")) {
+          console.warn(`⚠️ [karaoke.js] ${etiqueta}: deviceId guardado no disponible. Usando mic por defecto.`);
+          return await navigator.mediaDevices.getUserMedia({ audio: baseConstraints });
+        }
+        throw err;
+      }
+    };
+
+    window.karaokeMicStream1 = await abrirMic(mic1Id, "Mic 1");
     const source1 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream1);
     window.karaokeDuoAnalyser1 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser1.fftSize = 2048;
 
@@ -327,7 +345,7 @@ export async function startKaraokeRecording() {
     const destGrabacion = window.karaokeDuoAudioContext.createMediaStreamDestination();
     finalNode.connect(destGrabacion);
     if (esDuo && mic2Id) {
-      window.karaokeMicStream2 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: mic2Id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      window.karaokeMicStream2 = await abrirMic(mic2Id, "Mic 2");
       const source2 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream2);
       window.karaokeDuoAnalyser2 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser2.fftSize = 2048;
       
