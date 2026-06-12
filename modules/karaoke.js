@@ -219,33 +219,35 @@ export class KaraokeCanvasRenderer {
         ctx.fillText(datos[idx + 1].text || "", canvas.width / 2, canvas.height - 25);
       }
     }
-
-     // 5. VOZ DEL USUARIO (Rastro y Punto)
-  if (currentFreq > 0) {
-    const userMidi = Math.round(12 * Math.log2(currentFreq / 440) + 69);
-    const userY = midiToY(userMidi);
     
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
-    ctx.lineWidth = 4;
-    let started = false;
-    pitchHistory.forEach((f, i) => {
-      if (f) {
-        const x = lineX - (pitchHistory.length - i) * 3;
-        const yPos = midiToY(Math.round(12 * Math.log2(f / 440) + 69));
-        if (x < 0) return;
-        if (!started) { ctx.moveTo(x, yPos); started = true; } else { ctx.lineTo(x, yPos); }
-      }
-    });
-    ctx.stroke();
+    // 5. VOZ DEL USUARIO (Rastro y Punto)
+    if (currentFreq > 0) {
+      const userMidi = Math.round(12 * Math.log2(currentFreq / 440) + 69);
+      const userY = midiToY(userMidi);
+      
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(250, 204, 21, 0.5)";
+      ctx.lineWidth = 4;
+      let started = false;
+      pitchHistory.forEach((f, i) => {
+        if (f) {
+          const x = lineX - (pitchHistory.length - i) * 3;
+          const yPos = midiToY(Math.round(12 * Math.log2(f / 440) + 69));
+    
+          if (x < 0) return;
+          if (!started) { ctx.moveTo(x, yPos); started = true; } else { ctx.lineTo(x, yPos); }
+        }
+      });
+      ctx.stroke();
 
-    ctx.beginPath();
-    ctx.fillStyle = "#facc15";
-    ctx.arc(lineX, userY, 9, 0, Math.PI * 2); 
-    ctx.fill();
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.fillStyle = "#facc15";
+      ctx.arc(lineX, userY, 9, 0, Math.PI * 2); 
+      ctx.fill();
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
   }
 
     /*
