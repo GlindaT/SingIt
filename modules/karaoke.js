@@ -206,30 +206,54 @@ export class KaraokeCanvasRenderer {
       this.ctx.fillText("Sincroniza una canción en 'Estudio' para ver las notas en el pentagrama", this.canvas.width / 2, this.canvas.height / 2);
     }
 
-    // 4. RASTROS DE PITCH DE MIC 1 Y MIC 2 (Trayectorias del usuario)
-    this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 0.95)", 4);
-    this._drawPitchTrace(window.pitchHistoryMic2, "rgba(6, 182, 212, 0.95)", 4);
+    // 4. RASTROS DE PITCH DE MIC 1 Y MIC 2 (Trayectorias del usuario) - GRUESO Y BRILLANTE
+    this._drawPitchTrace(window.pitchHistoryMic1, "rgba(250, 204, 21, 1)", 6);
+    this._drawPitchTrace(window.pitchHistoryMic2, "rgba(6, 182, 212, 1)", 6);
 
-    // 5. PUNTO BRILLANTE EN LA POSICIÓN ACTUAL DEL USUARIO (Mic 1)
-    if (freqMic1 > 0) {
+    // 5. PUNTO BRILLANTE EN LA POSICIÓN ACTUAL DEL USUARIO (Mic 1 amarillo / Mic 2 cyan)
+    if (typeof freqMic1 === 'number' && isFinite(freqMic1) && freqMic1 > 0) {
       const userY = this.midiToY(this.frequencyToMidi(freqMic1));
       this.ctx.beginPath();
       this.ctx.fillStyle = "#facc15";
-      this.ctx.arc(this.lineX, userY, 9, 0, Math.PI * 2);
+      this.ctx.shadowColor = "#facc15"; this.ctx.shadowBlur = 25;
+      this.ctx.arc(this.lineX, userY, 14, 0, Math.PI * 2);
       this.ctx.fill();
-      this.ctx.strokeStyle = "white";
-      this.ctx.lineWidth = 2;
+      this.ctx.shadowBlur = 0;
+      this.ctx.strokeStyle = "white"; this.ctx.lineWidth = 3;
       this.ctx.stroke();
     }
-    if (freqMic2 > 0) {
+    if (typeof freqMic2 === 'number' && isFinite(freqMic2) && freqMic2 > 0) {
       const userY = this.midiToY(this.frequencyToMidi(freqMic2));
       this.ctx.beginPath();
       this.ctx.fillStyle = "#06b6d4";
-      this.ctx.arc(this.lineX, userY, 9, 0, Math.PI * 2);
+      this.ctx.shadowColor = "#06b6d4"; this.ctx.shadowBlur = 25;
+      this.ctx.arc(this.lineX, userY, 14, 0, Math.PI * 2);
       this.ctx.fill();
-      this.ctx.strokeStyle = "white";
-      this.ctx.lineWidth = 2;
+      this.ctx.shadowBlur = 0;
+      this.ctx.strokeStyle = "white"; this.ctx.lineWidth = 3;
       this.ctx.stroke();
+    }
+
+    // 6. TELEPROMPTER DOBLE LÍNEA (línea actual + siguiente, abajo del pentagrama)
+    const datos = Array.isArray(segmentosLetras) ? segmentosLetras : [];
+    if (datos.length > 0) {
+      const idx = datos.findIndex(s => currentTime >= (s.start || 0) && currentTime <= ((s.end || (s.start + 1)) + 0.3));
+      if (idx !== -1) {
+        this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        this.ctx.fillRect(0, this.canvas.height - 100, this.canvas.width, 100);
+
+        this.ctx.textAlign = "center";
+        this.ctx.textBaseline = "alphabetic";
+        this.ctx.fillStyle = "white";
+        this.ctx.font = "bold 30px Arial";
+        this.ctx.fillText(datos[idx].text || "", this.canvas.width / 2, this.canvas.height - 60);
+
+        if (datos[idx + 1]) {
+          this.ctx.fillStyle = "#94a3b8";
+          this.ctx.font = "italic 22px Arial";
+          this.ctx.fillText(datos[idx + 1].text || "", this.canvas.width / 2, this.canvas.height - 22);
+        }
+      }
     }
   } // <-- CIERRA EL MÉTODO render()
 
