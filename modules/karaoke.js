@@ -412,7 +412,7 @@ export async function startKaraokePitchDetection() {
       window.karaokeDuoAnalyser1.getFloatTimeDomainData(staticBufferMic1);
       let sum = 0;
       for (let i = 0; i < bufferSize; i++) sum += staticBufferMic1[i] * staticBufferMic1[i];
-      promesas.push(Math.sqrt(sum / bufferSize) > 0.0015
+      promesas.push(Math.sqrt(sum / bufferSize) > 0.015
         ? audioCtrl.detectPitch(staticBufferMic1, sampleRateSistema)
         : Promise.resolve(-1));
     } else {
@@ -423,7 +423,7 @@ export async function startKaraokePitchDetection() {
       window.karaokeDuoAnalyser2.getFloatTimeDomainData(staticBufferMic2);
       let sum = 0;
       for (let i = 0; i < bufferSize; i++) sum += staticBufferMic2[i] * staticBufferMic2[i];
-      promesas.push(Math.sqrt(sum / bufferSize) > 0.0015
+      promesas.push(Math.sqrt(sum / bufferSize) > 0.015
         ? audioCtrl.detectPitch(staticBufferMic2, sampleRateSistema)
         : Promise.resolve(-1));
     } else {
