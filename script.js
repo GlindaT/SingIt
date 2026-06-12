@@ -2,7 +2,7 @@
 // SINGIT CORE - CENTRAL DIRECTOR (script.js - CERTIFICADO SIN ERRORES)
 // ====================================================================
 
-//console.log("🎬 [script.js] Cargando Cerebro Central (script.js)...");
+console.log("🎬 [script.js] Cargando Cerebro Central (script.js)...");
 
 // --- 1. UTILIDADES GLOBALES COMPARTIDAS ---
 export function $(id) {
