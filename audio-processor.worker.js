@@ -59,7 +59,8 @@ class AudioProcessor {
     const rms = Math.sqrt(sum / len);
 
     // Umbral de silencio tolerante optimizado para micrófonos ambientales y de audífonos
-    if (rms < 0.008) return -1;
+    // (bajado a 0.0015 para detectar voces suaves y micrófonos de portátil)
+    if (rms < 0.0015) return -1;
 
     // 2. RECORTAR RUIDO PERIFÉRICO (Center Clipping al 30% para limpiar la señal armónica)
     const clippedBuffer = new Float32Array(len);
@@ -118,10 +119,12 @@ class AudioProcessor {
       }
     }
 
+    // Defensa anti-NaN: si la interpolación produjo un offset inválido, usar el original
+    if (!isFinite(finalOffset) || finalOffset <= 0) finalOffset = bestOffset;
     const frequency = sampleRate / finalOffset;
 
-    // Filtro protector final de rangos de canto humanos
-    if (frequency < 55 || frequency > 1100) return -1;
+    // Filtro protector final de rangos de canto humanos (también descarta NaN/Infinity)
+    if (!isFinite(frequency) || frequency < 55 || frequency > 1100) return -1;
 
     return frequency;
   }
