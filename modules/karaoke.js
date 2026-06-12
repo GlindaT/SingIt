@@ -516,8 +516,8 @@ export async function loadMyKaraokeSongs() {
         window.transcriptionSegments = item.transcription || [];
         cargarLetrasEnMonitor();
         const track = document.getElementById("karaokeTrack");
-        if (track && item.audioBlob) { track.src = URL.createObjectURL(item.audioBlob); track.dataset.name = item.name; track.play().catch(() => {}); }
-        document.getElementById("karaokeStatus").textContent = `Estado: Cantando -> ${item.name}`;
+        if (track && item.audioBlob) { track.src = URL.createObjectURL(item.audioBlob); track.dataset.name = item.name; /*track.play().catch(() => {});*/ }
+        document.getElementById("karaokeStatus").textContent = `Estado: Karaoke seleccionado -> ${item.name}`;
       }
     });
   });
