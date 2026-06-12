@@ -10,10 +10,10 @@
   --text-muted: #94a3b8;
 
   --accent: #22c55e;
-  --accent-hover: #16a34a;
+  --accent-hover: #0d7835;
 
   --danger: #ef4444;
-  --border: #334155;
+  --border: #6b7585;
 }
 
 /* ==========================================
@@ -34,12 +34,8 @@ body {
    3. ESTRUCTURA Y COMPONENTES DEL TEMPLATE
 ========================================== */
 .app {
-  display: flex !important;
-  flex-direction: row !important; /* Fuerza de forma estricta el orden de izquierda a derecha */
-  width: 100vw;
-  height: 100vh;
+  display: flex;
   min-height: 100vh;
-  overflow: hidden !important; /* Evita que la pantalla completa se estire hacia abajo */
 }
 
 .sidebar {
@@ -49,28 +45,26 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  flex-shrink: 0; /* Impide que el menú se aplaste */
 }
 
 .sidebar h2 {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .sidebar button {
-  background: none !important;
-  border: none;
+  background: none;
+  border: 1px solid var(--border);
   color: var(--text-muted);
   padding: 12px;
   text-align: left;
   cursor: pointer;
   border-radius: 8px;
   transition: 0.2s;
-  width: 100%;
 }
 
 .sidebar button:hover,
 .sidebar button.active {
-  background: var(--border) !important;
+  background: var(--border);
   color: var(--text-main);
 }
 
@@ -78,8 +72,6 @@ body {
   flex: 1;
   padding: clamp(16px, 4vw, 40px);
   overflow-y: auto !important; /* ACTIVA EL SCROLL AQUÍ: Permite bajar a ver las tarjetas si no caben */
-  height: 100vh;
-  background: var(--bg-main);
 }
 
 .tab {
@@ -112,7 +104,8 @@ button {
 }
 
 button:hover {
-  background: var(--accent-hover);
+   background: var(--accent-hover);
+   color: var(--text-main);
 }
 
 .btn-danger {
@@ -154,8 +147,9 @@ textarea {
 }
 
 audio {
-  width: 100%;
-  margin-top: 10px;
+   width: 100%;
+   height: 30px;
+   margin-top: 10px;
 }
 
 /* ==========================================
@@ -197,8 +191,9 @@ audio {
 }
 
 .success {
-  color: #22c55e !important;
-  transform: scale(1.2);
+   color: #22c55e !important; /* Verde */
+   transform: scale(1.2);
+   transition: 0.2s;
 }
 
 /* ==========================================
@@ -208,13 +203,25 @@ audio {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
 #studioStatus, #selectedVoiceStatus {
   margin-top: 15px;
   color: var(--text-muted);
   font-weight: bold;
+}
+
+textarea {
+  width: 100%;
+  background: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  resize: vertical;
+  margin-top: 8px;
+  font-family: Arial, sans-serif;
 }
 
 .mic-level-bar {
