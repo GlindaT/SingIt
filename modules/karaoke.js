@@ -289,71 +289,68 @@ export class KaraokeCanvasRenderer {
 */
 
 export async function startKaraokeRecording() {
-        console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
-        const statusEl = document.getElementById("karaokeStatus"), track = document.getElementById("karaokeTrack");
-        try {
-          const mic1Id = localStorage.getItem("singIt_mic1"), mic2Id = localStorage.getItem("singIt_mic2"), esDuo = localStorage.getItem("singIt_micCount") === "2";
-          if (statusEl) statusEl.textContent = "Estado: Abriendo canales de hardware de audio... ⏳";
-
-          karaokeChunks = [];
-          karaokeRecordedAudioBlob = null;
-          window.pitchHistoryMic1 = [];
-          window.pitchHistoryMic2 = [];
-
-          window.karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-          window.karaokeMicStream1 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-          const source1 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream1);
-          window.karaokeDuoAnalyser1 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser1.fftSize = 2048;
-
-          const estudioModulo = await import('./estudio.js');
-          let finalNode;
-          if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
-
-            finalNode = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source1);
-            finalNode.connect(window.karaokeDuoAnalyser1);
-          } else { 
-            source1.connect(window.karaokeDuoAnalyser1); 
-            finalNode = source1;
-          }
-
-          const destGrabacion = window.karaokeDuoAudioContext.createMediaStreamDestination();
-          finalNode.connect(destGrabacion);
-
-          if (esDuo && mic2Id) {
-            window.karaokeMicStream2 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: mic2Id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-            const source2 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream2);
-            window.karaokeDuoAnalyser2 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser2.fftSize = 2048;
-      
-            if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
-              const mic2Proc = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source2);
-              mic2Proc.connect(window.karaokeDuoAnalyser2);
-              mic2Proc.connect(destGrabacion);
-            } else { 
-              source2.connect(window.karaokeDuoAnalyser2); 
-              source2.connect(destGrabacion);
-            }
-            if (document.getElementById("karaokeDuoIndicator")) document.getElementById("karaokeDuoIndicator").style.display = "block";
-          }
-
-          const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
-          karaokeMediaRecorder = new MediaRecorder(destGrabacion.stream, options);
-          karaokeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) karaokeChunks.push(e.data); };
-          karaokeMediaRecorder.onstop = () => {
-            karaokeRecordedAudioBlob = new Blob(karaokeChunks, { type: "audio/webm" });
-            const voPlayer = document.getElementById("karaokeVoicePlayer");
-            if (voPlayer) voPlayer.src = URL.createObjectURL(karaokeRecordedAudioBlob);
-          };
-          karaokeMediaRecorder.start();
-          if (track?.src) { track.currentTime = 0; /*track.play().catch(() => {});*/ }
+  console.log("🎙️ [karaoke.js] Iniciando sesión de grabación con hardware activo...");
+  const statusEl = document.getElementById("karaokeStatus"), track = document.getElementById("karaokeTrack");
+  try {
+    const mic1Id = localStorage.getItem("singIt_mic1"), mic2Id = localStorage.getItem("singIt_mic2"), esDuo = localStorage.getItem("singIt_micCount") === "2";
+    if (statusEl) statusEl.textContent = "Estado: Abriendo canales de hardware de audio... ⏳";
     
-          window.isPitchDetectionRunning = true; 
-          await startKaraokePitchDetection();
-          if (statusEl) statusEl.textContent = "Estado: 🔴 Grabando y Analizando Voz en Tiempo Real...";
-        } catch (error) {
-          console.error("❌ Error abriendo hardware:", error);
-          if (statusEl) statusEl.textContent = "Estado: ❌ Error de hardware";
-        }
+    karaokeChunks = [];
+    karaokeRecordedAudioBlob = null;
+    window.pitchHistoryMic1 = [];
+    window.pitchHistoryMic2 = [];
+    
+    window.karaokeDuoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    window.karaokeMicStream1 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: mic1Id ? { exact: mic1Id } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    const source1 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream1);
+    window.karaokeDuoAnalyser1 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser1.fftSize = 2048;
+
+    const estudioModulo = await import('./estudio.js');
+    let finalNode;
+    if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
+      finalNode = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source1);
+      finalNode.connect(window.karaokeDuoAnalyser1);
+    } else { 
+      source1.connect(window.karaokeDuoAnalyser1); 
+      finalNode = source1;
+    }
+    const destGrabacion = window.karaokeDuoAudioContext.createMediaStreamDestination();
+    finalNode.connect(destGrabacion);
+    if (esDuo && mic2Id) {
+      window.karaokeMicStream2 = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: mic2Id }, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const source2 = window.karaokeDuoAudioContext.createMediaStreamSource(window.karaokeMicStream2);
+      window.karaokeDuoAnalyser2 = window.karaokeDuoAudioContext.createAnalyser(); window.karaokeDuoAnalyser2.fftSize = 2048;
+      
+      if (typeof estudioModulo.aplicarCadenaDeAudioKaraoke === "function") {
+        const mic2Proc = estudioModulo.aplicarCadenaDeAudioKaraoke(window.karaokeDuoAudioContext, source2);
+        mic2Proc.connect(window.karaokeDuoAnalyser2);
+        mic2Proc.connect(destGrabacion);
+      } else { 
+        source2.connect(window.karaokeDuoAnalyser2); 
+        source2.connect(destGrabacion);
       }
+      if (document.getElementById("karaokeDuoIndicator")) document.getElementById("karaokeDuoIndicator").style.display = "block";
+    }
+    
+    const options = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? { mimeType: "audio/webm;codecs=opus" } : {};
+    karaokeMediaRecorder = new MediaRecorder(destGrabacion.stream, options);
+    karaokeMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) karaokeChunks.push(e.data); };
+    karaokeMediaRecorder.onstop = () => {
+      karaokeRecordedAudioBlob = new Blob(karaokeChunks, { type: "audio/webm" });
+      const voPlayer = document.getElementById("karaokeVoicePlayer");
+      if (voPlayer) voPlayer.src = URL.createObjectURL(karaokeRecordedAudioBlob);
+    };
+    karaokeMediaRecorder.start();
+    if (track?.src) { track.currentTime = 0; /*track.play().catch(() => {});*/ }
+    
+    window.isPitchDetectionRunning = true; 
+    await startKaraokePitchDetection();
+    if (statusEl) statusEl.textContent = "Estado: 🔴 Grabando y Analizando Voz en Tiempo Real...";
+  } catch (error) {
+    console.error("❌ Error abriendo hardware:", error);
+    if (statusEl) statusEl.textContent = "Estado: ❌ Error de hardware";
+  }
+}
 
 export function stopKaraokeRecording() {
   window.isPitchDetectionRunning = false;
