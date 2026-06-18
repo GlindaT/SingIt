@@ -237,7 +237,7 @@ export class KaraokeCanvasRenderer {
     // 6. TELEPROMPTER DOBLE LÍNEA (línea actual + siguiente, abajo del pentagrama)
     const datos = Array.isArray(segmentosLetras) ? segmentosLetras : [];
     if (datos.length > 0) {
-      const idx = datos.findIndex(s => currentTime >= (s.start || 0) && currentTime <= ((s.end || (s.start + 1)) + 0.3));
+      const idx = datos.findIndex(s => currentTime >= (s.start || 0) && currentTime <= (s.end || (s.start + 1)));
       if (idx !== -1) {
         this.ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
         this.ctx.fillRect(0, this.canvas.height - 100, this.canvas.width, 100);
@@ -246,12 +246,12 @@ export class KaraokeCanvasRenderer {
         this.ctx.textBaseline = "alphabetic";
         this.ctx.fillStyle = "white";
         this.ctx.font = "bold 30px Arial";
-        this.ctx.fillText(datos[idx].text || "", this.canvas.width / 2, this.canvas.height - 60);
+        this.ctx.fillText(datos[idx].text || "", this.canvas.width / 2, this.canvas.height - 65);
 
         if (datos[idx + 1]) {
           this.ctx.fillStyle = "#94a3b8";
           this.ctx.font = "italic 22px Arial";
-          this.ctx.fillText(datos[idx + 1].text || "", this.canvas.width / 2, this.canvas.height - 22);
+          this.ctx.fillText(datos[idx + 1].text || "", this.canvas.width / 2, this.canvas.height - 25);
         }
       }
     }
