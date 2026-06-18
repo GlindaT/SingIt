@@ -92,7 +92,7 @@ export function updateLibraryItem(id, changes) {
       const putReq = store.put(updatedItem);
 
       putReq.onsuccess = () => resolve();
-      putReq.onerror = () => reject("Error al actualizar la BD");
+      putReq.onerror = () => reject("Error al guardar cambios");
     };
 
     getReq.onerror = () => reject("Error al buscar en BD");
