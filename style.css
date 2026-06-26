@@ -490,3 +490,75 @@ html[data-theme="naturaleza"] .sidebar button.active { background: #22c55e !impo
   .content { height: auto; padding: 20px 15px; overflow-y: visible; }
   #noteDisplay { font-size: 80px; }
 }
+
+#estudio,
+#karaoke {
+  font-size: 70%;
+}
+
+#estudio h1, #karaoke h1 { font-size: 1.6rem !important; margin: 10px 0 !important; }
+#estudio h2, #karaoke h2 { font-size: 1.25rem !important; }
+#estudio h3, #karaoke h3 { font-size: 1.05rem !important; margin: 6px 0 !important; }
+#estudio h4, #karaoke h4 { font-size: 0.95rem !important; margin: 6px 0 !important; }
+
+#estudio p, #karaoke p {
+  font-size: 0.92em !important;
+  line-height: 1.35 !important;
+  margin: 6px 0 !important;
+}
+
+#estudio button, #karaoke button {
+  padding: 7px 10px !important;
+  font-size: 0.9em !important;
+}
+
+#estudio input, #estudio select, #estudio textarea,
+#karaoke input, #karaoke select, #karaoke textarea {
+  font-size: 0.9em !important;
+  padding: 6px 8px !important;
+}
+
+#estudio textarea {
+  min-height: 80px !important;
+}
+
+#estudio .card, #karaoke .card {
+  padding: 14px !important;
+  margin-bottom: 14px !important;
+}
+
+#estudio audio, #karaoke audio {
+  height: 32px !important;
+  transform: scale(0.85);
+  transform-origin: left center;
+}
+
+#estudio label, #karaoke label {
+  font-size: 0.9em !important;
+}
+
+#estudio small, #karaoke small {
+  font-size: 0.8em !important;
+}
+
+#estudio .studio-controls, #karaoke .studio-controls {
+  gap: 8px !important;
+}
+
+/* TAP grande del Estudio: reducirlo también */
+#estudio #tapBeatBtn {
+  padding: 18px !important;
+  font-size: 16px !important;
+}
+
+/* Excepción en Karaoke: el monitor (canvas) mantiene su tamaño y tipografía */
+#karaoke .monitor-karaoke {
+  font-size: 1rem !important;
+  padding: 0 !important;
+  margin-bottom: 14px !important;
+}
+#karaoke .monitor-karaoke #karaokeCanvas {
+  width: 100% !important;
+  min-height: 500px !important;
+  display: block !important;
+}"
