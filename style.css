@@ -491,6 +491,9 @@ html[data-theme="naturaleza"] .sidebar button.active { background: #22c55e !impo
   #noteDisplay { font-size: 80px; }
 }
 
+Now also reduce the new "Cambiar tono" tab elements following the same 30% pattern. Let me update CSS to also include `#cambiarTono`:
+Action: file_editor str_replace /app/frontend/public/style.css --old-str "
+
 #estudio,
 #karaoke {
   font-size: 70%;
