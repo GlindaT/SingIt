@@ -491,32 +491,31 @@ html[data-theme="naturaleza"] .sidebar button.active { background: #22c55e !impo
   #noteDisplay { font-size: 80px; }
 }
 
-Now also reduce the new "Cambiar tono" tab elements following the same 30% pattern. Let me update CSS to also include `#cambiarTono`:
-Action: file_editor str_replace /app/frontend/public/style.css --old-str "
-
 #estudio,
-#karaoke {
+#karaoke,
+#cambiarTono {
   font-size: 70%;
 }
 
-#estudio h1, #karaoke h1 { font-size: 1.6rem !important; margin: 10px 0 !important; }
-#estudio h2, #karaoke h2 { font-size: 1.25rem !important; }
-#estudio h3, #karaoke h3 { font-size: 1.05rem !important; margin: 6px 0 !important; }
-#estudio h4, #karaoke h4 { font-size: 0.95rem !important; margin: 6px 0 !important; }
+#estudio h1, #karaoke h1, #cambiarTono h1 { font-size: 1.6rem !important; margin: 10px 0 !important; }
+#estudio h2, #karaoke h2, #cambiarTono h2 { font-size: 1.25rem !important; }
+#estudio h3, #karaoke h3, #cambiarTono h3 { font-size: 1.05rem !important; margin: 6px 0 !important; }
+#estudio h4, #karaoke h4, #cambiarTono h4 { font-size: 0.95rem !important; margin: 6px 0 !important; }
 
-#estudio p, #karaoke p {
+#estudio p, #karaoke p, #cambiarTono p {
   font-size: 0.92em !important;
   line-height: 1.35 !important;
   margin: 6px 0 !important;
 }
 
-#estudio button, #karaoke button {
+#estudio button, #karaoke button, #cambiarTono button {
   padding: 7px 10px !important;
   font-size: 0.9em !important;
 }
 
 #estudio input, #estudio select, #estudio textarea,
-#karaoke input, #karaoke select, #karaoke textarea {
+#karaoke input, #karaoke select, #karaoke textarea,
+#cambiarTono input, #cambiarTono select, #cambiarTono textarea {
   font-size: 0.9em !important;
   padding: 6px 8px !important;
 }
@@ -525,26 +524,26 @@ Action: file_editor str_replace /app/frontend/public/style.css --old-str "
   min-height: 80px !important;
 }
 
-#estudio .card, #karaoke .card {
+#estudio .card, #karaoke .card, #cambiarTono .card {
   padding: 14px !important;
   margin-bottom: 14px !important;
 }
 
-#estudio audio, #karaoke audio {
+#estudio audio, #karaoke audio, #cambiarTono audio {
   height: 32px !important;
   transform: scale(0.85);
   transform-origin: left center;
 }
 
-#estudio label, #karaoke label {
+#estudio label, #karaoke label, #cambiarTono label {
   font-size: 0.9em !important;
 }
 
-#estudio small, #karaoke small {
+#estudio small, #karaoke small, #cambiarTono small {
   font-size: 0.8em !important;
 }
 
-#estudio .studio-controls, #karaoke .studio-controls {
+#estudio .studio-controls, #karaoke .studio-controls, #cambiarTono .studio-controls {
   gap: 8px !important;
 }
 
