@@ -170,26 +170,25 @@
             <select id="studioTrackSelect">
               <option value="">Selecciona una pista desde tu Biblioteca</option>
             </select>
-            
             <div class="studio-controls" style="margin-bottom: 15px;">
               <button id="loadStudioTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista Seleccionada</button>
             </div>
-        
+            <p id="selecteTrackStatus">Estado: ninguna pista seleccionada</p>
             <audio id="player" controls></audio>
           </div>
           
           <!-- SUB-MÓDULO B: ARCHIVOS DE VOZ PARA PROCESAR CON IA -->
           <div class="card">
-            <h3>Voz desde Biblioteca</h3>
             
+            <h3>Voz desde Biblioteca</h3>
             <select id="voiceLibrarySelect">
               <option value="">Selecciona una voz guardada</option>
             </select>
             <div class="studio-controls">
               <button id="loadSelectedVoiceBtn" type="button">📥 Cargar Voz Seleccionada</button>
             </div>
-            <audio id="selectedVoicePlayer" controls></audio>
             <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
+            <audio id="selectedVoicePlayer" controls></audio>
           </div>
 
             <!-- Contenedor del monitor de volumen Dúo Multi-Mic -->
