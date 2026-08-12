@@ -156,7 +156,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Módulo Estudio de Grabación y Edición
-    safeAdd("loadTrackOptionsInStudio", "click", async () => { const { loadTrackOptionsInStudio } = await import("./modules/estudio.js"); await loadTrackOptionsInStudio(); });
     safeAdd("loadStudioTrackBtn", "click", async () => { 
       const { loadSelectedTrackFromLibraryStudio } = await import("./modules/estudio.js"); 
       await loadSelectedTrackFromLibraryStudio(); 
