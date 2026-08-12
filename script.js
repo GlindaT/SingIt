@@ -68,9 +68,6 @@ export async function showTab(tabId) {
       const { renderLibrary } = await import("./modules/biblioteca.js");
       await renderLibrary('todos');
     }
-    else if (tabId === "splitter") {
-      console.log("✂️ [Lazy Load] Módulo Splitter IA listo.");
-    }
     else if (tabId === "afinador") {
       console.log("🎵 [Lazy Load] Módulo Afinador Vocal listo.");
     }
@@ -147,7 +144,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Enlace de clics de la barra de navegación lateral principal (Sidebar)
     safeAdd("btnConfig", "click", () => showTab("config"));
-    safeAdd("btnSplitter", "click", () => showTab("splitter"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
@@ -245,14 +241,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log(`✏️ [script.js] Auto-sugerido el nombre del archivo: [${nameInput.value}]`);
       }
     });
-
-    // Eventos Lazy del Módulo: Splitter IA
-    safeAdd("splitBtn", "click", async () => {
-      console.log("✂️ [script.js] Gatillando botón: Separar Audio con IA");
-      const { splitAudio } = await import("./modules/splitter.js");
-      await splitAudio();
-    });
-
+    
     // Eventos de Hardware de Configuración Avanzada de Micrófonos
     safeAdd("refreshMicsBtn", "click", async () => { const { loadAvailableMics } = await import("./modules/config.js"); await loadAvailableMics(); });
     safeAdd("testMic1Btn", "click", async () => { const { testMicrophone } = await import("./modules/config.js"); await testMicrophone(1); });
