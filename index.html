@@ -192,90 +192,67 @@
           </div>
     </section>
         
-        <!-- 4. ESTUDIO -->
+        <!-- ESTUDIO -->
         <section id="estudio" class="tab">
-          <h1>🎧 Estudio de Grabación</h1>
+          <h1>🖋️📁🔧 ESTUDIO: Mezcla y sincroniza archivos para crear un Karaoke</h1>
           
-          <!-- SUB-MÓDULO A: PISTA INSTRUMENTAL DE FONDO -->
           <div class="card">
-            
-            <h3>Pista Musical</h3>
-            <div class="studio-controls">
-              <button id="refreshStudioTrackListBtn" type="button">🔄 Actualizar Lista</button>
-            </div>
+            <h3>PISTA: Elige un archivo que contenga la pista musical</h3>
             <select id="studioTrackSelect">
-              <option value="">Selecciona una pista desde tu Biblioteca</option>
+              <option value="">Selecciona un archivo</option>
             </select>
             
             <div class="studio-controls" style="margin-bottom: 15px;">
-              <button id="loadStudioTrackBtn" type="button" style="background: #3b82f6; color: white;">📥 Cargar Pista Seleccionada</button>
+              <button id="loadStudioTrackBtn" type="button">↪️ Cargar pista seleccionada ↩️</button>
             </div>
-            <p style="color: var(--text-muted); font-size: 14px;">O sube un archivo nuevo desde tu computadora:</p>
-            <input type="file" id="audioFile" accept="audio/*">
-            <audio id="player" controls></audio>
             
-            <div class="studio-controls">
-              <button id="playTrackBtn" type="button">▶️ Reproducir</button>
-              <button id="pauseTrackBtn" type="button">⏸️ Pausar</button>
-              <button id="stopTrackBtn" type="button">⏹️ Detener</button>
-            </div>
+            <audio id="player" controls></audio>
+            <p id="studioStatus" style="color: var(--text-muted); margin-top: 10px; font-weight: bold;"></p>
           </div>
           
-          <!-- SUB-MÓDULO B: ARCHIVOS DE VOZ PARA PROCESAR CON IA -->
           <div class="card">
-            <h3>Voz desde Biblioteca</h3>
-            <div class="studio-controls">
-              <button id="refreshVoiceListBtn" type="button">🔄 Actualizar Lista</button>
-            </div>
+            <h3>VOZ: Elige un archivo que contenga la voz de la canción</h3>
             
             <select id="voiceLibrarySelect">
-              <option value="">Selecciona una voz guardada</option>
+              <option value="">Selecciona un archivo</option>
             </select>
             <div class="studio-controls">
-              <button id="loadSelectedVoiceBtn" type="button">📥 Cargar Voz Seleccionada</button>
-              <button id="transcribeVoiceBtn" type="button">📝 Transcribir con Whisper</button>
+              <button id="loadSelectedVoiceBtn" type="button">👄 Cargar voz seleccionada 👄</button>
+              <!-- <button id="transcribeVoiceBtn" type="button">🤖📝 Transcribir las letras de la canción con IA</button> -->
             </div>
             <audio id="selectedVoicePlayer" controls></audio>
             <p id="selectedVoiceStatus">Estado: ninguna voz seleccionada</p>
           </div>
-          
-          <!-- SUB-MÓDULO C: GRABACIÓN LOCAL DE MICROFONOS -->
+
+          <!--Letra B -->
           <div class="card">
-            <h3>Grabación Directa de Voz</h3>
-            <div class="studio-controls">
-              <button id="startStudioRecBtn" type="button">🎙️ Iniciar Grabación de Voz</button>
-              <button id="stopStudioRecBtn" type="button">🛑 Detener Grabación</button>
-              <button id="redoStudioRecBtn" type="button">🔁 Eliminar y Volver a Grabar</button>
-              <button id="saveStudioRecBtn" type="button">💾 Guardar Grabación en Biblioteca</button>
-            </div>
-            <p id="studioStatus">Estado: sin grabación activa</p>
+            <h3>LETRA: Elige un archivo que contenga la letra de la canción (También la puedes copiar y pegar en el editor)</h3>
             
-            <!-- Contenedor del monitor de volumen Dúo Multi-Mic -->
-            <div id="duoIndicator" style="display: none; margin-top: 15px; padding: 15px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border);">
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: var(--accent);">🎤🎤 Modo Dúo Activo</p>
-              <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 120px;">
-                  <small>Micrófono Principal (Canal 1):</small>
-                  <div class="mic-level-bar"><div id="duoMic1Level" class="mic-level-fill"></div></div>
-                </div>
-                <div style="flex: 1; min-width: 120px;">
-                  <small>Micrófono Secundario (Canal 2):</small>
-                  <div class="mic-level-bar"><div id="duoMic2Level" class="mic-level-fill"></div></div>
-                </div>
-              </div>
+            <select id="textLibrarySelect">
+              <option value="">Selecciona un archivo</option>
+            </select>
+            <div class="studio-controls">
+              <button id="loadSelectedTextBtn" type="button">📝 Cargar letra seleccionada 📝</button>
             </div>
-            <audio id="voicePlayer" controls></audio>
+            <div id="selectedTextContainer" style="margin: 10px 0;"></div>
+            <p id="selectedTextStatus">Estado: ningún texto seleccionado</p>
           </div>
           
-          
-          <!-- SUB-MÓDULO D: EDITOR DE TEXTO Y SINCRONIZADOR RÍTMICO MANUAL -->
           <div class="card">
-            <h3>Líricas y Letra de la Canción</h3>
-            <textarea id="lyricsText" rows="6" placeholder="Aquí aparecerá la transcripción automática de la IA o puedes pegar tu texto a mano..."></textarea>
+            <h3>Letra de la canción: Es editable. Se recomienda ajustar cada línea según la canción</h3>
+            <textarea id="lyricsText" rows="7" placeholder="Aquí vamos a mostrar y editar la letra de la canción..."></textarea>
             <div class="studio-controls">
-              <button id="applyCorrectedLyricsBtn" type="button">✅ Aplicar Letra Corregida</button>
+              <button id="applyCorrectedLyricsBtn" type="button">↪️✒️ Aplicar cambios hechos a la letra ✒️↩️</button>
             </div>
-            
+            <!-- Añadir en la sección de control del Editor / Estudio 
+            <div class="settings-group" style="margin-top: 15px;">
+              <button type="button" id="autoSyncBtn" style="background: #a855f7; color: white;">
+                🔁🎮🎯 Click: Sincronización automática 🎯🎮🔁
+                🤖👾 La IA puede sincronizar automáticamente para crear el karaoke 👾🤖
+                (La IA puede cometer errores)
+              </button>
+            </div>
+            -->
             <!-- PANEL FLOTANTE INTERACTIVO DE TOQUES (TAPS) -->
             <div id="tapSyncSection" style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #1e3a5f, #1e293b); border-radius: 8px; border: 2px solid #3b82f6;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -326,7 +303,7 @@
               </div>
             </div>
             
-            <!-- Monitor Visual Local del Cuadro de Sílabas -->
+            <!-- Monitor Visual Local del Cuadro de Sílabas 
             <div id="karaokeLyrics" class="karaoke-lyrics">
               <p class="karaoke-placeholder">Aquí se mostrará de forma preliminar la letra sincronizada.</p>
             </div>
