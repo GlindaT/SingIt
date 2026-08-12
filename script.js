@@ -46,7 +46,6 @@ export async function showTab(tabId) {
 
   const btnMap = {
     config: "btnConfig",
-    splitter: "btnSplitter",
     biblioteca: "btnBiblioteca",
     estudio: "btnEstudio",
     afinador: "btnAfinador",
@@ -161,45 +160,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Módulo Estudio de Grabación y Edición
-    safeAdd("audioFile", "change", async (e) => { 
-      const { cargarAudioEstudio } = await import("./modules/estudio.js"); 
-      cargarAudioEstudio(e); 
-    });
-    
-    safeAdd("refreshStudioTrackListBtn", "click", async () => { 
-      const { loadTrackOptionsInStudio } = await import("./modules/estudio.js"); 
-      await loadTrackOptionsInStudio(); 
-    });
     
     safeAdd("loadStudioTrackBtn", "click", async () => { 
       const { loadSelectedTrackFromLibraryStudio } = await import("./modules/estudio.js"); 
       await loadSelectedTrackFromLibraryStudio(); 
     });
     
-    safeAdd("playTrackBtn", "click", async () => { const { playTrack } = await import("./modules/estudio.js"); playTrack(); });
-    safeAdd("pauseTrackBtn", "click", async () => { const { pauseTrack } = await import("./modules/estudio.js"); pauseTrack(); });
-    safeAdd("stopTrackBtn", "click", async () => { const { stopTrack } = await import("./modules/estudio.js"); stopTrack(); });
-    
-    safeAdd("startStudioRecBtn", "click", async () => { 
-      const { startStudioRecording } = await import("./modules/estudio.js"); 
-      await startStudioRecording(); 
-    });
-    
-    safeAdd("stopStudioRecBtn", "click", async () => { const { stopStudioRecording } = await import("./modules/estudio.js"); stopStudioRecording(); });
-    safeAdd("redoStudioRecBtn", "click", async () => { const { redoStudioRecording } = await import("./modules/estudio.js"); redoStudioRecording(); });
-    
-    safeAdd("saveStudioRecBtn", "click", async () => { 
-      const { saveStudioRecording } = await import("./modules/estudio.js"); 
-      await saveStudioRecording(); 
-    });
-    
-    safeAdd("refreshVoiceListBtn", "click", async () => { const { loadVoiceOptionsInStudio } = await import("./modules/estudio.js"); await loadVoiceOptionsInStudio(); });
     safeAdd("loadSelectedVoiceBtn", "click", async () => { const { loadSelectedVoiceFromLibrary } = await import("./modules/estudio.js"); await loadSelectedVoiceFromLibrary(); });
-    
-    safeAdd("transcribeVoiceBtn", "click", async () => { 
-      const { transcribeSelectedVoice } = await import("./modules/estudio.js"); 
-      await transcribeSelectedVoice(); 
-    });
     
     safeAdd("applyCorrectedLyricsBtn", "click", async () => { const { applyCorrectedLyrics } = await import("./modules/estudio.js"); await applyCorrectedLyrics(); });
 
