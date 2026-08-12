@@ -46,6 +46,7 @@ export async function showTab(tabId) {
 
   const btnMap = {
     config: "btnConfig",
+    splitter: "btnSplitter",
     biblioteca: "btnBiblioteca",
     estudio: "btnEstudio",
     afinador: "btnAfinador",
@@ -67,6 +68,9 @@ export async function showTab(tabId) {
       console.log("📁 [Lazy Load] Cargando visor de Base de Datos Offline...");
       const { renderLibrary } = await import("./modules/biblioteca.js");
       await renderLibrary('todos');
+    }
+    else if (tabId === "splitter") {
+      console.log("✂️ [Lazy Load] Módulo Splitter IA listo.");
     }
     else if (tabId === "afinador") {
       console.log("🎵 [Lazy Load] Módulo Afinador Vocal listo.");
@@ -144,6 +148,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Enlace de clics de la barra de navegación lateral principal (Sidebar)
     safeAdd("btnConfig", "click", () => showTab("config"));
+    safeAdd("btnSplitter", "click", () => showTab("splitter"));
     safeAdd("btnBiblioteca", "click", () => showTab("biblioteca"));
     safeAdd("btnEstudio", "click", () => showTab("estudio"));
     safeAdd("btnAfinador", "click", () => showTab("afinador"));
@@ -156,12 +161,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Módulo Estudio de Grabación y Edición
+    safeAdd("audioFile", "change", async (e) => { 
+      const { cargarAudioEstudio } = await import("./modules/estudio.js"); 
+      cargarAudioEstudio(e); 
+    });
+    
+    safeAdd("refreshStudioTrackListBtn", "click", async () => { 
+      const { loadTrackOptionsInStudio } = await import("./modules/estudio.js"); 
+      await loadTrackOptionsInStudio(); 
+    });
+    
     safeAdd("loadStudioTrackBtn", "click", async () => { 
       const { loadSelectedTrackFromLibraryStudio } = await import("./modules/estudio.js"); 
       await loadSelectedTrackFromLibraryStudio(); 
     });
     
+    safeAdd("playTrackBtn", "click", async () => { const { playTrack } = await import("./modules/estudio.js"); playTrack(); });
+    safeAdd("pauseTrackBtn", "click", async () => { const { pauseTrack } = await import("./modules/estudio.js"); pauseTrack(); });
+    safeAdd("stopTrackBtn", "click", async () => { const { stopTrack } = await import("./modules/estudio.js"); stopTrack(); });
+    
+    safeAdd("startStudioRecBtn", "click", async () => { 
+      const { startStudioRecording } = await import("./modules/estudio.js"); 
+      await startStudioRecording(); 
+    });
+    
+    safeAdd("stopStudioRecBtn", "click", async () => { const { stopStudioRecording } = await import("./modules/estudio.js"); stopStudioRecording(); });
+    safeAdd("redoStudioRecBtn", "click", async () => { const { redoStudioRecording } = await import("./modules/estudio.js"); redoStudioRecording(); });
+    
+    safeAdd("saveStudioRecBtn", "click", async () => { 
+      const { saveStudioRecording } = await import("./modules/estudio.js"); 
+      await saveStudioRecording(); 
+    });
+    
+    safeAdd("refreshVoiceListBtn", "click", async () => { const { loadVoiceOptionsInStudio } = await import("./modules/estudio.js"); await loadVoiceOptionsInStudio(); });
     safeAdd("loadSelectedVoiceBtn", "click", async () => { const { loadSelectedVoiceFromLibrary } = await import("./modules/estudio.js"); await loadSelectedVoiceFromLibrary(); });
+    
+    safeAdd("transcribeVoiceBtn", "click", async () => { 
+      const { transcribeSelectedVoice } = await import("./modules/estudio.js"); 
+      await transcribeSelectedVoice(); 
+    });
     
     safeAdd("applyCorrectedLyricsBtn", "click", async () => { const { applyCorrectedLyrics } = await import("./modules/estudio.js"); await applyCorrectedLyrics(); });
 
@@ -240,7 +278,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log(`✏️ [script.js] Auto-sugerido el nombre del archivo: [${nameInput.value}]`);
       }
     });
-    
+
+    // Eventos Lazy del Módulo: Splitter IA
+    safeAdd("splitBtn", "click", async () => {
+      console.log("✂️ [script.js] Gatillando botón: Separar Audio con IA");
+      const { splitAudio } = await import("./modules/splitter.js");
+      await splitAudio();
+    });
+
     // Eventos de Hardware de Configuración Avanzada de Micrófonos
     safeAdd("refreshMicsBtn", "click", async () => { const { loadAvailableMics } = await import("./modules/config.js"); await loadAvailableMics(); });
     safeAdd("testMic1Btn", "click", async () => { const { testMicrophone } = await import("./modules/config.js"); await testMicrophone(1); });
